@@ -121,6 +121,9 @@
   <data name="AllComponents" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>icon\AllComponents.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="ComponentConnector" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>icon\ComponentConnector .png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="FindComponentsByCategory" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>icon\FindComponentsByCategory.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -150,6 +153,9 @@
   </data>
   <data name="Json2JQueue" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>icon\Json2JQueue.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ScriptEditor" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>icon\ScriptEditor.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="SearchComponentsByName" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>icon\SearchComponentsByName.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

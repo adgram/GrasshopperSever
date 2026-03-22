@@ -204,6 +204,21 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 **输出参数**:
 - `ComponentInfo` (JQueueParam): 组件信息列表
 
+#### ComponentConnector
+
+通过连接输入端，获取连接的组件的信息。
+
+**输入参数**:
+
+- `Refresh` (bool): 刷新输出
+- Input: 连接一个组件
+
+**输出参数**:
+
+- `Name` (string): 名称
+- `GUID` (string): 组件的GUID
+- `Instance` (string): 组件实例的GUID
+
 ### 执行组件
 
 #### GHActuator
@@ -214,6 +229,19 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `JQueue` (JQueueParam): 需要执行的数据
 
 **输出参数**:
+- `Result` (String): 执行结果，用于显示报错或报告
+
+#### ScriptEditor
+
+通过输入的代码修改Script组件，支持c#、python。
+
+**输入参数**:
+
+- `ScriptComponent` : 连接一个脚本组件
+- `Code` (String): 需要添加到脚本
+
+**输出参数**:
+
 - `Result` (String): 执行结果，用于显示报错或报告
 
 ## 数据库功能

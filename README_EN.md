@@ -204,6 +204,19 @@ Searches components by name, supports fuzzy matching.
 **Output Parameters**:
 - `ComponentInfo` (JQueueParam): Component information list
 
+#### ComponentConnector
+
+Retrieves information about the connected component via its input port.
+
+**Input Parameters**:
+- `Refresh` (bool): Refresh output
+- Input: Connect a component
+
+**Output Parameters**:
+- `Name` (string): Component name
+- `GUID` (string): Component GUID
+- `Instance` (string): Component instance GUID
+
 ### Execution Components
 
 #### GHActuator
@@ -212,6 +225,17 @@ Executes input data.
 
 **Input Parameters**:
 - `JQueue` (JQueueParam): Data to execute
+
+**Output Parameters**:
+- `Result` (String): Execution result, used for displaying errors or reports
+
+#### ScriptEditor
+
+Modifies a Script component via input code, supports C# and Python.
+
+**Input Parameters**:
+- `ScriptComponent`: Connect a script component
+- `Code` (String): Code to be added to the script
 
 **Output Parameters**:
 - `Result` (String): Execution result, used for displaying errors or reports

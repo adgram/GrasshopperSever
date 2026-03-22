@@ -73,6 +73,16 @@ namespace GrasshopperSever.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
+        public static System.Drawing.Bitmap ComponentConnector {
+            get {
+                object obj = ResourceManager.GetObject("ComponentConnector", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
         public static System.Drawing.Bitmap FindComponentsByCategory {
             get {
                 object obj = ResourceManager.GetObject("FindComponentsByCategory", resourceCulture);
@@ -166,6 +176,16 @@ namespace GrasshopperSever.Properties {
         public static System.Drawing.Bitmap Json2JQueue {
             get {
                 object obj = ResourceManager.GetObject("Json2JQueue", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
+        /// </summary>
+        public static System.Drawing.Bitmap ScriptEditor {
+            get {
+                object obj = ResourceManager.GetObject("ScriptEditor", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
