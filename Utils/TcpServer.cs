@@ -39,9 +39,9 @@ namespace GrasshopperSever.Utils
         public JData() { }
         public JData(string name, string description, string value)
         {
-            Name = name;
-            Description = description;
-            Value = value;
+            Name = name;                // 数据名称
+            Description = description;  // 数据描述
+            Value = value;              // 数据值
         }
         public JData(JData other)
         {   
@@ -88,13 +88,13 @@ namespace GrasshopperSever.Utils
     }
 
     /// <summary>
-    /// 响应队列，用于存储要发送的响应
-    /// 线程安全的队列实现，支持生产者-消费者模式
+    /// 响应数据集合，用于存储要发送的响应数据
+    /// 线程安全的 List 实现
     /// </summary>
-    public class JQueue : IDisposable, IJsonSerializable
+    public class JList : IDisposable, IJsonSerializable
     {
         private readonly DateTime _time; // 创建的时间
-        private readonly Queue<JData> _queue = new Queue<JData>(); // 数据
+        private readonly List<JData> _items; // 数据列表
         private readonly object _lock = new object(); // 线程锁
         private bool _disposed = false; // 跟踪对象的释放状态
 
@@ -104,34 +104,33 @@ namespace GrasshopperSever.Utils
         public DateTime Time => _time;
 
         /// <summary>
-        /// 无参构造函数 - 创建空队列，使用当前时间
+        /// 无参构造函数 - 创建空列表，使用当前时间
         /// </summary>
-        public JQueue()
+        public JList()
         {
             _time = DateTime.Now;
+            _items = new List<JData>();
         }
 
         /// <summary>
-        /// 从 JData 数组初始化队列，使用当前时间
+        /// 从 JData 数组初始化列表，使用当前时间
         /// </summary>
         /// <param name="items">初始数据项</param>
-        public JQueue(JData[] items)
+        public JList(JData[] items)
         {
-            _time = DateTime.Now;
+            _time = DateTime.Now;           // 每个数据创建时自动生成，用于检查数据是否被使用过
+            _items = new List<JData>();
             if (items != null)
             {
-                foreach (var item in items)
-                {
-                    _queue.Enqueue(item);
-                }
+                _items.AddRange(items);
             }
         }
 
         /// <summary>
-        /// 从另一个 JQueue 克隆
+        /// 从另一个 JList 克隆
         /// </summary>
-        /// <param name="other">要克隆的队列</param>
-        public JQueue(JQueue other)
+        /// <param name="other">要克隆的列表</param>
+        public JList(JList other)
         {
             if (other == null)
             {
@@ -140,9 +139,10 @@ namespace GrasshopperSever.Utils
             _time = other._time;
             lock (other._lock)
             {
-                foreach (var item in other._queue)
+                _items = new List<JData>();
+                foreach (var item in other._items)
                 {
-                    _queue.Enqueue(item.DeepClone());
+                    _items.Add(item.DeepClone());
                 }
             }
         }
@@ -151,7 +151,7 @@ namespace GrasshopperSever.Utils
         /// 从 JSON 字符串反序列化创建队列
         /// </summary>
         /// <param name="json">JSON字符串</param>
-        public JQueue(string json)
+        public JList(string json)
         {
             if (string.IsNullOrWhiteSpace(json))
             {
@@ -183,10 +183,10 @@ namespace GrasshopperSever.Utils
         }
 
         /// <summary>
-        /// 入队 - 添加数据到队列末尾
+        /// 添加数据到列表末尾
         /// </summary>
         /// <param name="data">要添加的数据</param>
-        public void Enqueue(JData data)
+        public void Add(JData data)
         {
             if (data == null)
             {
@@ -196,180 +196,14 @@ namespace GrasshopperSever.Utils
             {
                 if (_disposed)
                 {
-                    throw new ObjectDisposedException(nameof(JQueue));
+                    throw new ObjectDisposedException(nameof(JList));
                 }
-                _queue.Enqueue(data);
-                Monitor.Pulse(_lock); // 通知等待的线程
+                _items.Add(data);
             }
         }
 
         /// <summary>
-        /// 出队 - 从队列头部移除并返回数据（阻塞直到有数据）
-        /// </summary>
-        /// <returns>队列头部的数据</returns>
-        public JData Dequeue()
-        {
-            lock (_lock)
-            {
-                while (_queue.Count == 0 && !_disposed)
-                {
-                    Monitor.Wait(_lock);
-                }
-
-                if (_disposed)
-                {
-                    throw new ObjectDisposedException(nameof(JQueue));
-                }
-
-                return _queue.Dequeue();
-            }
-        }
-
-        /// <summary>
-        /// 尝试出队 - 非阻塞方式从队列头部移除并返回数据
-        /// </summary>
-        /// <param name="item">输出的数据</param>
-        /// <returns>是否成功获取数据</returns>
-        public bool TryDequeue(out JData item)
-        {
-            lock (_lock)
-            {
-                if (_queue.Count > 0)
-                {
-                    item = _queue.Dequeue();
-                    return true;
-                }
-                item = default;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 尝试出队 - 带超时的出队操作
-        /// </summary>
-        /// <param name="item">输出的数据</param>
-        /// <param name="timeoutMilliseconds">超时时间（毫秒）</param>
-        /// <returns>是否成功获取数据</returns>
-        public bool TryDequeue(out JData item, int timeoutMilliseconds)
-        {
-            if (timeoutMilliseconds < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(timeoutMilliseconds), "超时时间不能为负数");
-            }
-
-            lock (_lock)
-            {
-                if (_queue.Count > 0)
-                {
-                    item = _queue.Dequeue();
-                    return true;
-                }
-
-                DateTime startTime = DateTime.UtcNow;
-                int remainingTime = timeoutMilliseconds;
-
-                while (_queue.Count == 0 && remainingTime > 0 && !_disposed)
-                {
-                    Monitor.Wait(_lock, remainingTime);
-                    remainingTime = timeoutMilliseconds - (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
-                }
-
-                if (_disposed)
-                {
-                    item = default;
-                    return false;
-                }
-
-                if (_queue.Count > 0)
-                {
-                    item = _queue.Dequeue();
-                    return true;
-                }
-
-                item = default;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 尝试出队 - 带取消令牌的出队操作
-        /// </summary>
-        /// <param name="item">输出的数据</param>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>是否成功获取数据</returns>
-        public bool TryDequeue(out JData item, CancellationToken cancellationToken)
-        {
-            lock (_lock)
-            {
-                if (_queue.Count > 0)
-                {
-                    item = _queue.Dequeue();
-                    return true;
-                }
-
-                while (_queue.Count == 0 && !_disposed && !cancellationToken.IsCancellationRequested)
-                {
-                    Monitor.Wait(_lock, TimeSpan.FromMilliseconds(100));
-                }
-
-                if (_disposed || cancellationToken.IsCancellationRequested)
-                {
-                    item = default;
-                    return false;
-                }
-
-                if (_queue.Count > 0)
-                {
-                    item = _queue.Dequeue();
-                    return true;
-                }
-
-                item = default;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 查看队列头部数据但不移除
-        /// </summary>
-        /// <returns>队列头部的数据</returns>
-        public JData Peek()
-        {
-            lock (_lock)
-            {
-                if (_disposed)
-                {
-                    throw new ObjectDisposedException(nameof(JQueue));
-                }
-                if (_queue.Count == 0)
-                {
-                    throw new InvalidOperationException("队列为空");
-                }
-                return _queue.Peek();
-            }
-        }
-
-        /// <summary>
-        /// 尝试查看队列头部数据但不移除
-        /// </summary>
-        /// <param name="item">输出的数据</param>
-        /// <returns>是否成功获取数据</returns>
-        public bool TryPeek(out JData item)
-        {
-            lock (_lock)
-            {
-                if (_queue.Count > 0)
-                {
-                    item = _queue.Peek();
-                    return true;
-                }
-                item = default;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 清空队列
+        /// 清空列表
         /// </summary>
         public void Clear()
         {
@@ -377,15 +211,14 @@ namespace GrasshopperSever.Utils
             {
                 if (_disposed)
                 {
-                    throw new ObjectDisposedException(nameof(JQueue));
+                    throw new ObjectDisposedException(nameof(JList));
                 }
-                _queue.Clear();
-                Monitor.PulseAll(_lock); // 通知所有等待的线程
+                _items.Clear();
             }
         }
 
         /// <summary>
-        /// 检查队列是否包含指定数据
+        /// 检查列表是否包含指定数据
         /// </summary>
         /// <param name="item">要检查的数据</param>
         /// <returns>是否包含</returns>
@@ -398,41 +231,41 @@ namespace GrasshopperSever.Utils
 
             lock (_lock)
             {
-                return _queue.Contains(item);
+                return _items.Contains(item);
             }
         }
 
         /// <summary>
-        /// 将队列转换为数组
+        /// 将列表转换为数组
         /// </summary>
-        /// <returns>队列的数组副本</returns>
+        /// <returns>列表的数组副本</returns>
         public JData[] ToArray()
         {
             lock (_lock)
             {
-                return _queue.ToArray();
+                return _items.ToArray();
             }
         }
 
         /// <summary>
-        /// 深度克隆队列
+        /// 深度克隆列表
         /// </summary>
-        /// <returns>包含相同数据的新队列</returns>
-        public JQueue DeepClone()
+        /// <returns>包含相同数据的新列表</returns>
+        public JList DeepClone()
         {
             lock (_lock)
             {
-                var clonedQueue = new JQueue();
-                foreach (var item in _queue)
+                var clonedList = new JList();
+                foreach (var item in _items)
                 {
-                    clonedQueue.Enqueue(item.DeepClone());
+                    clonedList.Add(item.DeepClone());
                 }
-                return clonedQueue;
+                return clonedList;
             }
         }
 
         /// <summary>
-        /// 队列中的元素数量
+        /// 列表中的元素数量
         /// </summary>
         public int Count
         {
@@ -440,13 +273,13 @@ namespace GrasshopperSever.Utils
             {
                 lock (_lock)
                 {
-                    return _queue.Count;
+                    return _items.Count;
                 }
             }
         }
 
         /// <summary>
-        /// 队列是否为空
+        /// 列表是否为空
         /// </summary>
         public bool IsEmpty
         {
@@ -454,20 +287,20 @@ namespace GrasshopperSever.Utils
             {
                 lock (_lock)
                 {
-                    return _queue.Count == 0;
+                    return _items.Count == 0;
                 }
             }
         }
 
         /// <summary>
-        /// 返回队列的字符串表示
+        /// 返回列表的字符串表示
         /// </summary>
-        /// <returns>队列信息字符串</returns>
+        /// <returns>列表信息字符串</returns>
         public override string ToString()
         {
             lock (_lock)
             {
-                return $"JQueue [Time: {_time:yyyy-MM-dd HH:mm:ss}, Count: {_queue.Count}]";
+                return $"JList [Time: {_time:yyyy-MM-dd HH:mm:ss}, Count: {_items.Count}]";
             }
         }
 
@@ -481,7 +314,7 @@ namespace GrasshopperSever.Utils
         {
             lock (_lock)
             {
-                var items = _queue.Select(jdata =>
+                var items = _items.Select(jdata =>
                 {
                     var value = jdata.Value;
                     object parsedValue = value;
@@ -527,7 +360,7 @@ namespace GrasshopperSever.Utils
 
         /// <summary>
         /// 从JSON字符串反序列化
-        /// 支持两种格式：QueueWrapper（原始）和 RawJDataItem（ToJson）
+        /// 支持两种格式：ListWrapper（原始）和 RawJDataItem（ToJson）
         /// </summary>
         /// <param name="json">JSON字符串</param>
         public void FromJson(string json)
@@ -539,7 +372,7 @@ namespace GrasshopperSever.Utils
 
             lock (_lock)
             {
-                _queue.Clear();
+                _items.Clear();
 
                 try
                 {
@@ -570,32 +403,30 @@ namespace GrasshopperSever.Utils
                                     jdata.Value = valueElement.GetRawText();
                                 }
 
-                                _queue.Enqueue(jdata);
+                                _items.Add(jdata);
                             }
                         }
                     }
                 }
                 catch (JsonException)
                 {
-                    // 如果 RawJDataItem 格式解析失败，尝试原始的 QueueWrapper 格式
-                    var wrapper = JsonSerializer.Deserialize<QueueWrapper>(json);
+                    // 如果 RawJDataItem 格式解析失败，尝试原始的 ListWrapper 格式
+                    var wrapper = JsonSerializer.Deserialize<ListWrapper>(json);
                     if (wrapper != null && wrapper.Items != null)
                     {
                         foreach (var item in wrapper.Items)
                         {
-                            _queue.Enqueue(item);
+                            _items.Add(item);
                         }
                     }
                 }
-
-                Monitor.PulseAll(_lock);
             }
         }
 
         /// <summary>
         /// JSON序列化包装类
         /// </summary>
-        private class QueueWrapper
+        private class ListWrapper
         {
             public DateTime Time { get; set; }
             public JData[] Items { get; set; }
@@ -632,8 +463,7 @@ namespace GrasshopperSever.Utils
                 {
                     lock (_lock)
                     {
-                        _queue.Clear();
-                        Monitor.PulseAll(_lock); // 唤醒所有等待的线程
+                        _items.Clear();
                     }
                 }
                 _disposed = true;
@@ -643,60 +473,126 @@ namespace GrasshopperSever.Utils
         /// <summary>
         /// 析构函数
         /// </summary>
-        ~JQueue()
+        ~JList()
         {
             Dispose(false);
         }
 
-    }
+        /// <summary>
+        /// 从JList中获取指定参数的值
+        /// </summary>
+        /// <param name="data">输入JList</param>
+        /// <param name="paramName">参数名称</param>
+        /// <returns>参数值，如果不存在则返回null</returns>
+        public string GetParameter(string paramName)
+        {
+            lock (_lock)
+            {
+                return _items.FirstOrDefault(item =>
+                    item.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase))?.Value;
+            }
+        }
+        public string[] SearchParameter(string paramName)
+        {
+            lock (_lock)
+            {
+                return _items
+                    .Where(item => item.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                    .Select(item => item.Value)
+                    .ToArray();
+            }
+        }
 
-	public class ComponentJQueue : JQueue
-    {
-		public ComponentJQueue(string componentGuid, string instanceGuid,
+        /// <summary>
+        /// 创建错误响应JList
+        /// </summary>
+        /// <param name="errorMessage">错误信息</param>
+        /// <returns>错误JList</returns>
+        public static JList CreateErrorJList(string errorMessage)
+        {
+            var result = new JList();
+            result.Add(new JData("Status", "状态", "Error"));
+            result.Add(new JData("ErrorMessage", "错误信息", errorMessage));
+            return result;
+        }
+
+        /// <summary>
+        /// 创建成功响应JList
+        /// </summary>
+        /// <param name="message">成功信息</param>
+        /// <returns>成功JList</returns>
+        public static JList CreateOKJList(string message)
+        {
+            var result = new JList();
+            result.Add(new JData("Status", "状态", "OK"));
+            return result;
+        }
+
+        /// <summary>
+        /// 向JList添加成功状态
+        /// </summary>
+        /// <param name="queue">要添加状态的JList</param>
+        public void AddSuccessStatus()
+        {
+            lock (_lock)
+            {
+                if (_items.Count > 0 && _items[0].Name == "Status")
+                {
+                    return;
+                }
+                // 将状态插入到列表头部
+                _items.Insert(0, new JData("Status", "状态", "Success"));
+            }
+        }
+
+        public static JList ComponentJList(string componentGuid, string instanceGuid,
 			      string name, string nickName, string description,
                   string category, string subCategory, string position,
-				  string state, string inputs, string outputs) :base()
+				  string state, string inputs, string outputs)
 		{
-            this.Enqueue(new JData("ComponentGuid", "组件 GUID", componentGuid));
-			this.Enqueue(new JData("InstanceGuid", "实例 GUID", instanceGuid));
-			this.Enqueue(new JData("ComponentName", "组件名称", name));
-			this.Enqueue(new JData("NickName", "组件昵称", nickName));
-			this.Enqueue(new JData("Description", "组件描述", description));
-			this.Enqueue(new JData("Category", "主分类", category));
-			this.Enqueue(new JData("SubCategory", "子分类", subCategory));
-			this.Enqueue(new JData("Position", "位置信息", position));
-			this.Enqueue(new JData("State", "状态信息", state));
-			this.Enqueue(new JData("Inputs", "输入端信息", inputs));
-			this.Enqueue(new JData("Outputs", "输出端信息", outputs));
+            var compjq = new JList();
+            compjq.Add(new JData("ComponentGuid", "组件 GUID", componentGuid));
+			compjq.Add(new JData("InstanceGuid", "实例 GUID", instanceGuid));
+			compjq.Add(new JData("ComponentName", "组件名称", name));
+			compjq.Add(new JData("NickName", "组件昵称", nickName));
+			compjq.Add(new JData("Description", "组件描述", description));
+			compjq.Add(new JData("Category", "主分类", category));
+			compjq.Add(new JData("SubCategory", "子分类", subCategory));
+			compjq.Add(new JData("Position", "位置信息", position));
+			compjq.Add(new JData("State", "状态信息", state));
+			compjq.Add(new JData("Inputs", "输入端信息", inputs));
+			compjq.Add(new JData("Outputs", "输出端信息", outputs));
+            return compjq;
 		}
-    }
 
-	public class ParamJQueue : JQueue
-    {
-		public ParamJQueue(string paramGuid, string instanceGuid,
+        public static JList ParamJList(string paramGuid, string instanceGuid,
 			      string name, string nickName, string description,
                   string category, string subCategory, string position,
-				  string state, string inputs, string outputs) :base()
+				  string state, string inputs, string outputs)
 		{
-            this.Enqueue(new JData("ParamGuid", "Param GUID", paramGuid));
-			this.Enqueue(new JData("InstanceGuid", "实例 GUID", instanceGuid));
-			this.Enqueue(new JData("ParamName", "Param名称", name));
-			this.Enqueue(new JData("NickName", "Param昵称", nickName));
-			this.Enqueue(new JData("Description", "Param描述", description));
-			this.Enqueue(new JData("State", "状态信息", state));
-			this.Enqueue(new JData("Inputs", "输入端信息", inputs));
-			this.Enqueue(new JData("Outputs", "输出端信息", outputs));
+            var paramjq = new JList();
+            paramjq.Add(new JData("ParamGuid", "Param GUID", paramGuid));
+			paramjq.Add(new JData("InstanceGuid", "实例 GUID", instanceGuid));
+			paramjq.Add(new JData("ParamName", "Param名称", name));
+			paramjq.Add(new JData("NickName", "Param昵称", nickName));
+			paramjq.Add(new JData("Description", "Param描述", description));
+			paramjq.Add(new JData("State", "状态信息", state));
+			paramjq.Add(new JData("Inputs", "输入端信息", inputs));
+			paramjq.Add(new JData("Outputs", "输出端信息", outputs));
+            return  paramjq;
 		}
+
+
     }
 
 	/// <summary>
-	/// TCP接收器，专门负责监听端口和接收JQueue数据
+	/// TCP接收器，专门负责监听端口和接收JList数据
 	/// 设计说明：
 	/// 1. 一个 TcpListener 实例只能监听一个端口
 	/// 2. 可以创建多个 TcpReceiver 实例，分别监听不同端口（实现多端口服务）
 	/// 3. 当前实现只监听单个端口，如需扩展可修改 Server.Start 方法接受端口列表
-	/// 4. 接收器将接收到的JQueue通过事件回调传递给服务器
-	/// 5. 会检查JQueue的time标签，只接收比上次更新的数据
+	/// 4. 接收器将接收到的JList通过事件回调传递给服务器
+	/// 5. 会检查JList的time标签，只接收比上次更新的数据
 	/// 6. 每个端口只能创建一个TcpReceiver实例
 	/// </summary>
 	public class TcpReceiver
@@ -707,18 +603,23 @@ namespace GrasshopperSever.Utils
         private TcpListener _listener;
         private bool _runing = false;
         private int _port;
-        private readonly JQueue _jqueue;
+        private readonly JList _jlist;
         private DateTime _lastReceivedTime = DateTime.MinValue;
 
         /// <summary>
-        /// 接收到新JQueue时触发的事件
+        /// 接收到新JList时触发的事件
         /// </summary>
-        public event Action<JQueue> OnJQueueReceived;
+        public event Action<JList> OnJListReceived;
 
         /// <summary>
         /// 有客户端连接时触发的事件
         /// </summary>
         public event Action<TcpClient> OnClientConnected;
+
+        /// <summary>
+        /// 日志消息事件
+        /// </summary>
+        public event Action<string> OnLog;
 
         /// <summary>
         /// 获取监听的端口号
@@ -728,7 +629,7 @@ namespace GrasshopperSever.Utils
         /// <summary>
         /// 获取命令队列
         /// </summary>
-        public JQueue JQueue => _jqueue;
+        public JList JList => _jlist;
 
         /// <summary>
         /// 获取最后接收到的消息时间
@@ -771,9 +672,17 @@ namespace GrasshopperSever.Utils
                     throw new InvalidOperationException($"端口 {port} 已被另一个TcpReceiver使用。请使用 TcpReceiver.GetReceiver({port}) 获取现有实例。");
                 }
                 _port = port;
-                _jqueue = new JQueue();
+                _jlist = new JList();
                 _activeReceivers[port] = this;
             }
+        }
+
+        /// <summary>
+        /// 触发日志事件
+        /// </summary>
+        private void Log(string message)
+        {
+            OnLog?.Invoke(message);
         }
 
         /// <summary>
@@ -786,7 +695,7 @@ namespace GrasshopperSever.Utils
             _runing = true;
             _listener = new TcpListener(IPAddress.Loopback, _port);
             _listener.Start();
-            RhinoApp.WriteLine($"Tcp开始从端口接收数据 {_port}.");
+            Log($"Tcp开始从端口接收数据 {_port}.");
 
             Task.Run(ListenerLoop);
         }
@@ -807,7 +716,7 @@ namespace GrasshopperSever.Utils
                 _activeReceivers.Remove(_port);
             }
 
-            RhinoApp.WriteLine($"Tcp接收器停止，端口 {_port} 已释放");
+            Log($"Tcp接收器停止，端口 {_port} 已释放");
         }
 
         /// <summary>
@@ -821,7 +730,7 @@ namespace GrasshopperSever.Utils
                 {
                     // 等待客户端连接
                     var client = await _listener.AcceptTcpClientAsync();
-                    RhinoApp.WriteLine("Tcp客户端已经连接");
+                    Log("Tcp客户端已经连接");
 
                     // 触发客户端连接事件
                     OnClientConnected?.Invoke(client);
@@ -834,7 +743,7 @@ namespace GrasshopperSever.Utils
             {
                 if (_runing)
                 {
-                    RhinoApp.WriteLine($"Tcp接收器出错: {ex.Message}");
+                    Log($"Tcp接收器出错: {ex.Message}");
                     _runing = false;
                 }
             }
@@ -855,18 +764,18 @@ namespace GrasshopperSever.Utils
                 string json = await reader.ReadLineAsync();
                 if (!string.IsNullOrEmpty(json))
                 {
-                    JQueue receivedQueue = new JQueue(json);
-                    if (receivedQueue.Time > _lastReceivedTime)
+                    JList receivedList = new JList(json);
+                    if (receivedList.Time > _lastReceivedTime)
                     {
-                        _lastReceivedTime = receivedQueue.Time;
+                        _lastReceivedTime = receivedList.Time;
                         // 触发事件
-                        OnJQueueReceived?.Invoke(receivedQueue);
+                        OnJListReceived?.Invoke(receivedList);
                     }
                 }
             }
             catch (Exception ex)
             {
-                RhinoApp.WriteLine($"TcpReceiver 错误: {ex.Message}");
+                Log($"TcpReceiver 错误: {ex.Message}");
             }
         }
     }
@@ -877,18 +786,23 @@ namespace GrasshopperSever.Utils
     /// 响应发送器，专门负责发送响应
     /// 设计说明：
     /// 1. ResponseSender 接收外部TcpClient用于发送数据
-    /// 2. 支持接收多个JQueue进行发送
+    /// 2. 支持接收多个JList进行发送
     /// 3. 会过滤掉time标签早于或等于最后发送的消息
     /// 4. 接收和发送完全解耦，只通过队列通信
     /// 5. 这种设计符合单一职责原则，使代码更清晰、更易维护
     /// </summary>
     public class ResponseSender
     {
-        private readonly Queue<JQueue> _sendQueue = new Queue<JQueue>();
+        private readonly Queue<JList> _sendList = new Queue<JList>();
         private readonly TcpClient _client;
         private bool _running = false;
         private DateTime _lastSentTime = DateTime.MinValue;
         private readonly object _lock = new object();
+
+        /// <summary>
+        /// 日志消息事件
+        /// </summary>
+        public event Action<string> OnLog;
 
         /// <summary>
         /// 获取最后发送的消息时间
@@ -904,7 +818,7 @@ namespace GrasshopperSever.Utils
             {
                 lock (_lock)
                 {
-                    return _sendQueue.Count;
+                    return _sendList.Count;
                 }
             }
         }
@@ -912,6 +826,14 @@ namespace GrasshopperSever.Utils
         public ResponseSender(TcpClient client)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
+        }
+
+        /// <summary>
+        /// 触发日志事件
+        /// </summary>
+        private void Log(string message)
+        {
+            OnLog?.Invoke(message);
         }
 
         /// <summary>
@@ -932,8 +854,8 @@ namespace GrasshopperSever.Utils
             if (!_running) return;
 
             _running = false;
-            ClearQueue();
-            RhinoApp.WriteLine("ResponseSender已停止");
+            ClearList();
+            Log("ResponseSender已停止");
         }
 
         /// <summary>
@@ -945,14 +867,14 @@ namespace GrasshopperSever.Utils
             {
                 try
                 {
-                    JQueue queueToSend = null;
+                    JList queueToSend = null;
 
-                    // 从发送队列获取JQueue
+                    // 从发送队列获取JList
                     lock (_lock)
                     {
-                        if (_sendQueue.Count > 0)
+                        if (_sendList.Count > 0)
                         {
-                            queueToSend = _sendQueue.Dequeue();
+                            queueToSend = _sendList.Dequeue();
                         }
                     }
 
@@ -961,14 +883,14 @@ namespace GrasshopperSever.Utils
                         // 检查time标签，只发送比上次更新的消息
                         if (queueToSend.Time <= _lastSentTime)
                         {
-                            RhinoApp.WriteLine($"ResponseSender: 忽略过期的JQueue (时间: {queueToSend.Time}, 最后发送: {_lastSentTime})");
+                            Log($"ResponseSender: 忽略过期的JList (时间: {queueToSend.Time}, 最后发送: {_lastSentTime})");
                             continue;
                         }
 
-                        // 发送JQueue
-                        await SendJQueue(queueToSend);
+                        // 发送JList
+                        await SendJList(queueToSend);
                         _lastSentTime = queueToSend.Time;
-                        RhinoApp.WriteLine($"ResponseSender: 已发送JQueue (时间: {queueToSend.Time}, 数据项: {queueToSend.Count})");
+                        Log($"ResponseSender: 已发送JList (时间: {queueToSend.Time}, 数据项: {queueToSend.Count})");
                     }
                     else
                     {
@@ -978,17 +900,17 @@ namespace GrasshopperSever.Utils
                 }
                 catch (Exception ex)
                 {
-                    RhinoApp.WriteLine($"ResponseSender error: {ex.Message}");
+                    Log($"ResponseSender error: {ex.Message}");
                 }
             }
         }
 
         /// <summary>
-        /// 发送JQueue到客户端
+        /// 发送JList到客户端
         /// </summary>
-        /// <param name="queue">要发送的JQueue对象</param>
+        /// <param name="queue">要发送的JList对象</param>
         /// <returns>异步任务</returns>
-        private async Task SendJQueue(JQueue queue)
+        private async Task SendJList(JList queue)
         {
             try
             {
@@ -1003,16 +925,16 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                RhinoApp.WriteLine($"ResponseSender发送JQueue错误: {ex.Message}");
+                Log($"ResponseSender发送JList错误: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// 添加JQueue到发送队列
+        /// 添加JList到发送队列
         /// </summary>
-        /// <param name="queue">要发送的JQueue对象</param>
-        public void EnqueueJQueue(JQueue queue)
+        /// <param name="queue">要发送的JList对象</param>
+        public void EnqueueJList(JList queue)
         {
             if (queue == null)
             {
@@ -1021,16 +943,16 @@ namespace GrasshopperSever.Utils
 
             lock (_lock)
             {
-                _sendQueue.Enqueue(queue);
-                RhinoApp.WriteLine($"ResponseSender: JQueue已加入发送队列 (时间: {queue.Time}, 待发送: {_sendQueue.Count})");
+                _sendList.Enqueue(queue);
+                Log($"ResponseSender: JList已加入发送队列 (时间: {queue.Time}, 待发送: {_sendList.Count})");
             }
         }
 
         /// <summary>
-        /// 批量添加JQueue到发送队列
+        /// 批量添加JList到发送队列
         /// </summary>
-        /// <param name="queues">要发送的JQueue数组</param>
-        public void EnqueueJQueueRange(JQueue[] queues)
+        /// <param name="queues">要发送的JList数组</param>
+        public void EnqueueJListRange(JList[] queues)
         {
             if (queues == null)
             {
@@ -1043,23 +965,23 @@ namespace GrasshopperSever.Utils
                 {
                     if (queue != null)
                     {
-                        _sendQueue.Enqueue(queue);
+                        _sendList.Enqueue(queue);
                     }
                 }
-                RhinoApp.WriteLine($"ResponseSender: {queues.Length}个JQueue已加入发送队列，待发送: {_sendQueue.Count}");
+                Log($"ResponseSender: {queues.Length}个JList已加入发送队列，待发送: {_sendList.Count}");
             }
         }
 
         /// <summary>
         /// 清空发送队列
         /// </summary>
-        public void ClearQueue()
+        public void ClearList()
         {
             lock (_lock)
             {
-                int count = _sendQueue.Count;
-                _sendQueue.Clear();
-                RhinoApp.WriteLine($"ResponseSender: 已清空发送队列，移除 {count} 个JQueue");
+                int count = _sendList.Count;
+                _sendList.Clear();
+                Log($"ResponseSender: 已清空发送队列，移除 {count} 个JList");
             }
         }
     }

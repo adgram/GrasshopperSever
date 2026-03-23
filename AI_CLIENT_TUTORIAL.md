@@ -30,9 +30,9 @@ GrasshopperSever提供TCP服务，允许外部客户端（如AI程序）与Grass
 
 ## 通信协议
 
-### JQueue数据结构
+### JList数据结构
 
-所有通信使用JQueue格式，包含时间和数据队列：
+所有通信使用JList格式，包含时间和数据队列：
 
 ```json
 {
@@ -56,9 +56,9 @@ AI客户端                    Grasshopper
     |                            |
     |-------- TCP连接 ---------->|
     |                            |
-    |----- 发送JQueue数据 ------>|  GHReceiver接收
+    |----- 发送JList数据 ------>|  GHReceiver接收
     |                            |
-    |<----- 发送响应JQueue ------|  GHSender发送
+    |<----- 发送响应JList ------|  GHSender发送
     |                            |
 ```
 
@@ -69,9 +69,9 @@ AI客户端                    Grasshopper
     |                            |
     |-------- TCP连接 ---------->|
     |                            |
-    |----- 发送请求JQueue ------>|  GHServer接收并执行
+    |----- 发送请求JList ------>|  GHServer接收并执行
     |                            |
-    |<----- 返回结果JQueue ------|  返回执行结果
+    |<----- 返回结果JList ------|  返回执行结果
     |                            |
 ```
 
@@ -105,16 +105,16 @@ def connect_to_gh(host='127.0.0.1', port=6879):
     return client
 
 # 发送数据
-def send_jqueue(client, data_items):
-    jqueue = {
+def send_jlist(client, data_items):
+    jlist = {
         "Time": datetime.now().isoformat(),
         "Items": data_items
     }
-    message = json.dumps(jqueue, ensure_ascii=False)
+    message = json.dumps(jlist, ensure_ascii=False)
     client.sendall((message + '\n').encode('utf-8'))
 
 # 接收数据
-def receive_jqueue(client):
+def receive_jlist(client):
     data = client.recv(4096).decode('utf-8')
     if data:
         return json.loads(data.strip())
@@ -131,10 +131,10 @@ test_data = [
         "Value": "Hello from AI!"
     }
 ]
-send_jqueue(client, test_data)
+send_jlist(client, test_data)
 
 # 接收响应
-response = receive_jqueue(client)
+response = receive_jlist(client)
 print("响应:", response)
 
 client.close()
@@ -191,11 +191,11 @@ class GrasshopperClient:
             return False
         
         try:
-            jqueue = {
+            jlist = {
                 "Time": datetime.now().isoformat(),
                 "Items": data_items
             }
-            message = json.dumps(jqueue, ensure_ascii=False)
+            message = json.dumps(jlist, ensure_ascii=False)
             self.client.sendall((message + '\n').encode('utf-8'))
             print(f"已发送: {len(data_items)} 个数据项")
             return True
@@ -634,8 +634,8 @@ test_connection()
 - 验证Items数组结构
 
 ```python
-def validate_jqueue(data):
-    """验证JQueue数据格式"""
+def validate_jlist(data):
+    """验证JList数据格式"""
     if not isinstance(data, dict):
         return False
     if "Time" not in data or "Items" not in data:
@@ -648,11 +648,11 @@ def validate_jqueue(data):
     return True
 
 # 使用
-jqueue = {
+jlist = {
     "Time": datetime.now().isoformat(),
     "Items": [...]
 }
-if validate_jqueue(jqueue):
+if validate_jlist(jlist):
     print("数据格式正确")
 ```
 
@@ -688,7 +688,7 @@ def receive_with_timeout(gh: GrasshopperClient, timeout=5.0):
 
 ```python
 # 正确的中文处理
-message = json.dumps(jqueue, ensure_ascii=False)
+message = json.dumps(jlist, ensure_ascii=False)
 encoded_message = message.encode('utf-8')
 
 # 解码时指定编码
@@ -758,7 +758,7 @@ def monitor_traffic(gh: GrasshopperClient):
 ## 扩展阅读
 
 - [GrasshopperSever主文档](./README.md)
-- [JQueue数据结构详解](./插件开发.md)
+- [JList数据结构详解](./插件开发.md)
 - [Grasshopper API文档](https://developer.rhino3d.com/guides/grasshopper/)
 
 ## 支持

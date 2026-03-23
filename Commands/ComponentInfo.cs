@@ -42,7 +42,7 @@ namespace GrasshopperSever.Commands
         /// </summary>
         /// <param name="command">命令</param>
         /// <returns>文件信息</returns>
-        public static JQueue GetAllComponentsNested()
+        public static JList GetAllComponentsNested()
         {
             var server = Grasshopper.Instances.ComponentServer;
             var proxies = server.ObjectProxies;
@@ -132,15 +132,15 @@ namespace GrasshopperSever.Commands
             }
 
             // 3. outdata 结构进行封装
-            var outData = new JQueue();
+            var outData = new JList();
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
-            outData.Enqueue(new JData("AllCategorys", "所有分类", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options)));
-            outData.Enqueue(new JData("Count", "组件数量", totalCount.ToString()));
-            outData.Enqueue(new JData("AllComponents",
+            outData.Add(new JData("AllCategorys", "所有分类", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options)));
+            outData.Add(new JData("Count", "组件数量", totalCount.ToString()));
+            outData.Add(new JData("AllComponents",
                 "所有注册的组件，string({category : {subCategory : dict{guid, name, nickname, description}}}})",
                 JsonSerializer.Serialize(componentsDict, options)));
             return outData;
@@ -150,7 +150,7 @@ namespace GrasshopperSever.Commands
         /// 从数据库获取所有组件
         /// </summary>
         /// <returns>数据库中的所有组件信息</returns>
-        public static JQueue GetAllComponentsFromDB()
+        public static JList GetAllComponentsFromDB()
         {
             var categorySet = new HashSet<string>();
             var componentsDict = new Dictionary<string, Dictionary<string, List<object>>>();
@@ -205,24 +205,24 @@ namespace GrasshopperSever.Commands
             }
 
             // 封装结果
-            var outData = new JQueue();
+            var outData = new JList();
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
-            outData.Enqueue(new JData("AllCategorys", "所有分类", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options)));
-            outData.Enqueue(new JData("Count", "组件数量", totalCount.ToString()));
-            outData.Enqueue(new JData("AllComponents",
+            outData.Add(new JData("AllCategorys", "所有分类", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options)));
+            outData.Add(new JData("Count", "组件数量", totalCount.ToString()));
+            outData.Add(new JData("AllComponents",
                 "数据库中的所有组件，string({category : {subCategory : dict{guid, name, nickname, description}}}})",
                 JsonSerializer.Serialize(componentsDict, options)));
-            outData.Enqueue(new JData("UpdateTime", "数据库最后更新时间", AllComponentsDB.GetLastUpdateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知"));
+            outData.Add(new JData("UpdateTime", "数据库最后更新时间", AllComponentsDB.GetLastUpdateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知"));
 
             return outData;
         }
 
         // 通过Guid查询组件信息
-        public static ComponentJQueue FindComponentsByGuid(string guid)
+        public static JList FindComponentsByGuid(string guid)
         {
             // 从数据库查询组件信息
             using (var connection = DatabaseManager.GetConnection())
@@ -246,7 +246,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return new ComponentJQueue(
+                            return JList.ComponentJList(
                                 componentGuid: reader["ComponentGuid"].ToString(),
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -267,7 +267,7 @@ namespace GrasshopperSever.Commands
             return null;
         }
         // 通过名称查询组件信息
-        public static ComponentJQueue FindComponentsByName(string name)
+        public static JList FindComponentsByName(string name)
         {
             // 从数据库查询第一个匹配的组件信息
             using (var connection = DatabaseManager.GetConnection())
@@ -294,7 +294,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return new ComponentJQueue(
+                            return JList.ComponentJList(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -316,7 +316,7 @@ namespace GrasshopperSever.Commands
         }
         
         // 通过分类和名称搜索组件（只返回第一个匹配的）
-        public static ComponentJQueue FindComponentsByCategory(string category, string subCategory, string name)
+        public static JList FindComponentsByCategory(string category, string subCategory, string name)
         {
             // 构建 SQL 查询
             string sql = @"
@@ -377,7 +377,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return new ComponentJQueue(
+                            return JList.ComponentJList(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -399,9 +399,9 @@ namespace GrasshopperSever.Commands
         }
 
         // 通过名称搜索组件，可以模糊匹配
-        public static List<ComponentJQueue> SearchComponentsByName(string name)
+        public static List<JList> SearchComponentsByName(string name)
         {
-            var result = new List<ComponentJQueue>();
+            var result = new List<JList>();
 
             // 从数据库模糊查询组件信息
             using (var connection = DatabaseManager.GetConnection())
@@ -427,7 +427,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            result.Add(new ComponentJQueue(
+                            result.Add(JList.ComponentJList(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),

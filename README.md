@@ -15,15 +15,15 @@
 GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 1. **数据通信**: 通过TCP协议接收和发送数据
-2. **数据转换**: JSON与JQueue格式互相转换
+2. **数据转换**: JSON与JList格式互相转换
 3. **组件信息查询**: 查询和搜索Grasshopper组件信息
 4. **数据执行**: 执行接收到的数据命令
 
 ## 核心数据结构
 
-### JQueue
+### JList
 
-由 `(DateTime time, Queue<JData>)` 组成的数据结构，用于表示TCP一次消息的多个JData。
+由 `(DateTime time, List<JData>)` 组成的数据结构，用于表示TCP一次消息的多个JData。
 
 - **time**: 队列创建时间，用于标识数据版本
 - **queue**: JData对象的队列
@@ -56,7 +56,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 **输出参数**:
 - `Client` (TcpClientParam): Client连接对象
-- `JQueue` (JQueueParam): 传入的数据
+- `JList` (JListParam): 传入的数据
 
 **特性**:
 - 在后台线程接收数据
@@ -69,13 +69,13 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 **输入参数**:
 - `Client` (TcpClientParam): Client连接对象
-- `JQueue` (JQueueParam): 发送数据，按顺序发送
+- `JList` (JListParam): 发送数据，按顺序发送
 
 **输出参数**:
 - `Result` (String): 执行结果，用于显示报错或报告
 
 **特性**:
-- 只有JQueue.time更新时才会触发发送
+- 只有JList.time更新时才会触发发送
 - 自动过滤过期数据
 
 #### GHServer
@@ -91,35 +91,35 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 ### 数据转换组件
 
-#### Json2JQueue
+#### Json2JList
 
-将JSON格式转换为JQueue。
+将JSON格式转换为JList。
 
 **输入参数**:
 - `String` (String): JSON格式字符串
 
 **输出参数**:
-- `JQueue` (JQueueParam): 生成的JQueue对象
+- `JList` (JListParam): 生成的JList对象
 
-#### JQueue2Json
+#### JList2Json
 
-将JQueue转换为JSON格式。
+将JList转换为JSON格式。
 
 **输入参数**:
-- `JQueue` (JQueueParam): 需要转换的JQueue对象
+- `JList` (JListParam): 需要转换的JList对象
 
 **输出参数**:
 - `String` (String): JSON格式字符串
 
-#### StringTreeJQueue
+#### StringTreeJList
 
-将String Tree转换为JQueue。
+将String Tree转换为JList。
 
 **输入参数**:
 - `String Tree` (GH_Structure<string>): String Tree结构
 
 **输出参数**:
-- `JQueue` (JQueueParam): 生成的JQueue对象
+- `JList` (JListParam): 生成的JList对象
 
 **特性**:
 - 每个branch只取前三项
@@ -136,7 +136,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Refresh` (Boolean): 刷新，值改变就刷新一次time
 
 **输出参数**:
-- `JQueue` (JQueueParam): 所有组件的信息
+- `JList` (JListParam): 所有组件的信息
 
 **输出结构**:
 ```
@@ -155,9 +155,9 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Guid` (String): 组件的GUID
 
 **输出参数**:
-- `ComponentInfo` (JQueueParam): 组件信息
+- `ComponentInfo` (JListParam): 组件信息
 
-**输出结构** (ComponentJQueue):
+**输出结构** (ComponentJList):
 ```
 [
   ComponentGuid,      // 组件 GUID
@@ -182,7 +182,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Name` (String): 组件名称
 
 **输出参数**:
-- `ComponentInfo` (JQueueParam): 组件信息
+- `ComponentInfo` (JListParam): 组件信息
 
 #### FindComponentsByCategory
 
@@ -192,7 +192,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Category` (String): 主分类名称
 
 **输出参数**:
-- `ComponentInfo` (JQueueParam): 组件信息
+- `ComponentInfo` (JListParam): 组件信息
 
 #### SearchComponentsByName
 
@@ -202,7 +202,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Keyword` (String): 搜索关键词
 
 **输出参数**:
-- `ComponentInfo` (JQueueParam): 组件信息列表
+- `ComponentInfo` (JListParam): 组件信息列表
 
 #### ComponentConnector
 
@@ -226,7 +226,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 对输入的数据进行执行。
 
 **输入参数**:
-- `JQueue` (JQueueParam): 需要执行的数据
+- `JList` (JListParam): 需要执行的数据
 
 **输出参数**:
 - `Result` (String): 执行结果，用于显示报错或报告
@@ -269,9 +269,9 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 ## 参数类型
 
-### JQueueParam
+### JListParam
 
-用于在Grasshopper电池之间传递JQueue数据的参数类型。
+用于在Grasshopper电池之间传递JList数据的参数类型。
 
 ### TcpClientParam
 
@@ -303,7 +303,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 1. 创建一个 `GHReceiver` 组件，设置端口号（例如6879）
 2. 将 `Enabled` 设置为 `true` 启动接收器
 3. 通过TCP客户端发送JSON数据到指定端口
-4. 数据将被接收并转换为JQueue格式输出
+4. 数据将被接收并转换为JList格式输出
 
 ### 组件查询示例
 
@@ -313,14 +313,14 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 ### 数据转换示例
 
-1. 创建 `Json2JQueue` 组件
+1. 创建 `Json2JList` 组件
 2. 输入JSON字符串
-3. 获取转换后的JQueue对象
+3. 获取转换后的JList对象
 
 ## 注意事项
 
 1. 每个端口只能创建一个TCP接收器
-2. JQueue的time标签用于版本控制，只接收/发送更新的数据
+2. JList的time标签用于版本控制，只接收/发送更新的数据
 3. 数据库文件位于插件目录，确保有写入权限
 4. TCP通信使用UTF-8编码
 5. 建议使用防火墙规则保护TCP端口

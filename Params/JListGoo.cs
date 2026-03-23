@@ -5,9 +5,9 @@ using System;
 namespace GrasshopperSever.Params
 {
     /// <summary>
-    /// 定义电池端口，这个传输JQueue数据
+    /// 定义电池端口，这个传输JList数据
     /// </summary>
-    public class JQueueGoo : GH_Goo<JQueue>
+    public class JListGoo : GH_Goo<JList>
     {
         /// <summary>
         /// </summary>
@@ -23,7 +23,7 @@ namespace GrasshopperSever.Params
         {
             get
             {
-                return "JQueue";
+                return "JList";
             }
         }
 
@@ -31,36 +31,36 @@ namespace GrasshopperSever.Params
         {
             get
             {
-                return "由`(DateTime time, Queue<JData(string name，string description，string data)>)`组成的数据";
+                return "由`(DateTime time, List<JData(string name，string description，string data)>)`组成的数据";
             }
         }
 
-        public JQueueGoo()
+        public JListGoo()
         {
             this.Value = null;
         }
 
-        public JQueueGoo(JQueue obj)
+        public JListGoo(JList obj)
         {
             this.Value = obj;
         }
 
         public override IGH_Goo Duplicate()
         {
-            return new JQueueGoo(this.Value.DeepClone());
+            return new JListGoo(this.Value.DeepClone());
         }
 
         public override string ToString()
         {
             if (this.Value == null)
             {
-                return "JQueue Null";
+                return "JList Null";
             }
             return this.Value.ToString();
         }
 
         /// <summary>
-        /// 尝试从其他类型转换为JQueueGoo
+        /// 尝试从其他类型转换为JListGoo
         /// 支持从string（JSON格式）自动转换
         /// </summary>
         /// <param name="source">源对象</param>
@@ -78,7 +78,7 @@ namespace GrasshopperSever.Params
             {
                 try
                 {
-                    this.Value = new JQueue(json);
+                    this.Value = new JList(json);
                     return true;
                 }
                 catch (Exception)
@@ -88,15 +88,15 @@ namespace GrasshopperSever.Params
                 }
             }
 
-            // 尝试从JQueue转换
-            if (source is JQueue queue)
+            // 尝试从JList转换
+            if (source is JList lst)
             {
-                this.Value = queue;
+                this.Value = lst;
                 return true;
             }
 
-            // 尝试从另一个JQueueGoo转换
-            if (source is JQueueGoo goo)
+            // 尝试从另一个JListGoo转换
+            if (source is JListGoo goo)
             {
                 this.Value = goo.Value;
                 return true;

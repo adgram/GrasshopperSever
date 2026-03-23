@@ -104,7 +104,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Provides an Icon for the component.
         /// </summary>
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.ComponentConnector;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.P15_ComponentConnector;
 
         /// <summary>
         /// Gets the unique ID for this component. Do not change this ID after release.

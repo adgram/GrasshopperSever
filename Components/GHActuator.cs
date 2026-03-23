@@ -1,21 +1,21 @@
 ﻿using System;
 using Grasshopper.Kernel;
+using GrasshopperSever.Commands;
 using GrasshopperSever.Params;
 using GrasshopperSever.Utils;
-using GrasshopperSever.Commands;
 
 namespace GrasshopperSever.Components
 {
     public class GHActuator : GH_Component
     {
-        private Actuator _actuator = new Actuator(); // 执行器
+        private string _output_data = null;
 
         /// <summary>
-        /// 专门用于执行一些特殊的JQueue
+        /// 专门用于执行一些特殊的JList
         /// </summary>
         public GHActuator()
           : base("GHActuator", "Actuator",
-              "专门用于执行一些特殊的JQueue",
+              "专门用于执行一些特殊的JList",
                 "Maths", "Sever")
         {
         }
@@ -32,7 +32,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddParameter(new JQueueParam(), "Json", "JS", "要发送的JQueue数据", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "Json", "JS", "要发送的JList数据", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -41,6 +41,8 @@ namespace GrasshopperSever.Components
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Status", "ST", "执行结果", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "Result", "R", "处理后的JList结果", GH_ParamAccess.item);
+            pManager.AddGenericParameter("OutPut", "O", "显示输出数据", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -49,7 +51,7 @@ namespace GrasshopperSever.Components
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            JQueueGoo jsonGoo = null;
+            JListGoo jsonGoo = null;
 
             // 获取输入参数
             if (!DA.GetData(0, ref jsonGoo)) return;
@@ -62,13 +64,15 @@ namespace GrasshopperSever.Components
                 return;
             }
 
-            JQueue queue = jsonGoo.Value;
+            JList lst = jsonGoo.Value;
 
-            // 创建或更新发送器
+            // 处理命令并获取结果
             try
             {
-                var res_queue = _actuator.DoCommand(queue);
-                DA.SetData(0, res_queue.ToString());
+                var res_lst = DoCommand(lst, ref _output_data);
+                DA.SetData(0, res_lst.ToString());
+                DA.SetData(1, new JListGoo(res_lst));
+                DA.SetData(2, _output_data);
             }
             catch (Exception ex)
             {
@@ -83,7 +87,7 @@ namespace GrasshopperSever.Components
         /// You can add image files to your project resources and access them like this:
         /// return Resources.IconForThisComponent;
         /// </summary>
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.GHActuator;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.P09_GHActuator;
 
         /// <summary>
         /// Each component must have a unique Guid to identify it. 
@@ -91,5 +95,36 @@ namespace GrasshopperSever.Components
         /// that use the old ID will partially fail during loading.
         /// </summary>
         public override Guid ComponentGuid => new Guid("6FDF874C-D2AC-43C7-A4DB-196A227189F2"); 
+        
+        /// <summary>
+        /// 这里处理数据
+        /// </summary>
+        public static JList DoCommand(JList lst, ref string out_data)
+        {
+            var h_type = JListTypeDetector.DetectType(lst);
+            // 根据 Value 值判断类型（不区分大小写）
+            var output_data = lst.GetParameter("OUTPUT");
+            switch (h_type)
+            {
+                case JListType.Component:
+                    return ActuatorHandle.DoComponentCommand(lst);
+
+                case JListType.Script:
+                    break;
+
+                case JListType.Document:
+                    return ActuatorHandle.DoDocumentCommand(lst);
+
+                case JListType.Rhino:
+                    return ActuatorHandle.DoRhinoCommand(lst);
+
+                case JListType.Design:
+                    break;
+
+                default:
+                    break;
+            }
+            return JList.CreateOKJList("ok");
+        }
     }
 }

@@ -91,6 +91,7 @@ namespace GrasshopperSever.Components
             if (string.IsNullOrEmpty(newCode) || _lastAppliedCode.Equals(newCode, StringComparison.Ordinal))
             {
                 GetComponentInfo(targetComponent, DA);
+                //targetComponent.Read
                 DA.SetData(0, "输入的代码未更新");
                 return;
             }
@@ -110,7 +111,7 @@ namespace GrasshopperSever.Components
                 // 根据新代码更新参数
                 targetComponent.SetParametersFromScript();
                 targetComponent.SetParametersToScript();
-
+                //UpdateParameters(targetComponent, _parameters)
                 // 在当前 solution 结束后，仅让目标组件重算
                 // 使用 ScheduleSolution + ExpireComponent 而非 ExpireSolution，避免触发本组件循环
                 var doc = OnPingDocument();
@@ -185,6 +186,7 @@ namespace GrasshopperSever.Components
             return sourceComponent;
         }
 
+
         /// <summary>
         /// 获取组件类型的友好名称
         /// </summary>
@@ -213,18 +215,18 @@ namespace GrasshopperSever.Components
 
         private static void GetComponentInfo(BaseLanguageComponent component, IGH_DataAccess DA)
         {
-            JQueue cdata = new JQueue();
+            JList cdata = new JList();
             if (component == null) return;
 
             // 获取组件类型信息
             string componentType = GetComponentTypeName(component);
             DA.SetData(1, componentType);
-            cdata.Enqueue(new JData("Type", "目标脚本组件类型", componentType));
+            cdata.Add(new JData("Type", "目标脚本组件类型", componentType));
 
             // Is SDK Mode
             bool is_sdk = component.IsSDKMode;
             DA.SetData(2, is_sdk);
-            cdata.Enqueue(new JData("IsSDK", "脚本结构类型", is_sdk.ToString()));
+            cdata.Add(new JData("IsSDK", "脚本结构类型", is_sdk.ToString()));
 
             // Source Code
             string source = "";
@@ -238,7 +240,7 @@ namespace GrasshopperSever.Components
                 source = "null";
                 DA.SetData(3, "获取失败");
             }
-            cdata.Enqueue(new JData("Code", "脚本代码", source));
+            cdata.Add(new JData("Code", "脚本代码", source));
 
             // Input Params
             List<string> inputNames = null;
@@ -249,7 +251,7 @@ namespace GrasshopperSever.Components
                     .ToList();
             }
             catch { }
-            cdata.Enqueue(new JData("Code", "脚本代码", inputNames.ToString()));
+            cdata.Add(new JData("Code", "脚本代码", inputNames.ToString()));
 
             // Output Params
             List<string> outputNames = null;
@@ -260,54 +262,154 @@ namespace GrasshopperSever.Components
                     .ToList();
             }
             catch { }
-            cdata.Enqueue(new JData("Code", "脚本代码", outputNames.ToString()));
+            cdata.Add(new JData("Code", "脚本代码", outputNames.ToString()));
 
             // Instance GUID
             string guid = component.InstanceGuid.ToString();
-            cdata.Enqueue(new JData("GUID", "目标组件的GUID", guid));
+            cdata.Add(new JData("GUID", "目标组件的GUID", guid));
         }
 
         /// <summary>
-        /// 从脚本组件获取当前代码
+        /// 处理动态修改组件输入输出端
+        /// 输入格式：JSON字符串 {"InputParams":"x,y","OutputParams":"result"}
+        /// 参数列表格式：逗号或分号分隔的参数名，例如 "x,y,z"
+        /// 功能：按照列表匹配参数，缺少的添加，多余的删除（少加多补）
         /// </summary>
-        public static bool TryGetScriptCode(BaseLanguageComponent component, out string code)
+        private static JList UpdateParameters(BaseLanguageComponent component, string jsonData)
         {
-            code = null;
-            if (component == null) return false;
-
             try
             {
-                return component.TryGetSource(out code);
+                if (component == null)
+                    return JList.CreateErrorJList("目标组件无效");
+
+                if (string.IsNullOrWhiteSpace(jsonData))
+                    return JList.CreateErrorJList("JSON数据为空");
+
+                // 1. 解析JSON字符串（简单解析，不依赖Newtonsoft.Json）
+                var parameters = new Dictionary<string, string>();
+                var pairs = jsonData.Trim().TrimStart('{').TrimEnd('}').Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var pair in pairs)
+                {
+                    var keyValue = pair.Split(new[] { ':' }, 2);
+                    if (keyValue.Length == 2)
+                    {
+                        var key = keyValue[0].Trim().Trim('"');
+                        var value = keyValue[1].Trim().Trim('"');
+                        parameters[key] = value;
+                    }
+                }
+
+                // 2. 获取参数列表
+                if (!parameters.TryGetValue("InputParams", out string inputParamsList))
+                    inputParamsList = "";
+
+                if (!parameters.TryGetValue("OutputParams", out string outputParamsList))
+                    outputParamsList = "";
+
+                // 3. 解析参数列表
+                var targetInputParams = string.IsNullOrWhiteSpace(inputParamsList)
+                    ? new List<string>()
+                    : inputParamsList.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p.Trim())
+                        .ToList();
+
+                var targetOutputParams = string.IsNullOrWhiteSpace(outputParamsList)
+                    ? new List<string>()
+                    : outputParamsList.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(p => p.Trim())
+                        .ToList();
+
+                // 4. 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
+                var doc = Grasshopper.Instances.ActiveCanvas?.Document;
+                doc.ScheduleSolution(5, (d) =>
+                {
+                    // 处理输入端：少加多补
+                    SyncParameters(component.Params.Input, targetInputParams, true);
+
+                    // 处理输出端：少加多补
+                    SyncParameters(component.Params.Output, targetOutputParams, false);
+
+                    // 5. 刷新组件外观和布局
+                    component.Params.OnParametersChanged();
+                    component.OnAttributesChanged();
+                    component.ExpireSolution(false);
+                });
+
+                var response = new JList();
+                response.Add(new JData("Status", "消息", "参数同步指令已发送至调度器"));
+                response.Add(new JData("InputParams", "目标输入参数", string.Join(",", targetInputParams)));
+                response.Add(new JData("OutputParams", "目标输出参数", string.Join(",", targetOutputParams)));
+                response.AddSuccessStatus();
+                return response;
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                return JList.CreateErrorJList($"修改组件参数失败: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 设置脚本组件的代码
+        /// 同步参数列表：少加多补
         /// </summary>
-        public static bool TrySetScriptCode(BaseLanguageComponent component, string code)
+        /// <param name="currentParams">当前参数列表</param>
+        /// <param name="targetParams">目标参数名称列表</param>
+        /// <param name="isInput">是否为输入参数</param>
+        private static void SyncParameters(IList<IGH_Param> currentParams, List<string> targetParams, bool isInput)
         {
-            if (component == null || string.IsNullOrEmpty(code)) return false;
+            var currentNames = currentParams.Select(p => p.NickName).ToList();
 
-            try
+            // 1. 删除多余的参数（在目标列表中不存在的）
+            // 从后往前删除，避免索引变化问题
+            for (int i = currentParams.Count - 1; i >= 0; i--)
             {
-                component.SetSource(code);
-                component.SetParametersFromScript();
-                return true;
+                if (!targetParams.Contains(currentNames[i]))
+                {
+                    if (isInput)
+                    {
+                        var component = currentParams[i].Attributes.GetTopLevel.DocObject as IGH_Component;
+                        component?.Params.UnregisterInputParameter(currentParams[i]);
+                    }
+                    else
+                    {
+                        var component = currentParams[i].Attributes.GetTopLevel.DocObject as IGH_Component;
+                        component?.Params.UnregisterOutputParameter(currentParams[i]);
+                    }
+                }
             }
-            catch
+
+            // 2. 添加缺失的参数（在目标列表中存在但当前没有的）
+            foreach (var targetName in targetParams)
             {
-                return false;
+                if (!currentNames.Contains(targetName))
+                {
+                    if (isInput)
+                    {
+                        var p = new Grasshopper.Kernel.Parameters.Param_GenericObject();
+                        p.Name = targetName;
+                        p.NickName = targetName;
+                        p.MutableNickName = true;
+                        p.Access = GH_ParamAccess.item;
+                        var component = currentParams.FirstOrDefault()?.Attributes?.GetTopLevel?.DocObject as IGH_Component;
+                        component?.Params.RegisterInputParam(p);
+                    }
+                    else
+                    {
+                        var p = new Grasshopper.Kernel.Parameters.Param_GenericObject();
+                        p.Name = targetName;
+                        p.NickName = targetName;
+                        var component = currentParams.FirstOrDefault()?.Attributes?.GetTopLevel?.DocObject as IGH_Component;
+                        component?.Params.RegisterOutputParam(p);
+                    }
+                }
             }
         }
+
 
         /// <summary>
         /// Provides an Icon for the component.
         /// </summary>
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.ScriptEditor;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.P16_ScriptEditor;
 
         /// <summary>
         /// Gets the unique ID for this component. Do not change this ID after release.

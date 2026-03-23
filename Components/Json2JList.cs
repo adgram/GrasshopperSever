@@ -1,27 +1,29 @@
 ﻿using System;
 using Grasshopper.Kernel;
-using GrasshopperSever.Commands;
 using GrasshopperSever.Params;
+using GrasshopperSever.Utils;
 
 namespace GrasshopperSever.Components
 {
-    public class FindComponentsByName : GH_Component
+    /// <summary>
+    /// 将 JSON 字符串转换为 JList
+    /// </summary>
+    public class Json2JList : GH_Component
     {
         /// <summary>
-        /// 通过名称查找组件信息
+        /// Initializes a new instance of the String2JList class.
         /// </summary>
-        public FindComponentsByName()
-          : base("FindComponentsByName", "FCBN",
-              "通过组件名称查询组件信息",
+        public Json2JList()
+          : base("Json2JList", "J2Q",
+              "将JSON格式的字符串转换为JList对象",
               "Maths", "Sever")
         {
         }
-
         public override GH_Exposure Exposure
         {
             get
             {
-                return GH_Exposure.secondary;
+                return GH_Exposure.last;
             }
         }
 
@@ -30,7 +32,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("Name", "N", "组件名称或昵称", GH_ParamAccess.item);
+            pManager.AddTextParameter("String", "S", "JSON格式的字符串", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -38,7 +40,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddParameter(new JListParam(), "ComponentInfo", "C", "组件信息 (ComponentJList)", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "JList", "JQ", "转换后的JList对象", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -47,25 +49,26 @@ namespace GrasshopperSever.Components
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            string name = string.Empty;
-
-            // 获取输入参数
-            if (!DA.GetData(0, ref name))
+            string jsonString = null;
+            if (!DA.GetData(0, ref jsonString))
             {
                 return;
             }
 
-            // 调用查询方法
-            var result = ComponentInfo.FindComponentsByName(name);
-
-            // 输出结果
-            if (result != null)
+            if (string.IsNullOrWhiteSpace(jsonString))
             {
-                DA.SetData(0, new JListGoo(result));
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "JSON字符串不能为空");
+                return;
             }
-            else
+
+            try
             {
-                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, $"未找到名称为 {name} 的组件");
+                JList jlst = new JList(jsonString);
+                DA.SetData(0, jlst);
+            }
+            catch (Exception ex)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"JSON解析失败: {ex.Message}");
             }
         }
 
@@ -76,7 +79,9 @@ namespace GrasshopperSever.Components
         {
             get
             {
-                return Properties.Resources.P12_FindComponentsByName;
+                //You can add image files to your project resources and access them like this:
+                // return Resources.IconForThisComponent;
+                return Properties.Resources.P03_Json2JList;
             }
         }
 
@@ -85,7 +90,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("9FFB4997-4F1D-4434-BEB3-9F8A544743D6"); }
+            get { return new Guid("D18AD8E0-1A39-42A7-9F4B-9FC5EEC2523C"); }
         }
     }
 }

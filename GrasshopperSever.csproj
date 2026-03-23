@@ -31,11 +31,13 @@
   <ItemGroup>
     <PackageReference Include="Grasshopper" Version="8.29.26063.11001" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
+    <PackageReference Include="RhinoCommon" Version="8.29.26063.11001" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
     <PackageReference Include="System.Resources.Extensions" Version="10.0.5" />
     <!-- System.Text.Json 只在 net4.8 框架下引用，net7.0 自带该库 -->
     <PackageReference Include="System.Text.Json" Version="10.0.5" Condition="'$(TargetFramework)' == 'net4.8'" />
     <!-- SQLite 数据库支持 -->
-    <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
+    <PackageReference Include="System.Data.SQLite" Version="2.0.3" />
   </ItemGroup>
   
   <!-- For Windows only builds -->

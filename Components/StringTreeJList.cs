@@ -10,16 +10,16 @@ using GrasshopperSever.Utils;
 namespace GrasshopperSever.Components
 {
     /// <summary>
-    /// 将 String Tree 转换为 JQueue
+    /// 将 String Tree 转换为 JList
     /// </summary>
-    public class StringTreeJQueue : GH_Component
+    public class StringTreeJList : GH_Component
     {
         /// <summary>
-        /// Initializes a new instance of the StringTreeJQueue class.
+        /// Initializes a new instance of the StringTreeJList class.
         /// </summary>
-        public StringTreeJQueue()
-          : base("StringTreeJQueue", "ST2Q",
-              "将string tree转换为JQueue。每个branch只取前三项，非string格式转为string，项目不足则使用空值补齐。",
+        public StringTreeJList()
+          : base("StringTreeJList", "ST2Q",
+              "将string tree转换为JList。每个branch只取前三项，非string格式转为string，项目不足则使用空值补齐。",
               "Maths", "Sever")
         {
         }
@@ -35,7 +35,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("String Tree", "ST", "将string tree转换为JQueue", GH_ParamAccess.tree);
+            pManager.AddTextParameter("String Tree", "ST", "将string tree转换为JList", GH_ParamAccess.tree);
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddParameter(new JQueueParam(), "JQueue", "JQ", "生成的JQueue", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "JList", "JQ", "生成的JList", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -60,8 +60,8 @@ namespace GrasshopperSever.Components
 
             try
             {
-                // 创建 JQueue
-                JQueue jqueue = new JQueue();
+                // 创建 JList
+                JList jlst = new JList();
 
                 // 遍历每个 branch
                 foreach (GH_Path path in stringTree.Paths)
@@ -79,18 +79,18 @@ namespace GrasshopperSever.Components
                     // 创建 JData
                     JData jdata = new JData(name, description, value);
 
-                    // 添加到 JQueue
-                    jqueue.Enqueue(jdata);
+                    // 添加到 JList
+                    jlst.Add(jdata);
                 }
 
-                // 如果没有数据，创建一个空数据的 JQueue
-                if (jqueue.Count == 0)
+                // 如果没有数据，创建一个空数据的 JList
+                if (jlst.Count == 0)
                 {
                     JData emptyJData = new JData("", "", "");
-                    jqueue.Enqueue(emptyJData);
+                    jlst.Add(emptyJData);
                 }
 
-                DA.SetData(0, jqueue);
+                DA.SetData(0, jlst);
             }
             catch (Exception ex)
             {
@@ -107,7 +107,7 @@ namespace GrasshopperSever.Components
             {
                 //You can add image files to your project resources and access them like this:
                 // return Resources.IconForThisComponent;
-                return Properties.Resources.StringTreeJQueue;
+                return Properties.Resources.P05_StringTreeJList;
             }
         }
 

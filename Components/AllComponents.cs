@@ -39,7 +39,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddParameter(new JQueueParam(), "JQueue", "JQ", "所有组件的信息", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "JList", "JQ", "所有组件的信息", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -57,10 +57,10 @@ namespace GrasshopperSever.Components
                 _lastRefreshValue = refresh;
 
                 // 调用 Infos 中的方法获取所有组件信息
-                JQueue jqueue = ComponentInfo.GetAllComponentsNested();
+                JList jlist = ComponentInfo.GetAllComponentsNested();
 
                 // 设置输出
-                DA.SetData(0, jqueue);
+                DA.SetData(0, jlist);
             }
         }
 
@@ -70,7 +70,7 @@ namespace GrasshopperSever.Components
         /// You can add image files to your project resources and access them like this:
         /// return Resources.IconForThisComponent;
         /// </summary>
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.AllComponents;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.P10_AllComponents;
 
         /// <summary>
         /// Gets the unique ID for this component. Do not change this ID after release.

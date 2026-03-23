@@ -1,5 +1,4 @@
 using Grasshopper.Kernel;
-using GrasshopperSever.Commands;
 using GrasshopperSever.Utils;
 using Rhino;
 using System;
@@ -10,22 +9,41 @@ namespace GrasshopperSever.Components
     public class GHServer : GH_Component
     {
         private TcpReceiver _receiver;
-        private volatile JQueue _latestData;
         private volatile TcpClient _client;
-        private Actuator _actuator = new Actuator(); // 执行器，用于执行JQueue中的命令
         private int _currentPort = -1;
         private ResponseSender _sender;
+        private string _log = "";
+        private string _output_data = null;
 
         /// <summary>
         /// 从端口接收Json数据并进行处理，默认接收到会立即响应
-        /// 功能：监听端口，创建TcpClient连接，接收JQueue数据，通过Actuator执行命令并自动发送响应
+        /// 功能：监听端口，创建TcpClient连接，接收JList数据，通过Actuator执行命令并自动发送响应
         /// （GHServer 是 GHReceiver 和 GHSender 的合并组件）
         /// </summary>
         public GHServer()
           : base("GHServer", "Server",
-                "监听端口，接收JQueue数据，通过Actuator执行命令并自动发送响应。",
+                "监听端口，接收JList数据，通过Actuator执行命令并自动发送响应。",
                 "Maths", "Sever")
         {
+        }
+
+        /// <summary>
+        /// 添加日志信息，集中管理输出
+        /// </summary>
+        private void AddLog(string message)
+        {
+            _log += message + Environment.NewLine;
+        }
+
+        /// <summary>
+        /// 处理来自 TcpReceiver 和 ResponseSender 的日志消息
+        /// </summary>
+        private void OnLogHandler(string message)
+        {
+            AddLog(message);
+            this.OnPingDocument()?.ScheduleSolution(5, doc => {
+                this.ExpireSolution(false);
+            });
         }
 
         public override GH_Exposure Exposure
@@ -47,11 +65,12 @@ namespace GrasshopperSever.Components
         }
 
         /// <summary>
-        /// 输出TcpClient连接和接收到的JQueue数据
+        /// 输出TcpClient连接和接收到的JList数据
         /// </summary>
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Status", "ST", "回复状态", GH_ParamAccess.item);
+            pManager.AddGenericParameter("OutPut", "O", "显示输出数据", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -91,17 +110,19 @@ namespace GrasshopperSever.Components
                     if (_receiver != null)
                     {
                         _receiver.Stop();
-                        _receiver.OnJQueueReceived -= OnJQueueReceivedHandler;
+                        _receiver.OnJListReceived -= OnJListReceivedHandler;
                         _receiver.OnClientConnected -= OnClientConnectedHandler;
+                        _receiver.OnLog -= OnLogHandler;
                     }
 
-                    // 创建新的接收器（TcpReceiver内部会构造JQueue）
+                    // 创建新的接收器（TcpReceiver内部会构造JList）
                     _receiver = new TcpReceiver(port);
-                    _receiver.OnJQueueReceived += OnJQueueReceivedHandler;
+                    _receiver.OnJListReceived += OnJListReceivedHandler;
                     _receiver.OnClientConnected += OnClientConnectedHandler;
+                    _receiver.OnLog += OnLogHandler;
                     _receiver.Start();
                     _currentPort = port;
-                    RhinoApp.WriteLine($"启动Tcp任务，端口 {port}.");
+                    AddLog($"启动Tcp任务，端口 {port}.");
                 }
             }
             else
@@ -110,18 +131,23 @@ namespace GrasshopperSever.Components
                 if (_receiver != null)
                 {
                     _receiver.Stop();
-                    _receiver.OnJQueueReceived -= OnJQueueReceivedHandler;
+                    _receiver.OnJListReceived -= OnJListReceivedHandler;
                     _receiver.OnClientConnected -= OnClientConnectedHandler;
+                    _receiver.OnLog -= OnLogHandler;
                     _receiver = null;
-                    RhinoApp.WriteLine("Tcp服务器已停止");
+                    AddLog("Tcp服务器已停止");
                 }
-                _latestData = null;
-                _client = null;
+                if (_client != null)
+                {
+                    _client.Close();
+                    _client = null;
+                }
 
                 // 停止响应发送器
                 if (_sender != null)
                 {
                     _sender.Stop();
+                    _sender.OnLog -= OnLogHandler;
                     _sender = null;
                 }
             }
@@ -137,8 +163,9 @@ namespace GrasshopperSever.Components
             }
             else
             {
-                DA.SetData(0, "已连接，等待数据...");
+                DA.SetData(0, _log);
             }
+            DA.SetData(1, _output_data);
         }
 
         /// <summary>
@@ -158,40 +185,40 @@ namespace GrasshopperSever.Components
                 _sender = null;
             }
             _sender = new ResponseSender(_client);
+            _sender.OnLog += OnLogHandler;
             _sender.Start();
 
-            RhinoApp.WriteLine($"GHServer: 客户端已连接");
+            AddLog($"GHServer: 客户端已连接");
+            _sender.EnqueueJList(JList.CreateOKJList("客户端已连接"));
             this.OnPingDocument()?.ScheduleSolution(5, doc => {
                     this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
                 });
         }
 
         /// <summary>
-        /// 处理接收到的JQueue数据（在后台线程中调用）
+        /// 处理接收到的JList数据（在后台线程中调用）
         /// </summary>
-        private void OnJQueueReceivedHandler(JQueue queue)
+        private void OnJListReceivedHandler(JList lst)
         {
-            if (queue == null) return;
+            if (lst == null) return;
 
             // 更新最新数据
-            _latestData = queue;
-            RhinoApp.WriteLine($"GHServer: 接收到新数据 (时间: {queue.Time}, 数据项: {queue.Count})");
-
-            // 使用 Actuator 执行 JQueue 中的命令，获取响应
+            AddLog($"GHServer: 接收到新数据 (时间: {lst.Time}, 数据项: {lst.Count})");
+            _sender.EnqueueJList(JList.CreateOKJList("数据接收成功"));
+            // 使用 Actuator 执行 JList 中的命令，获取响应
             if (_sender != null)
             {
                 try
                 {
                     // 执行命令并获取响应
-                    JQueue responseQueue = _actuator.DoCommand(queue);
-
+                    JList responseList = GHActuator.DoCommand(lst, ref _output_data);
                     // 将响应加入发送队列
-                    _sender.EnqueueJQueue(responseQueue);
-                    RhinoApp.WriteLine($"GHServer: 已添加响应到发送队列 (时间: {responseQueue.Time}, 数据项: {responseQueue.Count})");
+                    _sender.EnqueueJList(responseList);
+                    AddLog($"GHServer: 已添加响应到发送队列 (时间: {responseList.Time}, 数据项: {responseList.Count})");
                 }
                 catch (Exception ex)
                 {
-                    RhinoApp.WriteLine($"GHServer: 处理响应失败: {ex.Message}");
+                    AddLog($"GHServer: 处理响应失败: {ex.Message}");
                 }
             }
 
@@ -203,13 +230,22 @@ namespace GrasshopperSever.Components
         
         public override void RemovedFromDocument(GH_Document document)
         {
-            _receiver?.Stop();
-            _client?.Close();
+            if (_receiver != null)
+            {
+                _receiver.OnLog -= OnLogHandler;
+                _receiver.Stop();
+            }
+            if (_client != null)
+            {
+                _client.Close();
+            }
             if (_sender != null)
             {
+                _sender.OnLog -= OnLogHandler;
                 _sender.Stop();
                 _sender = null;
             }
+            AddLog("GHServer: 组件已从文档中移除");
             base.RemovedFromDocument(document);
         }
 
@@ -219,7 +255,7 @@ namespace GrasshopperSever.Components
         /// You can add image files to your project resources and access them like this:
         /// return Resources.IconForThisComponent;
         /// </summary>
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.GHServer;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.P08_GHServer;
 
         /// <summary>
         /// Each component must have a unique Guid to identify it. 
@@ -227,5 +263,6 @@ namespace GrasshopperSever.Components
         /// that use the old ID will partially fail during loading.
         /// </summary>
         public override Guid ComponentGuid => new Guid("26008bd8-557d-4af7-a4a4-f21b1d426179");
+
     }
 }

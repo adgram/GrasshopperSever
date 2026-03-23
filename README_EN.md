@@ -15,18 +15,18 @@ A plugin for Rhino Grasshopper providing TCP communication, data conversion, and
 GrasshopperSever plugin provides the following core features for Grasshopper:
 
 1. **Data Communication**: Receive and send data via TCP protocol
-2. **Data Conversion**: Convert between JSON and JQueue formats
+2. **Data Conversion**: Convert between JSON and JList formats
 3. **Component Information Query**: Query and search Grasshopper component information
 4. **Data Execution**: Execute received data commands
 
 ## Core Data Structures
 
-### JQueue
+### JList
 
-A data structure composed of `(DateTime time, Queue<JData>)`, used to represent multiple JData items in a single TCP message.
+A data structure composed of `(DateTime time, List<JData>)`, used to represent multiple JData items in a single TCP message.
 
-- **time**: Queue creation time, used for version identification
-- **queue**: Queue of JData objects
+- **time**: List creation time, used for version identification
+- **queue**: List of JData objects
 
 **Features**:
 - Thread-safe queue implementation
@@ -56,7 +56,7 @@ Creates a TCP connection based on port and receives data. Each port accepts only
 
 **Output Parameters**:
 - `Client` (TcpClientParam): Client connection object
-- `JQueue` (JQueueParam): Incoming data
+- `JList` (JListParam): Incoming data
 
 **Features**:
 - Receives data in background thread
@@ -69,13 +69,13 @@ Sends data using TCP connection, supports batch sending.
 
 **Input Parameters**:
 - `Client` (TcpClientParam): Client connection object
-- `JQueue` (JQueueParam): Data to send, sent in order
+- `JList` (JListParam): Data to send, sent in order
 
 **Output Parameters**:
 - `Result` (String): Execution result, used for displaying errors or reports
 
 **Features**:
-- Only triggers sending when JQueue.time is updated
+- Only triggers sending when JList.time is updated
 - Automatically filters expired data
 
 #### GHServer
@@ -91,35 +91,35 @@ Creates a TCP server based on port and receives data, executes internally and re
 
 ### Data Conversion Components
 
-#### Json2JQueue
+#### Json2JList
 
-Converts JSON format to JQueue.
+Converts JSON format to JList.
 
 **Input Parameters**:
 - `String` (String): JSON format string
 
 **Output Parameters**:
-- `JQueue` (JQueueParam): Generated JQueue object
+- `JList` (JListParam): Generated JList object
 
-#### JQueue2Json
+#### JList2Json
 
-Converts JQueue to JSON format.
+Converts JList to JSON format.
 
 **Input Parameters**:
-- `JQueue` (JQueueParam): JQueue object to convert
+- `JList` (JListParam): JList object to convert
 
 **Output Parameters**:
 - `String` (String): JSON format string
 
-#### StringTreeJQueue
+#### StringTreeJList
 
-Converts String Tree to JQueue.
+Converts String Tree to JList.
 
 **Input Parameters**:
 - `String Tree` (GH_Structure<string>): String Tree structure
 
 **Output Parameters**:
-- `JQueue` (JQueueParam): Generated JQueue object
+- `JList` (JListParam): Generated JList object
 
 **Features**:
 - Takes only the first three items from each branch
@@ -136,7 +136,7 @@ Outputs information of all registered components.
 - `Refresh` (Boolean): Refresh, value change refreshes time once
 
 **Output Parameters**:
-- `JQueue` (JQueueParam): Information of all components
+- `JList` (JListParam): Information of all components
 
 **Output Structure**:
 ```
@@ -155,9 +155,9 @@ Queries component information by GUID.
 - `Guid` (String): Component GUID
 
 **Output Parameters**:
-- `ComponentInfo` (JQueueParam): Component information
+- `ComponentInfo` (JListParam): Component information
 
-**Output Structure** (ComponentJQueue):
+**Output Structure** (ComponentJList):
 ```
 [
   ComponentGuid,      // Component GUID
@@ -182,7 +182,7 @@ Queries component information by name.
 - `Name` (String): Component name
 
 **Output Parameters**:
-- `ComponentInfo` (JQueueParam): Component information
+- `ComponentInfo` (JListParam): Component information
 
 #### FindComponentsByCategory
 
@@ -192,7 +192,7 @@ Queries component information by Category.
 - `Category` (String): Main category name
 
 **Output Parameters**:
-- `ComponentInfo` (JQueueParam): Component information
+- `ComponentInfo` (JListParam): Component information
 
 #### SearchComponentsByName
 
@@ -202,7 +202,7 @@ Searches components by name, supports fuzzy matching.
 - `Keyword` (String): Search keyword
 
 **Output Parameters**:
-- `ComponentInfo` (JQueueParam): Component information list
+- `ComponentInfo` (JListParam): Component information list
 
 #### ComponentConnector
 
@@ -224,7 +224,7 @@ Retrieves information about the connected component via its input port.
 Executes input data.
 
 **Input Parameters**:
-- `JQueue` (JQueueParam): Data to execute
+- `JList` (JListParam): Data to execute
 
 **Output Parameters**:
 - `Result` (String): Execution result, used for displaying errors or reports
@@ -265,9 +265,9 @@ Used to track table update times, contains the following fields:
 
 ## Parameter Types
 
-### JQueueParam
+### JListParam
 
-Parameter type used to pass JQueue data between Grasshopper batteries.
+Parameter type used to pass JList data between Grasshopper batteries.
 
 ### TcpClientParam
 
@@ -299,7 +299,7 @@ Parameter type used to pass TCP client connection objects, uniquely created by G
 1. Create a `GHReceiver` component and set the port number (e.g., 6879)
 2. Set `Enabled` to `true` to start the receiver
 3. Send JSON data to the specified port via TCP client
-4. Data will be received and converted to JQueue format output
+4. Data will be received and converted to JList format output
 
 ### Component Query Example
 
@@ -309,14 +309,14 @@ Parameter type used to pass TCP client connection objects, uniquely created by G
 
 ### Data Conversion Example
 
-1. Create a `Json2JQueue` component
+1. Create a `Json2JList` component
 2. Input JSON string
-3. Get the converted JQueue object
+3. Get the converted JList object
 
 ## Notes
 
 1. Each port can only create one TCP receiver
-2. JQueue's time tag is used for version control, only receives/sends updated data
+2. JList's time tag is used for version control, only receives/sends updated data
 3. Database file is located in the plugin directory, ensure write permission
 4. TCP communication uses UTF-8 encoding
 5. Recommend using firewall rules to protect TCP ports
