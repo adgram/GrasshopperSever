@@ -56,6 +56,12 @@
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="RhinoCodePlatform.GH">
+      <HintPath>Tests\RhinoCodePlatform.GH.dll</HintPath>
+    </Reference>
+    <Reference Include="RhinoCodePlatform.GH.Context">
+      <HintPath>Tests\RhinoCodePlatform.GH.Context.dll</HintPath>
+    </Reference>
     <Reference Include="RhinoCodePluginGH">
       <HintPath>Tests\RhinoCodePluginGH.gha</HintPath>
     </Reference>

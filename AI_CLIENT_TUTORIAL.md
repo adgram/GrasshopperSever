@@ -758,7 +758,7 @@ def monitor_traffic(gh: GrasshopperClient):
 ## 扩展阅读
 
 - [GrasshopperSever主文档](./README.md)
-- [JList数据结构详解](./插件开发.md)
+- [JList数据结构详解](./design.md)
 - [Grasshopper API文档](https://developer.rhino3d.com/guides/grasshopper/)
 
 ## 支持

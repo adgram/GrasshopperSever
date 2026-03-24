@@ -37,6 +37,8 @@ namespace GrasshopperSever.Commands
             }
             return _componentProxyCache;
         }
+       
+        
         /// <summary>
         /// 获取所有组件
         /// </summary>
@@ -266,6 +268,7 @@ namespace GrasshopperSever.Commands
 
             return null;
         }
+        
         // 通过名称查询组件信息
         public static JList FindComponentsByName(string name)
         {
@@ -398,6 +401,7 @@ namespace GrasshopperSever.Commands
             return null;
         }
 
+
         // 通过名称搜索组件，可以模糊匹配
         public static List<JList> SearchComponentsByName(string name)
         {
@@ -471,14 +475,8 @@ namespace GrasshopperSever.Commands
                             component = Activator.CreateInstance(type) as IGH_Component;
                             if (component != null)
                             {
-                                var options = new JsonSerializerOptions
-                                {
-                                    WriteIndented = true,
-                                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                                };
-
-                                var inputsJson = JsonSerializer.Serialize(GetParamDefinitionInfo(component.Params.Input), options);
-                                var outputsJson = JsonSerializer.Serialize(GetParamDefinitionInfo(component.Params.Output), options);
+                                var inputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
+                                var outputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
 
                                 return (inputsJson, outputsJson);
                             }
@@ -506,14 +504,8 @@ namespace GrasshopperSever.Commands
                     var component = proxy.CreateInstance() as IGH_Component;
                     if (component != null)
                     {
-                        var options = new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                        };
-
-                        var inputsJson = JsonSerializer.Serialize(GetParamDefinitionInfo(component.Params.Input), options);
-                        var outputsJson = JsonSerializer.Serialize(GetParamDefinitionInfo(component.Params.Output), options);
+                        var inputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
+                        var outputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
 
                         return (inputsJson, outputsJson);
                     }
@@ -525,33 +517,6 @@ namespace GrasshopperSever.Commands
             }
 
             return ("", "");
-        }
-
-        /// <summary>
-        /// 获取参数定义信息（不包含连线，用于组件定义）
-        /// </summary>
-        /// <param name="parameters">参数列表</param>
-        /// <returns>参数定义信息列表</returns>
-        private static List<object> GetParamDefinitionInfo(IList<IGH_Param> parameters)
-        {
-            var paramList = new List<object>();
-            for (int i = 0; i < parameters.Count; i++)
-            {
-                var p = parameters[i];
-
-                paramList.Add(new
-                {
-                    index = i,
-                    name = p.Name,
-                    nickname = p.NickName,
-                    typeName = p.TypeName,
-                    access = p.Access.ToString(),
-                    description = p.Description,
-                    // connectinfo 留空，因为组件定义没有连线
-                    connectinfo = new { sources = new List<string>(), recipients = new List<string>() }
-                });
-            }
-            return paramList;
         }
 
         /// <summary>
@@ -585,4 +550,176 @@ namespace GrasshopperSever.Commands
 
 
     }
+
+    public static class ParamExchange
+    {
+        /// <summary>
+        /// 核心工厂方法：根据 ParamGuid 创建一个空的 IGH_Param 实例
+        /// </summary>
+        public static IGH_Param CreateParamFromGuid(string paramGuidStr)
+        {
+            if (!Guid.TryParse(paramGuidStr, out Guid id)) return null;
+
+            // 在 Grasshopper 对象库中查找对应的代理对象
+            var proxy = Instances.ComponentServer.EmitObjectProxy(id);
+            if (proxy == null) return null;
+
+            // 实例化对象
+            IGH_Param param = proxy.CreateInstance() as IGH_Param;
+            return param;
+        }
+
+        /// <summary>
+        /// 反序列化：将 JList 中的字符串数据还原到 IGH_Param 实例中
+        /// </summary>
+        public static void FillParamFromJList(JList data, IGH_Param targetParam)
+        {
+            if (targetParam == null) return;
+
+            // 1. 名称
+            targetParam.Name = data.GetParameter("Name");
+            targetParam.NickName = data.GetParameter("NickName");
+            targetParam.Description = data.GetParameter("Description");
+
+            // 2. 布尔属性 (从字符串还原)
+            if (bool.TryParse(data.GetParameter("Optional"), out bool opt))
+                targetParam.Optional = opt;
+
+            if (bool.TryParse(data.GetParameter("Reverse"), out bool rev))
+                targetParam.Reverse = rev;
+
+            if (bool.TryParse(data.GetParameter("Simplify"), out bool sim))
+                targetParam.Simplify = sim;
+
+            // 3. 枚举属性 (使用 Enum.TryParse 忽略大小写还原)
+            if (Enum.TryParse(data.GetParameter("Access"), true, out GH_ParamAccess acc))
+                targetParam.Access = acc;
+
+            if (Enum.TryParse(data.GetParameter("Mapping"), true, out GH_DataMapping map))
+                targetParam.DataMapping = map;
+        }
+
+        public static JList ParamToJList(IGH_Param param)
+        {
+            return JList.ParamJList(
+                param.ComponentGuid.ToString(),   // 电池类型识别码
+                param.InstanceGuid.ToString(),    // 画布实例识别码
+                param.Name,
+                param.NickName,
+                param.Description,
+                param.TypeName,
+                param.Optional.ToString(),
+                param.Access.ToString(),          // 枚举转字符串 (item, list, tree)
+                param.DataMapping.ToString(),     // 枚举转字符串 (none, flatten, graft)
+                param.Reverse.ToString(),
+                param.Simplify.ToString(),
+                JsonSerializer.Serialize(param.Sources.Select(s => s.InstanceGuid.ToString())),
+                JsonSerializer.Serialize(param.Recipients.Select(s => s.InstanceGuid.ToString()))
+            );
+        }
+
+        /// <summary>
+        /// 从JList创建IGH_Param实例
+        /// </summary>
+        private static IGH_Param ParamFromJList(JList jlist)
+        {
+            if (jlist == null || jlist.IsEmpty)
+                return null;
+
+            try
+            {
+                // 从JList中提取ParamGuid创建参数
+                string paramGuid = jlist.GetParameter("ParamGuid");
+                IGH_Param param = null;
+
+                if (!string.IsNullOrWhiteSpace(paramGuid))
+                {
+                    param = CreateParamFromGuid(paramGuid);
+                }
+
+                if (param == null)
+                {
+                    param = new Grasshopper.Kernel.Parameters.Param_GenericObject();
+                }
+
+                // 填充参数属性
+                param.Name = jlist.GetParameter("Name") ?? "";
+                param.NickName = jlist.GetParameter("NickName") ?? "";
+                param.Description = jlist.GetParameter("Description") ?? "";
+
+                // 布尔属性
+                if (bool.TryParse(jlist.GetParameter("Optional"), out bool opt))
+                    param.Optional = opt;
+                if (bool.TryParse(jlist.GetParameter("Reverse"), out bool rev))
+                    param.Reverse = rev;
+                if (bool.TryParse(jlist.GetParameter("Simplify"), out bool sim))
+                    param.Simplify = sim;
+
+                // 枚举属性
+                if (Enum.TryParse(jlist.GetParameter("Access"), true, out GH_ParamAccess acc))
+                    param.Access = acc;
+                if (Enum.TryParse(jlist.GetParameter("Mapping"), true, out GH_DataMapping map))
+                    param.DataMapping = map;
+
+                return param;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"从JList创建参数失败: {ex.Message}");
+                return null;
+            }
+        }
+
+
+
+        /// <summary>
+        /// 获取参数定义信息（不包含连线，用于组件定义）
+        /// </summary>
+        /// <param name="parameters">参数列表</param>
+        /// <returns>参数定义信息JSON字符串</returns>
+        public static string SerializeParamDefinitions(IList<IGH_Param> parameters)
+        {
+            var paramJLists = new List<JList>();
+            for (int i = 0; i < parameters.Count; i++)
+            {
+                var p = parameters[i];
+                paramJLists.Add(ParamToJList(p));
+            }
+            
+            return JList.SerializeJListArray(paramJLists);
+        }
+
+        /// <summary>
+        /// 解析参数定义JSON字符串为IGH_Param列表
+        /// 与SerializeParamDefinitions成对使用，解析JList.SerializeJListArray的输出
+        /// </summary>
+        public static List<IGH_Param> DeserializeParamDefinitions(string json)
+        {
+            var result = new List<IGH_Param>();
+
+            if (string.IsNullOrWhiteSpace(json))
+                return result;
+
+            try
+            {
+                // 使用JList.ParseJListArray解析SerializeJListArray的输出
+                var jlists = JList.ParseJListArray(json);
+
+                // 将每个JList转换为IGH_Param
+                foreach (var jlist in jlists)
+                {
+                    var param = ParamFromJList(jlist);
+                    if (param != null)
+                        result.Add(param);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"解析参数定义失败: {ex.Message}");
+            }
+
+            return result;
+        }
+    }
+    
 }

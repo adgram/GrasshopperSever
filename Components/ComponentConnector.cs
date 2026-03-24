@@ -39,7 +39,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("Name", "Name", "组件名字", GH_ParamAccess.list);
+            pManager.AddTextParameter("Name", "N", "组件名字", GH_ParamAccess.list);
             pManager.AddTextParameter("GUID", "ID", "组件的GUID", GH_ParamAccess.list);
             pManager.AddTextParameter("Instance", "Inst", "组件对象的GUID", GH_ParamAccess.list);
         }

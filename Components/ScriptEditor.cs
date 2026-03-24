@@ -1,9 +1,9 @@
 ﻿using Grasshopper.Kernel;
+using GrasshopperSever.Commands;
+using GrasshopperSever.Params;
+using GrasshopperSever.Utils;
 using RhinoCodePluginGH.Components;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using GrasshopperSever.Utils;
 
 namespace GrasshopperSever.Components
 {
@@ -43,6 +43,10 @@ namespace GrasshopperSever.Components
         {
             pManager.AddGenericParameter("ScriptComponent", "SC", "Rhino8 Grasshopper 的脚本组件，仅支持操作一个组件", GH_ParamAccess.tree);
             pManager.AddTextParameter("Code", "C", "脚本代码", GH_ParamAccess.item, "");
+            pManager.AddParameter(new JListParam(), "IntputParams", "IP", "输入端参数定义（JList格式）", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "OutputParams", "OP", "输出端参数定义（JList格式）", GH_ParamAccess.item);
+            Params.Input[2].Optional = true;
+            Params.Input[3].Optional = true;
         }
 
         /// <summary>
@@ -54,6 +58,8 @@ namespace GrasshopperSever.Components
             pManager.AddTextParameter("ComponentType", "T", "显示组件信息", GH_ParamAccess.item);
             pManager.AddBooleanParameter("IsSDKMode", "SDK", "代码是否是SDK模式", GH_ParamAccess.item);
             pManager.AddTextParameter("SourceCode", "SC", "代码code", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "InputParams", "IP", "当前输入端参数信息", GH_ParamAccess.item);
+            pManager.AddParameter(new JListParam(), "OutputParams", "OP", "当前输出端参数信息", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -62,69 +68,106 @@ namespace GrasshopperSever.Components
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            
             DA.SetData(0, "");
             DA.SetData(1, "");
             DA.SetData(2, false);
             DA.SetData(3, "");
+
             // 如果正在更新代码，跳过执行以防止循环调用
             if (_isUpdatingCode)
             {
                 DA.SetData(0, "程序正在运行...");
                 return;
             }
+
             // 通过 Sources 获取连接的脚本组件
             var targetComponent = GetLanguageComponent();
             if (targetComponent == null)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-                    "The provided component is not a valid LanguageComponent (C# or Python script component)");
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
                     "目标组件不是支持的脚本组件");
                 DA.SetData(0, "输入的组件无效");
                 return;
             }
+
+            // 检测目标组件是否切换了，如果切换了需要重置状态
+            if (_lastTargetGuid != targetComponent.InstanceGuid)
+            {
+                _lastAppliedCode = "";
+                _lastTargetGuid = targetComponent.InstanceGuid;
+            }
+
             // 获取代码输入
             string newCode = "";
             DA.GetData(1, ref newCode);
-            // 检查是否需要更新（代码或目标组件是否改变）
-            if (string.IsNullOrEmpty(newCode) || _lastAppliedCode.Equals(newCode, StringComparison.Ordinal))
+
+            // 获取可选的输入/输出参数定义
+            JListGoo inputParamsGoo = null;
+            JListGoo outputParamsGoo = null;
+            DA.GetData(2, ref inputParamsGoo);
+            DA.GetData(3, ref outputParamsGoo);
+
+            bool hasParamUpdate = (inputParamsGoo?.Value != null) || (outputParamsGoo?.Value != null);
+            bool hasCodeUpdate = !string.IsNullOrEmpty(newCode) && !_lastAppliedCode.Equals(newCode, StringComparison.Ordinal);
+
+            // 没有任何需要更新的内容，只同步注释并输出信息
+            if (!hasCodeUpdate && !hasParamUpdate)
             {
                 GetComponentInfo(targetComponent, DA);
-                //targetComponent.Read
-                DA.SetData(0, "输入的代码未更新");
+                DA.SetData(0, "无更新");
                 return;
             }
 
-            // 应用代码更改
             try
             {
                 _isUpdatingCode = true;
 
-                // 设置代码源
-                targetComponent.SetSource(newCode);
+                // 处理参数更新
+                if (hasParamUpdate)
+                {
+                    var paramJList = new JList();
+                    if (inputParamsGoo?.Value != null)
+                    {
+                        string inputJson = inputParamsGoo.Value.GetParameter("InputParams");
+                        if (!string.IsNullOrEmpty(inputJson))
+                            paramJList.Add(new JData("InputParams", "输入参数", inputJson));
+                    }
+                    if (outputParamsGoo?.Value != null)
+                    {
+                        string outputJson = outputParamsGoo.Value.GetParameter("OutputParams");
+                        if (!string.IsNullOrEmpty(outputJson))
+                            paramJList.Add(new JData("OutputParams", "输出参数", outputJson));
+                    }
 
-                // 记录上次应用的代码和目标
-                _lastAppliedCode = newCode;
-                _lastTargetGuid = targetComponent.InstanceGuid;
+                    if (!paramJList.IsEmpty)
+                        GHScript.UpdateParameters(targetComponent, paramJList);
+                }
 
-                // 根据新代码更新参数
-                targetComponent.SetParametersFromScript();
-                targetComponent.SetParametersToScript();
-                //UpdateParameters(targetComponent, _parameters)
+                // 处理代码更新
+                if (hasCodeUpdate)
+                {
+                    GHScript.SetCode(targetComponent, newCode);
+                    _lastAppliedCode = newCode;
+
+                    // 根据新代码更新参数
+                    GHScript.SetParametersFromScript(targetComponent);
+                }
+
+                // 同步参数注释到代码
+                GHScript.SetParametersToScript(targetComponent);
+
                 // 在当前 solution 结束后，仅让目标组件重算
-                // 使用 ScheduleSolution + ExpireComponent 而非 ExpireSolution，避免触发本组件循环
                 var doc = OnPingDocument();
                 doc?.ScheduleSolution(5, d =>
                 {
                     targetComponent.ExpireSolution(false);
                 });
 
-                DA.SetData(0, $"代码更新成功");
+                DA.SetData(0, hasCodeUpdate ? "代码更新成功" : "参数更新成功");
             }
             catch (Exception ex)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"代码更新失败: {ex.Message}");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"更新失败: {ex.Message}");
                 DA.SetData(0, $"Error: {ex.Message}");
             }
             finally
@@ -186,225 +229,36 @@ namespace GrasshopperSever.Components
             return sourceComponent;
         }
 
-
-        /// <summary>
-        /// 获取组件类型的友好名称
-        /// </summary>
-        private static string GetComponentTypeName(BaseLanguageComponent component)
-        {
-            if (component == null) return "Unknown";
-
-            if (component is CSharpComponent)
-                return "C# Script";
-            if (component is Python3Component)
-                return "Python 3 Script";
-            if (component is IronPython2Component)
-                return "Python 2 Script";
-
-            // 通过类型名称判断
-            var typeName = component.GetType().Name;
-            if (typeName.Contains("CSharp"))
-                return "C# Script";
-            if (typeName.Contains("Python3") || typeName.Contains("CPython"))
-                return "Python 3 Script";
-            if (typeName.Contains("Python") || typeName.Contains("IronPython"))
-                return "Python Script";
-
-            return $"Script ({typeName})";
-        }
-
         private static void GetComponentInfo(BaseLanguageComponent component, IGH_DataAccess DA)
         {
-            JList cdata = new JList();
             if (component == null) return;
 
             // 获取组件类型信息
-            string componentType = GetComponentTypeName(component);
+            string componentType = GHScript.GetComponentTypeName(component);
             DA.SetData(1, componentType);
-            cdata.Add(new JData("Type", "目标脚本组件类型", componentType));
 
             // Is SDK Mode
             bool is_sdk = component.IsSDKMode;
             DA.SetData(2, is_sdk);
-            cdata.Add(new JData("IsSDK", "脚本结构类型", is_sdk.ToString()));
 
             // Source Code
-            string source = "";
-            try
-            {
-                source = component.TryGetSource(out var src) ? src : "(no source)";
-                DA.SetData(3, source);
-            }
-            catch
-            {
-                source = "null";
-                DA.SetData(3, "获取失败");
-            }
-            cdata.Add(new JData("Code", "脚本代码", source));
+            string source = GHScript.GetCode(component);
+            DA.SetData(3, source);
 
-            // Input Params
-            List<string> inputNames = null;
-            try
-            {
-                inputNames = component.Params.Input
-                    .Select(p => $"{p.NickName} ({p.GetType().Name})")
-                    .ToList();
-            }
-            catch { }
-            cdata.Add(new JData("Code", "脚本代码", inputNames.ToString()));
+            // Input Params - 使用 ParamExchange 获取详细参数信息
+            var inputJList = new JList();
+            string inputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
+            inputJList.Add(new JData("InputParams", "输入参数列表", inputsJson));
+            inputJList.Add(new JData("GUID", "目标组件的GUID", component.InstanceGuid.ToString()));
+            DA.SetData(4, new JListGoo(inputJList));
 
-            // Output Params
-            List<string> outputNames = null;
-            try
-            {
-                outputNames = component.Params.Output
-                    .Select(p => $"{p.NickName} ({p.GetType().Name})")
-                    .ToList();
-            }
-            catch { }
-            cdata.Add(new JData("Code", "脚本代码", outputNames.ToString()));
-
-            // Instance GUID
-            string guid = component.InstanceGuid.ToString();
-            cdata.Add(new JData("GUID", "目标组件的GUID", guid));
+            // Output Params - 使用 ParamExchange 获取详细参数信息
+            var outputJList = new JList();
+            string outputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
+            outputJList.Add(new JData("OutputParams", "输出参数列表", outputsJson));
+            outputJList.Add(new JData("GUID", "目标组件的GUID", component.InstanceGuid.ToString()));
+            DA.SetData(5, new JListGoo(outputJList));
         }
-
-        /// <summary>
-        /// 处理动态修改组件输入输出端
-        /// 输入格式：JSON字符串 {"InputParams":"x,y","OutputParams":"result"}
-        /// 参数列表格式：逗号或分号分隔的参数名，例如 "x,y,z"
-        /// 功能：按照列表匹配参数，缺少的添加，多余的删除（少加多补）
-        /// </summary>
-        private static JList UpdateParameters(BaseLanguageComponent component, string jsonData)
-        {
-            try
-            {
-                if (component == null)
-                    return JList.CreateErrorJList("目标组件无效");
-
-                if (string.IsNullOrWhiteSpace(jsonData))
-                    return JList.CreateErrorJList("JSON数据为空");
-
-                // 1. 解析JSON字符串（简单解析，不依赖Newtonsoft.Json）
-                var parameters = new Dictionary<string, string>();
-                var pairs = jsonData.Trim().TrimStart('{').TrimEnd('}').Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-
-                foreach (var pair in pairs)
-                {
-                    var keyValue = pair.Split(new[] { ':' }, 2);
-                    if (keyValue.Length == 2)
-                    {
-                        var key = keyValue[0].Trim().Trim('"');
-                        var value = keyValue[1].Trim().Trim('"');
-                        parameters[key] = value;
-                    }
-                }
-
-                // 2. 获取参数列表
-                if (!parameters.TryGetValue("InputParams", out string inputParamsList))
-                    inputParamsList = "";
-
-                if (!parameters.TryGetValue("OutputParams", out string outputParamsList))
-                    outputParamsList = "";
-
-                // 3. 解析参数列表
-                var targetInputParams = string.IsNullOrWhiteSpace(inputParamsList)
-                    ? new List<string>()
-                    : inputParamsList.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(p => p.Trim())
-                        .ToList();
-
-                var targetOutputParams = string.IsNullOrWhiteSpace(outputParamsList)
-                    ? new List<string>()
-                    : outputParamsList.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(p => p.Trim())
-                        .ToList();
-
-                // 4. 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
-                var doc = Grasshopper.Instances.ActiveCanvas?.Document;
-                doc.ScheduleSolution(5, (d) =>
-                {
-                    // 处理输入端：少加多补
-                    SyncParameters(component.Params.Input, targetInputParams, true);
-
-                    // 处理输出端：少加多补
-                    SyncParameters(component.Params.Output, targetOutputParams, false);
-
-                    // 5. 刷新组件外观和布局
-                    component.Params.OnParametersChanged();
-                    component.OnAttributesChanged();
-                    component.ExpireSolution(false);
-                });
-
-                var response = new JList();
-                response.Add(new JData("Status", "消息", "参数同步指令已发送至调度器"));
-                response.Add(new JData("InputParams", "目标输入参数", string.Join(",", targetInputParams)));
-                response.Add(new JData("OutputParams", "目标输出参数", string.Join(",", targetOutputParams)));
-                response.AddSuccessStatus();
-                return response;
-            }
-            catch (Exception ex)
-            {
-                return JList.CreateErrorJList($"修改组件参数失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 同步参数列表：少加多补
-        /// </summary>
-        /// <param name="currentParams">当前参数列表</param>
-        /// <param name="targetParams">目标参数名称列表</param>
-        /// <param name="isInput">是否为输入参数</param>
-        private static void SyncParameters(IList<IGH_Param> currentParams, List<string> targetParams, bool isInput)
-        {
-            var currentNames = currentParams.Select(p => p.NickName).ToList();
-
-            // 1. 删除多余的参数（在目标列表中不存在的）
-            // 从后往前删除，避免索引变化问题
-            for (int i = currentParams.Count - 1; i >= 0; i--)
-            {
-                if (!targetParams.Contains(currentNames[i]))
-                {
-                    if (isInput)
-                    {
-                        var component = currentParams[i].Attributes.GetTopLevel.DocObject as IGH_Component;
-                        component?.Params.UnregisterInputParameter(currentParams[i]);
-                    }
-                    else
-                    {
-                        var component = currentParams[i].Attributes.GetTopLevel.DocObject as IGH_Component;
-                        component?.Params.UnregisterOutputParameter(currentParams[i]);
-                    }
-                }
-            }
-
-            // 2. 添加缺失的参数（在目标列表中存在但当前没有的）
-            foreach (var targetName in targetParams)
-            {
-                if (!currentNames.Contains(targetName))
-                {
-                    if (isInput)
-                    {
-                        var p = new Grasshopper.Kernel.Parameters.Param_GenericObject();
-                        p.Name = targetName;
-                        p.NickName = targetName;
-                        p.MutableNickName = true;
-                        p.Access = GH_ParamAccess.item;
-                        var component = currentParams.FirstOrDefault()?.Attributes?.GetTopLevel?.DocObject as IGH_Component;
-                        component?.Params.RegisterInputParam(p);
-                    }
-                    else
-                    {
-                        var p = new Grasshopper.Kernel.Parameters.Param_GenericObject();
-                        p.Name = targetName;
-                        p.NickName = targetName;
-                        var component = currentParams.FirstOrDefault()?.Attributes?.GetTopLevel?.DocObject as IGH_Component;
-                        component?.Params.RegisterOutputParam(p);
-                    }
-                }
-            }
-        }
-
 
         /// <summary>
         /// Provides an Icon for the component.
