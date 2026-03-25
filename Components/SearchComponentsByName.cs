@@ -38,7 +38,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddParameter(new JListParam(), "Components", "C", "匹配的组件信息列表 (ComponentJList)", GH_ParamAccess.list);
+            pManager.AddParameter(new LjsonParam(), "Components", "C", "匹配的组件信息列表 (ComponentLjson)", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace GrasshopperSever.Components
             {
                 foreach (var result in results)
                 {
-                    DA.SetData(0, new JListGoo(result));
+                    DA.SetData(0, new LjsonGoo(result));
                 }
             }
             else

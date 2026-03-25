@@ -39,7 +39,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddParameter(new JListParam(), "JList", "JQ", "所有组件的信息", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "所有组件的信息", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace GrasshopperSever.Components
                 _lastRefreshValue = refresh;
 
                 // 调用 Infos 中的方法获取所有组件信息
-                JList jlist = ComponentInfo.GetAllComponentsNested();
+                Ljson jlist = ComponentInfo.GetAllComponentsNested();
 
                 // 设置输出
                 DA.SetData(0, jlist);

@@ -63,9 +63,9 @@ namespace GrasshopperSever.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        public static System.Drawing.Bitmap P01_JListParam {
+        public static System.Drawing.Bitmap P01_LjsonParam {
             get {
-                object obj = ResourceManager.GetObject("P01_JListParam", resourceCulture);
+                object obj = ResourceManager.GetObject("P01_LjsonParam", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -83,9 +83,9 @@ namespace GrasshopperSever.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        public static System.Drawing.Bitmap P03_Json2JList {
+        public static System.Drawing.Bitmap P03_Json2Ljson {
             get {
-                object obj = ResourceManager.GetObject("P03_Json2JList", resourceCulture);
+                object obj = ResourceManager.GetObject("P03_Json2Ljson", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -93,9 +93,9 @@ namespace GrasshopperSever.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        public static System.Drawing.Bitmap P04_JList2Json {
+        public static System.Drawing.Bitmap P04_Ljson2Json {
             get {
-                object obj = ResourceManager.GetObject("P04_JList2Json", resourceCulture);
+                object obj = ResourceManager.GetObject("P04_Ljson2Json", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -103,9 +103,9 @@ namespace GrasshopperSever.Properties {
         /// <summary>
         ///   查找 System.Drawing.Bitmap 类型的本地化资源。
         /// </summary>
-        public static System.Drawing.Bitmap P05_StringTreeJList {
+        public static System.Drawing.Bitmap P05_DataTreeLjson {
             get {
-                object obj = ResourceManager.GetObject("P05_StringTreeJList", resourceCulture);
+                object obj = ResourceManager.GetObject("P05_DataTreeLjson", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

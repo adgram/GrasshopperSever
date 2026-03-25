@@ -1,7 +1,6 @@
 ﻿using Grasshopper.Kernel;
 using GrasshopperSever.Params;
 using GrasshopperSever.Utils;
-using Rhino;
 using System;
 using System.Net.Sockets;
 
@@ -11,18 +10,18 @@ namespace GrasshopperSever.Components
     {
         private ResponseSender _sender;
         private TcpReceiver _receiver;
-        private volatile JList _latestData;
+        private volatile Ljson _latestData;
         private volatile TcpClient _client;
         private int _currentPort = -1;
         private string _log = "";
 
         /// <summary>
         /// 从端口接收Json数据并进行处理，接收到不会立即响应
-        /// 功能：监听端口，创建TcpClient连接，接收JList数据
+        /// 功能：监听端口，创建TcpClient连接，接收Ljson数据
         /// </summary>
         public GHReceiver()
           : base("GHReceiver", "Receiver",
-                "监听端口，创建TcpClient连接并接收JList数据。TcpClient可传递给 GHSender用于发送响应。",
+                "监听端口，创建TcpClient连接并接收Ljson数据。TcpClient可传递给 GHSender用于发送响应。",
                 "Maths", "Sever")
         {
         }
@@ -65,12 +64,12 @@ namespace GrasshopperSever.Components
         }
 
         /// <summary>
-        /// 输出TcpClient连接和接收到的JList数据
+        /// 输出TcpClient连接和接收到的Ljson数据
         /// </summary>
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddParameter(new TcpClientParam(), "Client", "CL", "客户端连接，可传递给GHActuator用于发送响应", GH_ParamAccess.item);
-            pManager.AddParameter(new JListParam(), "Json", "JS", "接收到的JList数据", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Json", "JS", "接收到的Ljson数据", GH_ParamAccess.item);
             pManager.AddTextParameter("Status", "ST", "状态", GH_ParamAccess.item);
         }
 
@@ -98,7 +97,7 @@ namespace GrasshopperSever.Components
                     _receiver = null;
                 }
                 DA.SetData(0, new TcpClientGoo());
-                DA.SetData(1, new JListGoo());
+                DA.SetData(1, new LjsonGoo());
                 return;
             }
 
@@ -112,7 +111,7 @@ namespace GrasshopperSever.Components
                     if (_receiver != null)
                     {
                         _receiver.Stop();
-                        _receiver.OnJListReceived -= OnJListReceivedHandler;
+                        _receiver.OnLjsonReceived -= OnLjsonReceivedHandler;
                         _receiver.OnClientConnected -= OnClientConnectedHandler;
                         _receiver.OnLog -= OnLogHandler;
                     }
@@ -123,9 +122,9 @@ namespace GrasshopperSever.Components
                         _sender = null;
                     }
 
-                    // 创建新的接收器（TcpReceiver内部会构造JList）
+                    // 创建新的接收器（TcpReceiver内部会构造Ljson）
                     _receiver = new TcpReceiver(port);
-                    _receiver.OnJListReceived += OnJListReceivedHandler;
+                    _receiver.OnLjsonReceived += OnLjsonReceivedHandler;
                     _receiver.OnClientConnected += OnClientConnectedHandler;
                     _receiver.OnLog += OnLogHandler;
                     _receiver.Start();
@@ -139,7 +138,7 @@ namespace GrasshopperSever.Components
                 if (_receiver != null)
                 {
                     _receiver.Stop();
-                    _receiver.OnJListReceived -= OnJListReceivedHandler;
+                    _receiver.OnLjsonReceived -= OnLjsonReceivedHandler;
                     _receiver.OnClientConnected -= OnClientConnectedHandler;
                     _receiver.OnLog -= OnLogHandler;
                     _receiver = null;
@@ -160,7 +159,7 @@ namespace GrasshopperSever.Components
             }
             // 设置输出
             DA.SetData(0, new TcpClientGoo(_client));
-            DA.SetData(1, new JListGoo(_latestData));
+            DA.SetData(1, new LjsonGoo(_latestData));
         }
 
         /// <summary>
@@ -185,24 +184,24 @@ namespace GrasshopperSever.Components
 
             AddLog($"GHServer: 客户端已连接");
             // 将响应加入发送队列
-            _sender.EnqueueJList(JList.CreateOKJList("客户端已连接"));
+            _sender.EnqueueLjson(Ljson.CreateOKLjson("客户端已连接"));
             this.OnPingDocument()?.ScheduleSolution(5, doc => {
                 this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
             });
         }
 
         /// <summary>
-        /// 处理接收到的JList数据（在后台线程中调用）
+        /// 处理接收到的Ljson数据（在后台线程中调用）
         /// </summary>
-        private void OnJListReceivedHandler(JList queue)
+        private void OnLjsonReceivedHandler(Ljson queue)
         {
             if (queue == null) return;
 
             // 更新最新数据
             _latestData = queue;
-            AddLog($"GHServer: 接收到新数据 (时间: {queue.Time}, 数据项: {queue.Count})");
+            AddLog($"GHServer: 接收到新数据 (时间: {queue.Time}, 数据项: {queue.Name})");
             // 将响应加入发送队列
-            _sender.EnqueueJList(JList.CreateOKJList("数据接收成功"));
+            _sender.EnqueueLjson(Ljson.CreateOKLjson("数据接收成功"));
             this.OnPingDocument()?.ScheduleSolution(5, (doc) => {
                 this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
             });

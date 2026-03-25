@@ -5,9 +5,9 @@ using System;
 namespace GrasshopperSever.Params
 {
     /// <summary>
-    /// 定义电池端口，这个传输JList数据
+    /// 定义电池端口，这个传输Ljson数据
     /// </summary>
-    public class JListGoo : GH_Goo<JList>
+    public class LjsonGoo : GH_Goo<Ljson>
     {
         /// <summary>
         /// </summary>
@@ -23,7 +23,7 @@ namespace GrasshopperSever.Params
         {
             get
             {
-                return "JList";
+                return "Ljson";
             }
         }
 
@@ -31,36 +31,36 @@ namespace GrasshopperSever.Params
         {
             get
             {
-                return "由`(DateTime time, List<JData(string name，string description，string data)>)`组成的数据";
+                return "由`(DateTime time, string name，string description，JsonElement value)`组成的数据";
             }
         }
 
-        public JListGoo()
+        public LjsonGoo()
         {
             this.Value = null;
         }
 
-        public JListGoo(JList obj)
+        public LjsonGoo(Ljson obj)
         {
             this.Value = obj;
         }
 
         public override IGH_Goo Duplicate()
         {
-            return new JListGoo(this.Value.DeepClone());
+            return new LjsonGoo(this.Value.DeepClone());
         }
 
         public override string ToString()
         {
             if (this.Value == null)
             {
-                return "JList Null";
+                return "Ljson Null";
             }
             return this.Value.ToString();
         }
 
         /// <summary>
-        /// 尝试从其他类型转换为JListGoo
+        /// 尝试从其他类型转换为LjsonGoo
         /// 支持从string（JSON格式）自动转换
         /// </summary>
         /// <param name="source">源对象</param>
@@ -78,7 +78,7 @@ namespace GrasshopperSever.Params
             {
                 try
                 {
-                    this.Value = new JList(json);
+                    this.Value = new Ljson(json);
                     return true;
                 }
                 catch (Exception)
@@ -88,15 +88,15 @@ namespace GrasshopperSever.Params
                 }
             }
 
-            // 尝试从JList转换
-            if (source is JList lst)
+            // 尝试从Ljson转换
+            if (source is Ljson lst)
             {
                 this.Value = lst;
                 return true;
             }
 
-            // 尝试从另一个JListGoo转换
-            if (source is JListGoo goo)
+            // 尝试从另一个LjsonGoo转换
+            if (source is LjsonGoo goo)
             {
                 this.Value = goo.Value;
                 return true;

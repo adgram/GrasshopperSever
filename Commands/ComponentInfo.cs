@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Data.SQLite;
 
 namespace GrasshopperSever.Commands
 {
@@ -44,7 +45,7 @@ namespace GrasshopperSever.Commands
         /// </summary>
         /// <param name="command">命令</param>
         /// <returns>文件信息</returns>
-        public static JList GetAllComponentsNested()
+        public static Ljson GetAllComponentsNested()
         {
             var server = Grasshopper.Instances.ComponentServer;
             var proxies = server.ObjectProxies;
@@ -134,25 +135,27 @@ namespace GrasshopperSever.Commands
             }
 
             // 3. outdata 结构进行封装
-            var outData = new JList();
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
-            outData.Add(new JData("AllCategorys", "所有分类", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options)));
-            outData.Add(new JData("Count", "组件数量", totalCount.ToString()));
-            outData.Add(new JData("AllComponents",
-                "所有注册的组件，string({category : {subCategory : dict{guid, name, nickname, description}}}})",
-                JsonSerializer.Serialize(componentsDict, options)));
-            return outData;
+
+            var data = new Dictionary<string, object>
+            {
+                { "AllCategorys", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options) },
+                { "Count", totalCount },
+                { "AllComponents", JsonSerializer.Serialize(componentsDict, options) }
+            };
+
+            return new Ljson("AllComponentsInfo", "所有注册的组件信息", JsonSerializer.SerializeToElement(data));
         }
 
         /// <summary>
         /// 从数据库获取所有组件
         /// </summary>
         /// <returns>数据库中的所有组件信息</returns>
-        public static JList GetAllComponentsFromDB()
+        public static Ljson GetAllComponentsFromDB()
         {
             var categorySet = new HashSet<string>();
             var componentsDict = new Dictionary<string, Dictionary<string, List<object>>>();
@@ -207,24 +210,25 @@ namespace GrasshopperSever.Commands
             }
 
             // 封装结果
-            var outData = new JList();
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
-            outData.Add(new JData("AllCategorys", "所有分类", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options)));
-            outData.Add(new JData("Count", "组件数量", totalCount.ToString()));
-            outData.Add(new JData("AllComponents",
-                "数据库中的所有组件，string({category : {subCategory : dict{guid, name, nickname, description}}}})",
-                JsonSerializer.Serialize(componentsDict, options)));
-            outData.Add(new JData("UpdateTime", "数据库最后更新时间", AllComponentsDB.GetLastUpdateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知"));
 
-            return outData;
+            var data = new Dictionary<string, object>
+            {
+                { "AllCategorys", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options) },
+                { "Count", totalCount },
+                { "AllComponents", JsonSerializer.Serialize(componentsDict, options) },
+                { "UpdateTime", AllComponentsDB.GetLastUpdateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知" }
+            };
+
+            return new Ljson("AllComponentsInfo", "数据库中的所有组件信息", JsonSerializer.SerializeToElement(data));
         }
 
         // 通过Guid查询组件信息
-        public static JList FindComponentsByGuid(string guid)
+        public static Ljson FindComponentsByGuid(string guid)
         {
             // 从数据库查询组件信息
             using (var connection = DatabaseManager.GetConnection())
@@ -248,7 +252,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return JList.ComponentJList(
+                            return Ljson.ComponentLjson(
                                 componentGuid: reader["ComponentGuid"].ToString(),
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -270,7 +274,7 @@ namespace GrasshopperSever.Commands
         }
         
         // 通过名称查询组件信息
-        public static JList FindComponentsByName(string name)
+        public static Ljson FindComponentsByName(string name)
         {
             // 从数据库查询第一个匹配的组件信息
             using (var connection = DatabaseManager.GetConnection())
@@ -297,7 +301,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return JList.ComponentJList(
+                            return Ljson.ComponentLjson(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -319,7 +323,7 @@ namespace GrasshopperSever.Commands
         }
         
         // 通过分类和名称搜索组件（只返回第一个匹配的）
-        public static JList FindComponentsByCategory(string category, string subCategory, string name)
+        public static Ljson FindComponentsByCategory(string category, string subCategory, string name)
         {
             // 构建 SQL 查询
             string sql = @"
@@ -380,7 +384,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return JList.ComponentJList(
+                            return Ljson.ComponentLjson(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -403,9 +407,9 @@ namespace GrasshopperSever.Commands
 
 
         // 通过名称搜索组件，可以模糊匹配
-        public static List<JList> SearchComponentsByName(string name)
+        public static List<Ljson> SearchComponentsByName(string name)
         {
-            var result = new List<JList>();
+            var result = new List<Ljson>();
 
             // 从数据库模糊查询组件信息
             using (var connection = DatabaseManager.GetConnection())
@@ -431,7 +435,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            result.Add(JList.ComponentJList(
+                            result.Add(Ljson.ComponentLjson(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -570,66 +574,82 @@ namespace GrasshopperSever.Commands
         }
 
         /// <summary>
-        /// 反序列化：将 JList 中的字符串数据还原到 IGH_Param 实例中
+        /// 反序列化：将 Ljson 中的字符串数据还原到 IGH_Param 实例中
         /// </summary>
-        public static void FillParamFromJList(JList data, IGH_Param targetParam)
+        public static void FillParamFromLjson(Ljson data, IGH_Param targetParam)
         {
             if (targetParam == null) return;
 
+            // 辅助方法：将 JsonElement 转换为字符串
+            string ElementToString(System.Text.Json.JsonElement? element)
+            {
+                if (!element.HasValue) return null;
+                var value = element.Value;
+                return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
+            }
+
             // 1. 名称
-            targetParam.Name = data.GetParameter("Name");
-            targetParam.NickName = data.GetParameter("NickName");
-            targetParam.Description = data.GetParameter("Description");
+            targetParam.Name = ElementToString(data.GetParameter("Name"));
+            targetParam.NickName = ElementToString(data.GetParameter("NickName"));
+            targetParam.Description = ElementToString(data.GetParameter("Description"));
 
             // 2. 布尔属性 (从字符串还原)
-            if (bool.TryParse(data.GetParameter("Optional"), out bool opt))
+            if (bool.TryParse(ElementToString(data.GetParameter("Optional")), out bool opt))
                 targetParam.Optional = opt;
 
-            if (bool.TryParse(data.GetParameter("Reverse"), out bool rev))
+            if (bool.TryParse(ElementToString(data.GetParameter("Reverse")), out bool rev))
                 targetParam.Reverse = rev;
 
-            if (bool.TryParse(data.GetParameter("Simplify"), out bool sim))
+            if (bool.TryParse(ElementToString(data.GetParameter("Simplify")), out bool sim))
                 targetParam.Simplify = sim;
 
             // 3. 枚举属性 (使用 Enum.TryParse 忽略大小写还原)
-            if (Enum.TryParse(data.GetParameter("Access"), true, out GH_ParamAccess acc))
+            if (Enum.TryParse(ElementToString(data.GetParameter("Access")), true, out GH_ParamAccess acc))
                 targetParam.Access = acc;
 
-            if (Enum.TryParse(data.GetParameter("Mapping"), true, out GH_DataMapping map))
+            if (Enum.TryParse(ElementToString(data.GetParameter("Mapping")), true, out GH_DataMapping map))
                 targetParam.DataMapping = map;
         }
 
-        public static JList ParamToJList(IGH_Param param)
+        public static Ljson ParamToLjson(IGH_Param param)
         {
-            return JList.ParamJList(
+            return Ljson.ParamLjson(
                 param.ComponentGuid.ToString(),   // 电池类型识别码
                 param.InstanceGuid.ToString(),    // 画布实例识别码
                 param.Name,
                 param.NickName,
                 param.Description,
                 param.TypeName,
-                param.Optional.ToString(),
-                param.Access.ToString(),          // 枚举转字符串 (item, list, tree)
-                param.DataMapping.ToString(),     // 枚举转字符串 (none, flatten, graft)
-                param.Reverse.ToString(),
-                param.Simplify.ToString(),
+                param.Optional,                   // 直接传递 bool 值
+                param.Access,                     // 直接传递枚举值 (item, list, tree)
+                param.DataMapping,                // 直接传递枚举值 (none, flatten, graft)
+                param.Reverse,                    // 直接传递 bool 值
+                param.Simplify,                   // 直接传递 bool 值
                 JsonSerializer.Serialize(param.Sources.Select(s => s.InstanceGuid.ToString())),
                 JsonSerializer.Serialize(param.Recipients.Select(s => s.InstanceGuid.ToString()))
             );
         }
 
         /// <summary>
-        /// 从JList创建IGH_Param实例
+        /// 从Ljson创建IGH_Param实例
         /// </summary>
-        private static IGH_Param ParamFromJList(JList jlist)
+        private static IGH_Param ParamFromLjson(Ljson jlist)
         {
-            if (jlist == null || jlist.IsEmpty)
+            if (jlist == null)
                 return null;
+
+            // 辅助方法：将 JsonElement 转换为字符串
+            string ElementToString(System.Text.Json.JsonElement? element)
+            {
+                if (!element.HasValue) return null;
+                var value = element.Value;
+                return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
+            }
 
             try
             {
-                // 从JList中提取ParamGuid创建参数
-                string paramGuid = jlist.GetParameter("ParamGuid");
+                // 从Ljson中提取ParamGuid创建参数
+                string paramGuid = ElementToString(jlist.GetParameter("ParamGuid"));
                 IGH_Param param = null;
 
                 if (!string.IsNullOrWhiteSpace(paramGuid))
@@ -643,29 +663,29 @@ namespace GrasshopperSever.Commands
                 }
 
                 // 填充参数属性
-                param.Name = jlist.GetParameter("Name") ?? "";
-                param.NickName = jlist.GetParameter("NickName") ?? "";
-                param.Description = jlist.GetParameter("Description") ?? "";
+                param.Name = ElementToString(jlist.GetParameter("Name")) ?? "";
+                param.NickName = ElementToString(jlist.GetParameter("NickName")) ?? "";
+                param.Description = ElementToString(jlist.GetParameter("Description")) ?? "";
 
                 // 布尔属性
-                if (bool.TryParse(jlist.GetParameter("Optional"), out bool opt))
+                if (bool.TryParse(ElementToString(jlist.GetParameter("Optional")), out bool opt))
                     param.Optional = opt;
-                if (bool.TryParse(jlist.GetParameter("Reverse"), out bool rev))
+                if (bool.TryParse(ElementToString(jlist.GetParameter("Reverse")), out bool rev))
                     param.Reverse = rev;
-                if (bool.TryParse(jlist.GetParameter("Simplify"), out bool sim))
+                if (bool.TryParse(ElementToString(jlist.GetParameter("Simplify")), out bool sim))
                     param.Simplify = sim;
 
                 // 枚举属性
-                if (Enum.TryParse(jlist.GetParameter("Access"), true, out GH_ParamAccess acc))
+                if (Enum.TryParse(ElementToString(jlist.GetParameter("Access")), true, out GH_ParamAccess acc))
                     param.Access = acc;
-                if (Enum.TryParse(jlist.GetParameter("Mapping"), true, out GH_DataMapping map))
+                if (Enum.TryParse(ElementToString(jlist.GetParameter("Mapping")), true, out GH_DataMapping map))
                     param.DataMapping = map;
 
                 return param;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"从JList创建参数失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"从Ljson创建参数失败: {ex.Message}");
                 return null;
             }
         }
@@ -679,19 +699,19 @@ namespace GrasshopperSever.Commands
         /// <returns>参数定义信息JSON字符串</returns>
         public static string SerializeParamDefinitions(IList<IGH_Param> parameters)
         {
-            var paramJLists = new List<JList>();
+            var paramLjsons = new List<Ljson>();
             for (int i = 0; i < parameters.Count; i++)
             {
                 var p = parameters[i];
-                paramJLists.Add(ParamToJList(p));
+                paramLjsons.Add(ParamToLjson(p));
             }
-            
-            return JList.SerializeJListArray(paramJLists);
+
+            return LjsonHelper.SerializeLjsonArray(paramLjsons);
         }
 
         /// <summary>
         /// 解析参数定义JSON字符串为IGH_Param列表
-        /// 与SerializeParamDefinitions成对使用，解析JList.SerializeJListArray的输出
+        /// 与SerializeParamDefinitions成对使用，解析LjsonHelper.SerializeLjsonArray的输出
         /// </summary>
         public static List<IGH_Param> DeserializeParamDefinitions(string json)
         {
@@ -702,13 +722,13 @@ namespace GrasshopperSever.Commands
 
             try
             {
-                // 使用JList.ParseJListArray解析SerializeJListArray的输出
-                var jlists = JList.ParseJListArray(json);
+                // 使用LjsonHelper.ParseLjsonArray解析SerializeLjsonArray的输出
+                var jlists = LjsonHelper.ParseLjsonArray(json);
 
-                // 将每个JList转换为IGH_Param
+                // 将每个Ljson转换为IGH_Param
                 foreach (var jlist in jlists)
                 {
-                    var param = ParamFromJList(jlist);
+                    var param = ParamFromLjson(jlist);
                     if (param != null)
                         result.Add(param);
                 }

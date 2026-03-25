@@ -4,13 +4,13 @@ using System;
 namespace GrasshopperSever.Params
 {
     /// <summary>
-    /// 定义电池端口，这个传输JList数据
+    /// 定义电池端口，这个传输Ljson数据
     /// </summary>
-    public class JListParam : GH_Param<JListGoo>{
+    public class LjsonParam : GH_Param<LjsonGoo>{
         /// <summary>
         /// </summary>
-        public JListParam() : base("JList", "JQ",
-            "由`JList = (DateTime time, List<JData(string name，string description，string data)>)`组成的数据，表示tcp一次消息的多个JData。",
+        public LjsonParam() : base("Ljson", "LJ",
+            "由`(DateTime time, string name，string description，JsonElement value)`组成的数据，表示tcp一次消息。",
             "Maths", "Sever", GH_ParamAccess.item)
         {
         }
@@ -29,6 +29,6 @@ namespace GrasshopperSever.Params
                 return new Guid("74F00FF0-9A60-4516-910C-5466A609D874");
             }
         }
-        protected override System.Drawing.Bitmap Icon => Properties.Resources.P01_JListParam;
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.P01_LjsonParam;
     }
 }

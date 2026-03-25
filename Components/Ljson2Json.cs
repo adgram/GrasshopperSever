@@ -4,14 +4,14 @@ using GrasshopperSever.Params;
 
 namespace GrasshopperSever.Components
 {
-    public class JList2Json : GH_Component
+    public class Ljson2Json : GH_Component
     {
         /// <summary>
         /// Initializes a new instance of the MyComponent1 class.
         /// </summary>
-        public JList2Json()
-          : base("JList2Json", "Q2J",
-              "将JList转换为Json",
+        public Ljson2Json()
+          : base("Ljson2Json", "L2J",
+              "将Ljson转换为Json",
                 "Maths", "Sever")
         {
         }
@@ -27,7 +27,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddParameter(new JListParam(), "JList", "JQ", "需要转换的JList", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "需要转换的Ljson", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace GrasshopperSever.Components
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            JListGoo jlistGoo = null;
+            LjsonGoo jlistGoo = null;
             if (!DA.GetData(0, ref jlistGoo))
             {
                 return;
@@ -52,7 +52,7 @@ namespace GrasshopperSever.Components
 
             if (jlistGoo == null || !jlistGoo.IsValid)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "JList 输入无效");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Ljson 输入无效");
                 return;
             }
 
@@ -69,7 +69,7 @@ namespace GrasshopperSever.Components
             {
                 //You can add image files to your project resources and access them like this:
                 // return Resources.IconForThisComponent;
-                return Properties.Resources.P04_JList2Json;
+                return Properties.Resources.P04_Ljson2Json;
             }
         }
 

@@ -118,20 +118,20 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="P01_JListParam" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>icon\P01_JListParam.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="P01_LjsonParam" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>icon\P01_LjsonParam.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="P02_TcpClientParam" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>icon\P02_TcpClientParam.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="P03_Json2JList" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>icon\P03_Json2JList.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="P03_Json2Ljson" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>icon\P03_Json2Ljson.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="P04_JList2Json" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>icon\P04_JList2Json.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="P04_Ljson2Json" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>icon\P04_Ljson2Json.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="P05_StringTreeJList" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>icon\P05_StringTreeJList.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="P05_DataTreeLjson" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>icon\P05_DataTreeLjson.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="P06_GHReceiver" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>icon\P06_GHReceiver.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

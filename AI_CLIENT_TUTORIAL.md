@@ -30,17 +30,28 @@ GrasshopperSever提供TCP服务，允许外部客户端（如AI程序）与Grass
 
 ## 通信协议
 
-### JList数据结构
+### Ljson数据结构
 
-所有通信使用JList格式，包含时间和数据队列：
+所有通信使用Ljson格式，单个数据项包含名称、说明、时间和值：
 
+```json
+{
+  "Name": "数据名称",
+  "Info": "数据说明",
+  "Time": "2026-03-22T10:30:00",
+  "Value": "数据值"
+}
+```
+
+**批量数据结构**（用于TCP传输，使用LjsonHelper）：
 ```json
 {
   "Time": "2026-03-22T10:30:00",
   "Items": [
     {
       "Name": "数据名称",
-      "Description": "数据描述",
+      "Info": "数据说明",
+      "Time": "2026-03-22T10:30:00",
       "Value": "数据值"
     }
   ]
@@ -56,9 +67,9 @@ AI客户端                    Grasshopper
     |                            |
     |-------- TCP连接 ---------->|
     |                            |
-    |----- 发送JList数据 ------>|  GHReceiver接收
+    |----- 发送Ljson数据 ------>|  GHReceiver接收
     |                            |
-    |<----- 发送响应JList ------|  GHSender发送
+    |<----- 发送响应Ljson ------|  GHSender发送
     |                            |
 ```
 
@@ -69,9 +80,9 @@ AI客户端                    Grasshopper
     |                            |
     |-------- TCP连接 ---------->|
     |                            |
-    |----- 发送请求JList ------>|  GHServer接收并执行
+    |----- 发送请求Ljson ------>|  GHServer接收并执行
     |                            |
-    |<----- 返回结果JList ------|  返回执行结果
+    |<----- 返回结果Ljson ------|  返回执行结果
     |                            |
 ```
 
@@ -127,7 +138,7 @@ client = connect_to_gh()
 test_data = [
     {
         "Name": "Test",
-        "Description": "测试消息",
+        "Info": "测试消息",
         "Value": "Hello from AI!"
     }
 ]
@@ -272,7 +283,7 @@ gh.start_receive_thread(on_receive)
 gh.send([
     {
         "Name": "Line",
-        "Description": "线段",
+        "Info": "线段",
         "Value": json.dumps({
             "Start": [0, 0, 0],
             "End": [10, 10, 10]
@@ -280,7 +291,7 @@ gh.send([
     },
     {
         "Name": "Circle",
-        "Description": "圆",
+        "Info": "圆",
         "Value": json.dumps({
             "Center": [5, 5, 0],
             "Radius": 3.0
@@ -301,7 +312,7 @@ def query_components(gh: GrasshopperClient, component_name: str):
     gh.send([
         {
             "Name": "Query",
-            "Description": "组件查询",
+            "Info": "组件查询",
             "Value": component_name
         }
     ])
@@ -326,7 +337,7 @@ def set_parameter(gh: GrasshopperClient, param_name: str, value: str):
     gh.send([
         {
             "Name": "SetParameter",
-            "Description": "设置参数",
+            "Info": "设置参数",
             "Value": json.dumps({
                 "name": param_name,
                 "value": value
@@ -352,7 +363,7 @@ def send_curve(gh: GrasshopperClient, points: List[List[float]]):
     gh.send([
         {
             "Name": "Curve",
-            "Description": "控制点曲线",
+            "Info": "控制点曲线",
             "Value": json.dumps({
                 "type": "NurbsCurve",
                 "points": points,
@@ -377,7 +388,7 @@ def send_surface(gh: GrasshopperClient, u_points: int, v_points: int):
     gh.send([
         {
             "Name": "Surface",
-            "Description": "参数化曲面",
+            "Info": "参数化曲面",
             "Value": json.dumps({
                 "type": "GridSurface",
                 "u_count": u_points,
@@ -408,7 +419,7 @@ def batch_send(gh: GrasshopperClient, operations: List[Dict]):
     for op in operations:
         items.append({
             "Name": op.get("name", "Operation"),
-            "Description": op.get("description", ""),
+            "Info": op.get("description", ""),
             "Value": json.dumps(op.get("data", {}))
         })
     
@@ -453,9 +464,9 @@ def generate_design(gh: GrasshopperClient):
     
     # 发送到Grasshopper
     gh.send([
-        {"Name": "Radius", "Description": "半径", "Value": str(radius)},
-        {"Name": "Height", "Description": "高度", "Value": str(height)},
-        {"Name": "Segments", "Description": "分段数", "Value": str(segments)}
+        {"Name": "Radius", "Info": "半径", "Value": str(radius)},
+        {"Name": "Height", "Info": "高度", "Value": str(height)},
+        {"Name": "Segments", "Info": "分段数", "Value": str(segments)}
     ])
     
     # 等待Grasshopper生成结果
@@ -482,7 +493,7 @@ def optimize_parameter(gh: GrasshopperClient, param_name: str, target_value: flo
         gh.send([
             {
                 "Name": param_name,
-                "Description": "优化参数",
+                "Info": "优化参数",
                 "Value": str(current_value)
             }
         ])
@@ -530,18 +541,18 @@ def interactive_mode(gh: GrasshopperClient):
         if command == 'radius':
             radius = input("输入半径: ")
             gh.send([
-                {"Name": "Radius", "Description": "半径", "Value": radius}
+                {"Name": "Radius", "Info": "半径", "Value": radius}
             ])
         
         elif command == 'height':
             height = input("输入高度: ")
             gh.send([
-                {"Name": "Height", "Description": "高度", "Value": height}
+                {"Name": "Height", "Info": "高度", "Value": height}
             ])
         
         elif command == 'random':
             gh.send([
-                {"Name": "Random", "Description": "随机生成", "Value": "true"}
+                {"Name": "Random", "Info": "随机生成", "Value": "true"}
             ])
         
         # 接收响应
@@ -565,7 +576,7 @@ def visualize_data(gh: GrasshopperClient, data_points: List[List[float]]):
     gh.send([
         {
             "Name": "DataPoints",
-            "Description": "数据点",
+            "Info": "数据点",
             "Value": json.dumps(data_points)
         }
     ])
@@ -635,7 +646,7 @@ test_connection()
 
 ```python
 def validate_jlist(data):
-    """验证JList数据格式"""
+    """验证Ljson数据格式"""
     if not isinstance(data, dict):
         return False
     if "Time" not in data or "Items" not in data:
@@ -643,7 +654,7 @@ def validate_jlist(data):
     if not isinstance(data["Items"], list):
         return False
     for item in data["Items"]:
-        if not all(key in item for key in ["Name", "Description", "Value"]):
+        if not all(key in item for key in ["Name", "Info", "Time", "Value"]):
             return False
     return True
 
@@ -758,7 +769,7 @@ def monitor_traffic(gh: GrasshopperClient):
 ## 扩展阅读
 
 - [GrasshopperSever主文档](./README.md)
-- [JList数据结构详解](./design.md)
+- [Ljson数据结构详解](./design.md)
 - [Grasshopper API文档](https://developer.rhino3d.com/guides/grasshopper/)
 
 ## 支持

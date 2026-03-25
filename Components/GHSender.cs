@@ -13,11 +13,11 @@ namespace GrasshopperSever.Components
         private TcpClient _currentClient;
 
         /// <summary>
-        /// 用于使用JList发送数据到客户端
+        /// 用于使用Ljson发送数据到客户端
         /// </summary>
         public GHSender()
           : base("GHSender", "Sender",
-              "通过TcpClient发送JList数据到客户端。ResponseSender会自动过滤time标签未更新的数据。",
+              "通过TcpClient发送Ljson数据到客户端。ResponseSender会自动过滤time标签未更新的数据。",
                 "Maths", "Sever")
         {
         }
@@ -35,7 +35,7 @@ namespace GrasshopperSever.Components
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddParameter(new TcpClientParam(), "Client", "CL", "从GHServer接收的TcpClient连接", GH_ParamAccess.item);
-            pManager.AddParameter(new JListParam(), "Json", "JS", "要发送的JList数据", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Json", "JS", "要发送的Ljson数据", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace GrasshopperSever.Components
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             TcpClientGoo clientGoo = null;
-            JListGoo jsonGoo = null;
+            LjsonGoo jsonGoo = null;
 
             // 获取输入参数
             if (!DA.GetData(0, ref clientGoo)) return;
@@ -74,7 +74,7 @@ namespace GrasshopperSever.Components
                 return;
             }
 
-            JList queue = jsonGoo.Value;
+            Ljson queue = jsonGoo.Value;
             TcpClient client = clientGoo.Value;
 
             // 创建或更新发送器
@@ -94,10 +94,10 @@ namespace GrasshopperSever.Components
                     _currentClient = client; // 记录当前客户端
                 }
 
-                // 将JList传递给ResponseSender，由它自己判断time标签
-                _sender.EnqueueJList(queue);
+                // 将Ljson传递给ResponseSender，由它自己判断time标签
+                _sender.EnqueueLjson(queue);
 
-                DA.SetData(0, $"已发送数据 (时间: {queue.Time}, 数据项: {queue.Count})");
+                DA.SetData(0, $"已发送数据 (时间: {queue.Time}, 数据项: {queue.Name})");
             }
             catch (Exception ex)
             {

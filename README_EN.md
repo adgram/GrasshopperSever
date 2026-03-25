@@ -15,32 +15,31 @@ A plugin for Rhino Grasshopper providing TCP communication, data conversion, and
 GrasshopperSever plugin provides the following core features for Grasshopper:
 
 1. **Data Communication**: Receive and send data via TCP protocol
-2. **Data Conversion**: Convert between JSON and JList formats
+2. **Data Conversion**: Convert between JSON and Ljson formats
 3. **Component Information Query**: Query and search Grasshopper component information
 4. **Data Execution**: Execute received data commands
 
 ## Core Data Structures
 
-### JList
+### Ljson
 
-A data structure composed of `(DateTime time, List<JData>)`, used to represent multiple JData items in a single TCP message.
-
-- **time**: List creation time, used for version identification
-- **queue**: List of JData objects
-
-**Features**:
-- Thread-safe queue implementation
-- Supports JSON serialization and deserialization
-- Supports deep cloning
-- Supports timeout waiting and cancellation tokens
-
-### JData
-
-Basic data unit containing three properties:
+A unified data structure used to represent a single data item, containing name, info, time, and value.
 
 - **Name**: Data name
-- **Description**: Data description
-- **Value**: Data content (string format)
+- **Info**: Data description
+- **Time**: Creation time, used for version identification
+- **Value**: Data value (JsonElement, can be object, array, or primitive value)
+
+**Features**:
+- Supports JSON serialization and deserialization
+- Supports deep cloning
+- Implements IDisposable interface
+- Supports parameter getting, searching, and setting (supports object and array formats)
+- Provides static methods to create common types of Ljson (error, success, component info, etc.)
+
+**LjsonHelper Utility Class**:
+- `SerializeLjsonArray`: Serialize Ljson array to JSON string
+- `ParseLjsonArray`: Deserialize JSON string to Ljson array
 
 ## Components Description
 
@@ -56,7 +55,7 @@ Creates a TCP connection based on port and receives data. Each port accepts only
 
 **Output Parameters**:
 - `Client` (TcpClientParam): Client connection object
-- `JList` (JListParam): Incoming data
+- `Ljson` (LjsonParam): Incoming data
 
 **Features**:
 - Receives data in background thread
@@ -69,13 +68,13 @@ Sends data using TCP connection, supports batch sending.
 
 **Input Parameters**:
 - `Client` (TcpClientParam): Client connection object
-- `JList` (JListParam): Data to send, sent in order
+- `Ljson` (LjsonParam): Data to send, sent in order
 
 **Output Parameters**:
 - `Result` (String): Execution result, used for displaying errors or reports
 
 **Features**:
-- Only triggers sending when JList.time is updated
+- Only triggers sending when Ljson.time is updated
 - Automatically filters expired data
 
 #### GHServer
@@ -91,35 +90,35 @@ Creates a TCP server based on port and receives data, executes internally and re
 
 ### Data Conversion Components
 
-#### Json2JList
+#### Json2Ljson
 
-Converts JSON format to JList.
+Converts JSON format to Ljson.
 
 **Input Parameters**:
 - `String` (String): JSON format string
 
 **Output Parameters**:
-- `JList` (JListParam): Generated JList object
+- `Ljson` (LjsonParam): Generated Ljson object
 
-#### JList2Json
+#### Ljson2Json
 
-Converts JList to JSON format.
+Converts Ljson to JSON format.
 
 **Input Parameters**:
-- `JList` (JListParam): JList object to convert
+- `Ljson` (LjsonParam): Ljson object to convert
 
 **Output Parameters**:
 - `String` (String): JSON format string
 
-#### StringTreeJList
+#### StringTreeLjson
 
-Converts String Tree to JList.
+Converts String Tree to Ljson.
 
 **Input Parameters**:
 - `String Tree` (GH_Structure<string>): String Tree structure
 
 **Output Parameters**:
-- `JList` (JListParam): Generated JList object
+- `Ljson` (LjsonParam): Generated Ljson object
 
 **Features**:
 - Takes only the first three items from each branch
@@ -136,15 +135,15 @@ Outputs information of all registered components.
 - `Refresh` (Boolean): Refresh, value change refreshes time once
 
 **Output Parameters**:
-- `JList` (JListParam): Information of all components
+- `Ljson` (LjsonParam): Information of all components
 
-**Output Structure**:
-```
-[
-  categorys,                    // All categories
-  count,                        // Component count
-  components                    // All registered components
-]
+**Output Structure** (Ljson.Value):
+```json
+{
+  "categorys": "All categories",
+  "count": "Component count",
+  "components": "All registered components"
+}
 ```
 
 #### FindComponentsByGuid
@@ -155,23 +154,23 @@ Queries component information by GUID.
 - `Guid` (String): Component GUID
 
 **Output Parameters**:
-- `ComponentInfo` (JListParam): Component information
+- `ComponentInfo` (LjsonParam): Component information
 
-**Output Structure** (ComponentJList):
-```
-[
-  ComponentGuid,      // Component GUID
-  InstanceGuid,       // Instance GUID
-  ComponentName,      // Component name
-  NickName,           // Component nickname
-  Description,        // Component description
-  Category,           // Main category
-  SubCategory,        // Sub-category
-  Position,           // Position information
-  State,              // State information
-  Inputs,             // Input parameters information
-  Outputs             // Output parameters information
-]
+**Output Structure** (ComponentLjson - Ljson.Value):
+```json
+{
+  "ComponentGuid": "Component GUID",
+  "InstanceGuid": "Instance GUID",
+  "ComponentName": "Component name",
+  "NickName": "Component nickname",
+  "Description": "Component description",
+  "Category": "Main category",
+  "SubCategory": "Sub-category",
+  "Position": "Position information",
+  "State": "State information",
+  "Inputs": "Input parameters information",
+  "Outputs": "Output parameters information"
+}
 ```
 
 #### FindComponentsByName
@@ -182,7 +181,7 @@ Queries component information by name.
 - `Name` (String): Component name
 
 **Output Parameters**:
-- `ComponentInfo` (JListParam): Component information
+- `ComponentInfo` (LjsonParam): Component information
 
 #### FindComponentsByCategory
 
@@ -192,7 +191,7 @@ Queries component information by Category.
 - `Category` (String): Main category name
 
 **Output Parameters**:
-- `ComponentInfo` (JListParam): Component information
+- `ComponentInfo` (LjsonParam): Component information
 
 #### SearchComponentsByName
 
@@ -202,7 +201,7 @@ Searches components by name, supports fuzzy matching.
 - `Keyword` (String): Search keyword
 
 **Output Parameters**:
-- `ComponentInfo` (JListParam): Component information list
+- `ComponentInfo` (LjsonParam): Component information list
 
 #### ComponentConnector
 
@@ -224,7 +223,7 @@ Retrieves information about the connected component via its input port.
 Executes input data.
 
 **Input Parameters**:
-- `JList` (JListParam): Data to execute
+- `Ljson` (LjsonParam): Data to execute
 
 **Output Parameters**:
 - `Result` (String): Execution result, used for displaying errors or reports
@@ -265,9 +264,9 @@ Used to track table update times, contains the following fields:
 
 ## Parameter Types
 
-### JListParam
+### LjsonParam
 
-Parameter type used to pass JList data between Grasshopper batteries.
+Parameter type used to pass Ljson data between Grasshopper batteries.
 
 ### TcpClientParam
 
@@ -299,7 +298,7 @@ Parameter type used to pass TCP client connection objects, uniquely created by G
 1. Create a `GHReceiver` component and set the port number (e.g., 6879)
 2. Set `Enabled` to `true` to start the receiver
 3. Send JSON data to the specified port via TCP client
-4. Data will be received and converted to JList format output
+4. Data will be received and converted to Ljson format output
 
 ### Component Query Example
 
@@ -309,14 +308,14 @@ Parameter type used to pass TCP client connection objects, uniquely created by G
 
 ### Data Conversion Example
 
-1. Create a `Json2JList` component
+1. Create a `Json2Ljson` component
 2. Input JSON string
-3. Get the converted JList object
+3. Get the converted Ljson object
 
 ## Notes
 
 1. Each port can only create one TCP receiver
-2. JList's time tag is used for version control, only receives/sends updated data
+2. Ljson's time tag is used for version control, only receives/sends updated data
 3. Database file is located in the plugin directory, ensure write permission
 4. TCP communication uses UTF-8 encoding
 5. Recommend using firewall rules to protect TCP ports

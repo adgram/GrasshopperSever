@@ -1,6 +1,6 @@
 ﻿using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
-using Rhino.NodeInCode;
+//using Rhino.NodeInCode;
 using RhinoCodePluginGH.Components;
 using System;
 using System.Collections.Generic;
@@ -39,17 +39,17 @@ namespace GrasshopperSever.Commands
 
         public static void SetParametersFromScript(BaseLanguageComponent component)
         {
-            // 似乎有问题
-            component.SetParametersFromScript();
-            JList pas = GetParametersFromScript(GetCode(component));
+            component.SetParametersFromScript();// 似乎有问题
+            Ljson pas = GetParametersFromScript(GetCode(component));
+            if (pas.GetParameter("Status")?.GetString() == "代码为空") return;
             UpdateParameters(component, pas);
         }
 
         public static void SetParametersToScript(BaseLanguageComponent component)
         {
-            // 似乎有问题
-            component.SetParametersToScript();
-            JList pas = GetParametersFromComponent(component);
+            
+            component.SetParametersToScript();// 似乎有问题
+            Ljson pas = GetParametersFromComponent(component);
             string code = GetCode(component);
             
             // 获取组件的输入输出参数信息
@@ -129,16 +129,17 @@ namespace GrasshopperSever.Commands
                 System.Text.RegularExpressions.RegexOptions.Singleline);
         }
 
-        public static JList GetParametersFromScript(string code)
+        public static Ljson GetParametersFromScript(string code)
         {
-            var result = new JList();
-            
             if (string.IsNullOrEmpty(code))
             {
-                result.Add(new JData("Status", "状态", "代码为空"));
-                return result;
+                var emptyData = new Dictionary<string, object>
+                {
+                    { "Status", "代码为空" }
+                };
+                return new Ljson("GetParametersFromScript", "从脚本提取参数", JsonSerializer.SerializeToElement(emptyData));
             }
-            
+
             // 尝试从代码中的特殊注释标记提取输入输出信息
             // 支持C# (//) 和 Python (#) 两种注释格式
             try
@@ -147,7 +148,7 @@ namespace GrasshopperSever.Commands
                 string csharpPattern = @"// GH_COMPONENT_IO_START\s*// INPUT_PARAMS: (.*?)\s*// OUTPUT_PARAMS: (.*?)\s*// GH_COMPONENT_IO_END";
                 var match = System.Text.RegularExpressions.Regex.Match(code, csharpPattern, System.Text.RegularExpressions.RegexOptions.Singleline);
                 string commentType = "C#";
-                
+
                 // 如果没有匹配到C#格式，尝试Python格式
                 if (!match.Success)
                 {
@@ -155,57 +156,67 @@ namespace GrasshopperSever.Commands
                     match = System.Text.RegularExpressions.Regex.Match(code, pythonPattern, System.Text.RegularExpressions.RegexOptions.Singleline);
                     commentType = "Python";
                 }
-                
+
+                Dictionary<string, object> data;
                 if (match.Success)
                 {
                     string inputParams = match.Groups[1].Value.Trim();
                     string outputParams = match.Groups[2].Value.Trim();
-                    
-                    result.Add(new JData("InputParams", "提取的输入参数", inputParams));
-                    result.Add(new JData("OutputParams", "提取的输出参数", outputParams));
-                    result.Add(new JData("Source", "数据来源", $"从{commentType}代码注释中提取"));
+
+                    data = new Dictionary<string, object>
+                    {
+                        { "InputParams", inputParams },
+                        { "OutputParams", outputParams },
+                        { "Source", $"从{commentType}代码注释中提取" }
+                    };
                 }
                 else
                 {
-                    result.Add(new JData("InputParams", "提取的输入参数", "[]"));
-                    result.Add(new JData("OutputParams", "提取的输出参数", "[]"));
-                    result.Add(new JData("Source", "数据来源", "未找到注释标记"));
+                    data = new Dictionary<string, object>
+                    {
+                        { "InputParams", "[]" },
+                        { "OutputParams", "[]" },
+                        { "Source", "未找到注释标记" }
+                    };
                 }
+
+                return new Ljson("GetParametersFromScript", "从脚本提取参数", JsonSerializer.SerializeToElement(data));
             }
             catch (Exception ex)
             {
-                result.Add(new JData("Error", "错误信息", ex.Message));
-                result.Add(new JData("InputParams", "提取的输入参数", "[]"));
-                result.Add(new JData("OutputParams", "提取的输出参数", "[]"));
+                var errorData = new Dictionary<string, object>
+                {
+                    { "Error", ex.Message },
+                    { "InputParams", "[]" },
+                    { "OutputParams", "[]" }
+                };
+                return new Ljson("GetParametersFromScript", "从脚本提取参数失败", JsonSerializer.SerializeToElement(errorData));
             }
-            
-            result.AddSuccessStatus();
-            return result;
         }
 
-        public static JList GetParametersFromComponent(BaseLanguageComponent component)
+        public static Ljson GetParametersFromComponent(BaseLanguageComponent component)
         {
             if (component == null)
-                return JList.CreateErrorJList("组件为空");
-                
-            var result = new JList();
-            
+                return Ljson.CreateErrorLjson("组件为空");
+
             // 获取输入参数信息
             string inputParamsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
-            result.Add(new JData("InputParams", "输入参数信息", inputParamsJson));
-            
+
             // 获取输出参数信息
             string outputParamsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
-            result.Add(new JData("OutputParams", "输出参数信息", outputParamsJson));
-            
-            // 添加组件基本信息
-            result.Add(new JData("ComponentGuid", "组件GUID", component.ComponentGuid.ToString()));
-            result.Add(new JData("InstanceGuid", "实例GUID", component.InstanceGuid.ToString()));
-            result.Add(new JData("ComponentName", "组件名称", component.Name));
-            result.Add(new JData("ComponentNickname", "组件昵称", component.NickName));
-            
-            result.AddSuccessStatus();
-            return result;
+
+            // 构建数据字典
+            var data = new Dictionary<string, object>
+            {
+                { "InputParams", inputParamsJson },
+                { "OutputParams", outputParamsJson },
+                { "ComponentGuid", component.ComponentGuid.ToString() },
+                { "InstanceGuid", component.InstanceGuid.ToString() },
+                { "ComponentName", component.Name },
+                { "ComponentNickname", component.NickName }
+            };
+
+            return new Ljson("GetParametersFromComponent", "从组件提取参数", JsonSerializer.SerializeToElement(data));
         }
 
         public static string GetCode(BaseLanguageComponent component)
@@ -226,22 +237,30 @@ namespace GrasshopperSever.Commands
 
         /// <summary>
         /// 处理动态修改组件输入输出端
-        /// 输入格式：JList中包含InputParams和OutputParams（JSON格式的参数定义数组）
+        /// 输入格式：Ljson中包含InputParams和OutputParams（JSON格式的参数定义数组）
         /// 功能：按照参数定义匹配参数，缺少的添加，多余的删除（少加多补）
         /// </summary>
-        public static JList UpdateParameters(BaseLanguageComponent component, JList pas)
+        public static Ljson UpdateParameters(BaseLanguageComponent component, Ljson pas)
         {
             try
             {
                 if (component == null)
-                    return JList.CreateErrorJList("目标组件无效");
+                    return Ljson.CreateErrorLjson("目标组件无效");
 
-                if (pas == null || pas.IsEmpty)
-                    return JList.CreateErrorJList("参数数据为空");
+                if (pas == null)
+                    return Ljson.CreateErrorLjson("参数数据为空");
 
-                // 1. 从JList中获取参数定义JSON
-                string inputParamsJson = pas.GetParameter("InputParams") ?? "[]";
-                string outputParamsJson = pas.GetParameter("OutputParams") ?? "[]";
+                // 辅助方法：将 JsonElement 转换为字符串
+                string ElementToString(System.Text.Json.JsonElement? element)
+                {
+                    if (!element.HasValue) return null;
+                    var value = element.Value;
+                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
+                }
+
+                // 1. 从Ljson中获取参数定义JSON
+                string inputParamsJson = ElementToString(pas.GetParameter("InputParams")) ?? "[]";
+                string outputParamsJson = ElementToString(pas.GetParameter("OutputParams")) ?? "[]";
 
                 // 2. 解析参数定义
                 var targetInputParams = ParamExchange.DeserializeParamDefinitions(inputParamsJson);
@@ -250,7 +269,7 @@ namespace GrasshopperSever.Commands
                 // 3. 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
                 var doc = Grasshopper.Instances.ActiveCanvas?.Document;
                 if (doc == null)
-                    return JList.CreateErrorJList("无法获取Grasshopper文档");
+                    return Ljson.CreateErrorLjson("无法获取Grasshopper文档");
 
                 doc.ScheduleSolution(5, (d) =>
                 {
@@ -266,16 +285,18 @@ namespace GrasshopperSever.Commands
                     component.ExpireSolution(false);
                 });
 
-                var response = new JList();
-                response.Add(new JData("Status", "消息", "参数同步指令已发送至调度器"));
-                response.Add(new JData("InputParams", "目标输入参数数量", targetInputParams.Count.ToString()));
-                response.Add(new JData("OutputParams", "目标输出参数数量", targetOutputParams.Count.ToString()));
-                response.AddSuccessStatus();
-                return response;
+                var responseData = new Dictionary<string, object>
+                {
+                    { "Status", "参数同步指令已发送至调度器" },
+                    { "InputParams", targetInputParams.Count.ToString() },
+                    { "OutputParams", targetOutputParams.Count.ToString() }
+                };
+
+                return new Ljson("UpdateParameters", "更新组件参数", JsonSerializer.SerializeToElement(responseData));
             }
             catch (Exception ex)
             {
-                return JList.CreateErrorJList($"修改组件参数失败: {ex.Message}");
+                return Ljson.CreateErrorLjson($"修改组件参数失败: {ex.Message}");
             }
         }
 

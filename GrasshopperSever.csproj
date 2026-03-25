@@ -7,11 +7,13 @@
         Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
         Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
     -->
-    <TargetFrameworks>net7.0-windows;net7.0;net4.8</TargetFrameworks>
+    <TargetFrameworks>net7.0-windows;net7.0</TargetFrameworks>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <TargetExt>.gha</TargetExt>
     <NoWarn>NU1701;NETSDK1086</NoWarn>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- 确保所有依赖项都复制到输出目录 -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -30,9 +32,7 @@
   
   <ItemGroup>
     <PackageReference Include="Grasshopper" Version="8.29.26063.11001" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
     <PackageReference Include="RhinoCommon" Version="8.29.26063.11001" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
     <PackageReference Include="System.Resources.Extensions" Version="10.0.5" />
     <!-- System.Text.Json 只在 net4.8 框架下引用，net7.0 自带该库 -->
     <PackageReference Include="System.Text.Json" Version="10.0.5" Condition="'$(TargetFramework)' == 'net4.8'" />
@@ -78,6 +78,33 @@
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- 确保 SQLite 原生库被正确复制到输出目录 -->
+  <ItemGroup>
+    <!-- SQLitePCLRaw 提供的原生库 -->
+    <PackageReference Update="SQLitePCLRaw.core" PrivateAssets="all" />
+    <PackageReference Update="SQLitePCLRaw.lib.e_sqlite3" PrivateAssets="all" />
+    <PackageReference Update="SQLitePCLRaw.provider.e_sqlite3" PrivateAssets="all" />
+    <!-- System.Data.SQLite 提供的原生库 -->
+    <PackageReference Update="System.Data.SQLite" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Post-build 事件：复制 runtimes 文件夹 -->
+  <PropertyGroup>
+    <PostBuildEvent>if "$(ConfigurationName)" == "Release" (
+    robocopy "$(ProjectDir)bin\Debug\net7.0-windows\runtimes" "$(TargetDir)runtimes" /E /NFL /NDL /NJH /NJS
+    if not "$(PlatformName)" == "AnyCPU" robocopy "$(ProjectDir)bin\Debug\net7.0-windows\runtimes" "$(TargetDir)runtimes" /E /NFL /NDL /NJH /NJS
+)</PostBuildEvent>
+  </PropertyGroup>
+
+  <!-- 将 runtimes 文件夹包含在输出中 -->
+  <ItemGroup>
+    <None Include="runtimes\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>true</Pack>
+      <PackagePath>runtimes</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

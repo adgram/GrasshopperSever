@@ -1,17 +1,18 @@
 ﻿using System;
+using System.Linq;
 using Grasshopper.Kernel;
 using GrasshopperSever.Params;
 
 namespace GrasshopperSever.Components
 {
-    public class FindJData : GH_Component
+    public class FindJdata : GH_Component
     {
         /// <summary>
-        /// Initializes a new instance of the ReadJList class.
+        /// Initializes a new instance of the ReadLjson class.
         /// </summary>
-        public FindJData()
-          : base("FindJData", "SJL",
-              "通过名称查找JData",
+        public FindJdata()
+          : base("FindJdata", "FJ",
+              "通过名称查找Jdata",
               "Maths", "Sever")
         {
         }
@@ -26,19 +27,19 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddParameter(new JListParam(), "JList", "JQ", "需要转换的JList", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "需要转换的Ljson", GH_ParamAccess.item);
             pManager.AddTextParameter("Name", "N", "需要查找的键值", GH_ParamAccess.item);
         }
 
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("Data", "D", "找到的值", GH_ParamAccess.item);
-            pManager.AddTextParameter("DataList", "DL", "找到的值", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Data", "D", "找到的值（基本类型或字符串）", GH_ParamAccess.item);
+            pManager.AddGenericParameter("DataList", "DL", "找到的值列表（基本类型或字符串）", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -47,31 +48,55 @@ namespace GrasshopperSever.Components
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            JListGoo jlistGoo = null;
+            LjsonGoo jlistGoo = null;
             string name = "";
-
             // 获取输入参数
             if (!DA.GetData(0, ref jlistGoo)) return;
             if (!DA.GetData(1, ref name)) return;
-
             // 检查输入是否有效
             if (jlistGoo == null || jlistGoo.Value == null)
             {
-                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "输入的JList为空");
+                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "输入的Ljson为空");
                 return;
             }
-
             if (string.IsNullOrEmpty(name))
             {
                 this.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, "输入的Name为空");
                 return;
             }
-
             // 查找参数值
             var jlist = jlistGoo.Value;
-            string value = jlist.GetParameter(name);
-            string[] values = jlist.SearchParameter(name);
-
+            // 辅助方法：将 JsonElement 转换为基本类型或字符串
+            object ElementToBasicType(System.Text.Json.JsonElement? element)
+            {
+                if (!element.HasValue) return null;
+                var _value = element.Value;
+                switch (_value.ValueKind)
+                {
+                    case System.Text.Json.JsonValueKind.String:
+                        return _value.GetString();
+                    case System.Text.Json.JsonValueKind.Number:
+                        if (_value.TryGetInt32(out int intVal))
+                            return intVal;
+                        if (_value.TryGetInt64(out long longVal))
+                            return longVal;
+                        if (_value.TryGetDouble(out double doubleVal))
+                            return doubleVal;
+                        return _value.GetRawText();
+                    case System.Text.Json.JsonValueKind.True:
+                        return true;
+                    case System.Text.Json.JsonValueKind.False:
+                        return false;
+                    case System.Text.Json.JsonValueKind.Null:
+                        return null;
+                    default:
+                        // 对于对象、数组等复杂类型，转为字符串
+                        return _value.GetRawText();
+                }
+            }
+            object value = ElementToBasicType(jlist.GetParameter(name));
+            var elements = jlist.SearchParameter(name);
+            var values = elements.Select(e => ElementToBasicType(e)).ToList();
             // 设置输出
             DA.SetData(0, value);
             DA.SetDataList(1, values);

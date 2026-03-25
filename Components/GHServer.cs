@@ -1,6 +1,5 @@
 using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
-using Rhino;
 using System;
 using System.Net.Sockets;
 
@@ -17,12 +16,12 @@ namespace GrasshopperSever.Components
 
         /// <summary>
         /// 从端口接收Json数据并进行处理，默认接收到会立即响应
-        /// 功能：监听端口，创建TcpClient连接，接收JList数据，通过Actuator执行命令并自动发送响应
+        /// 功能：监听端口，创建TcpClient连接，接收Ljson数据，通过Actuator执行命令并自动发送响应
         /// （GHServer 是 GHReceiver 和 GHSender 的合并组件）
         /// </summary>
         public GHServer()
           : base("GHServer", "Server",
-                "监听端口，接收JList数据，通过Actuator执行命令并自动发送响应。",
+                "监听端口，接收Ljson数据，通过Actuator执行命令并自动发送响应。",
                 "Maths", "Sever")
         {
         }
@@ -65,7 +64,7 @@ namespace GrasshopperSever.Components
         }
 
         /// <summary>
-        /// 输出TcpClient连接和接收到的JList数据
+        /// 输出TcpClient连接和接收到的Ljson数据
         /// </summary>
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
@@ -110,14 +109,14 @@ namespace GrasshopperSever.Components
                     if (_receiver != null)
                     {
                         _receiver.Stop();
-                        _receiver.OnJListReceived -= OnJListReceivedHandler;
+                        _receiver.OnLjsonReceived -= OnLjsonReceivedHandler;
                         _receiver.OnClientConnected -= OnClientConnectedHandler;
                         _receiver.OnLog -= OnLogHandler;
                     }
 
-                    // 创建新的接收器（TcpReceiver内部会构造JList）
+                    // 创建新的接收器（TcpReceiver内部会构造Ljson）
                     _receiver = new TcpReceiver(port);
-                    _receiver.OnJListReceived += OnJListReceivedHandler;
+                    _receiver.OnLjsonReceived += OnLjsonReceivedHandler;
                     _receiver.OnClientConnected += OnClientConnectedHandler;
                     _receiver.OnLog += OnLogHandler;
                     _receiver.Start();
@@ -131,7 +130,7 @@ namespace GrasshopperSever.Components
                 if (_receiver != null)
                 {
                     _receiver.Stop();
-                    _receiver.OnJListReceived -= OnJListReceivedHandler;
+                    _receiver.OnLjsonReceived -= OnLjsonReceivedHandler;
                     _receiver.OnClientConnected -= OnClientConnectedHandler;
                     _receiver.OnLog -= OnLogHandler;
                     _receiver = null;
@@ -189,32 +188,32 @@ namespace GrasshopperSever.Components
             _sender.Start();
 
             AddLog($"GHServer: 客户端已连接");
-            _sender.EnqueueJList(JList.CreateOKJList("客户端已连接"));
+            _sender.EnqueueLjson(Ljson.CreateOKLjson("客户端已连接"));
             this.OnPingDocument()?.ScheduleSolution(5, doc => {
                     this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
                 });
         }
 
         /// <summary>
-        /// 处理接收到的JList数据（在后台线程中调用）
+        /// 处理接收到的Ljson数据（在后台线程中调用）
         /// </summary>
-        private void OnJListReceivedHandler(JList lst)
+        private void OnLjsonReceivedHandler(Ljson lst)
         {
             if (lst == null) return;
 
             // 更新最新数据
-            AddLog($"GHServer: 接收到新数据 (时间: {lst.Time}, 数据项: {lst.Count})");
-            _sender.EnqueueJList(JList.CreateOKJList("数据接收成功"));
-            // 使用 Actuator 执行 JList 中的命令，获取响应
+            AddLog($"GHServer: 接收到新数据 (时间: {lst.Time}, 数据项: {lst.Name})");
+            _sender.EnqueueLjson(Ljson.CreateOKLjson("数据接收成功"));
+            // 使用 Actuator 执行 Ljson 中的命令，获取响应
             if (_sender != null)
             {
                 try
                 {
                     // 执行命令并获取响应
-                    JList responseList = GHActuator.DoCommand(lst, ref _output_data);
+                    Ljson responseList = GHActuator.DoCommand(lst, ref _output_data);
                     // 将响应加入发送队列
-                    _sender.EnqueueJList(responseList);
-                    AddLog($"GHServer: 已添加响应到发送队列 (时间: {responseList.Time}, 数据项: {responseList.Count})");
+                    _sender.EnqueueLjson(responseList);
+                    AddLog($"GHServer: 已添加响应到发送队列 (时间: {responseList.Time}, 数据项: {responseList.Name})");
                 }
                 catch (Exception ex)
                 {

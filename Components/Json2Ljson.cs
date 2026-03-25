@@ -6,16 +6,16 @@ using GrasshopperSever.Utils;
 namespace GrasshopperSever.Components
 {
     /// <summary>
-    /// 将 JSON 字符串转换为 JList
+    /// 将 JSON 字符串转换为 Ljson
     /// </summary>
-    public class Json2JList : GH_Component
+    public class Json2Ljson : GH_Component
     {
         /// <summary>
-        /// Initializes a new instance of the String2JList class.
+        /// Initializes a new instance of the String2Ljson class.
         /// </summary>
-        public Json2JList()
-          : base("Json2JList", "J2Q",
-              "将JSON格式的字符串转换为JList对象",
+        public Json2Ljson()
+          : base("Json2Ljson", "J2L",
+              "将JSON格式的字符串转换为Ljson对象",
               "Maths", "Sever")
         {
         }
@@ -40,7 +40,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddParameter(new JListParam(), "JList", "JQ", "转换后的JList对象", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "转换后的Ljson对象", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace GrasshopperSever.Components
 
             try
             {
-                JList jlst = new JList(jsonString);
+                Ljson jlst = new Ljson(jsonString);
                 DA.SetData(0, jlst);
             }
             catch (Exception ex)
@@ -81,7 +81,7 @@ namespace GrasshopperSever.Components
             {
                 //You can add image files to your project resources and access them like this:
                 // return Resources.IconForThisComponent;
-                return Properties.Resources.P03_Json2JList;
+                return Properties.Resources.P03_Json2Ljson;
             }
         }
 

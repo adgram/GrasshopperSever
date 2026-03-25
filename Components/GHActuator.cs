@@ -11,11 +11,11 @@ namespace GrasshopperSever.Components
         private string _output_data = null;
 
         /// <summary>
-        /// 专门用于执行一些特殊的JList
+        /// 专门用于执行一些特殊的Ljson
         /// </summary>
         public GHActuator()
           : base("GHActuator", "Actuator",
-              "专门用于执行一些特殊的JList",
+              "专门用于执行一些特殊的Ljson",
                 "Maths", "Sever")
         {
         }
@@ -32,7 +32,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddParameter(new JListParam(), "Json", "JS", "要发送的JList数据", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Json", "JS", "要发送的Ljson数据", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace GrasshopperSever.Components
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Status", "ST", "执行结果", GH_ParamAccess.item);
-            pManager.AddParameter(new JListParam(), "Result", "R", "处理后的JList结果", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Result", "R", "处理后的Ljson结果", GH_ParamAccess.item);
             pManager.AddGenericParameter("OutPut", "O", "显示输出数据", GH_ParamAccess.item);
         }
 
@@ -51,7 +51,7 @@ namespace GrasshopperSever.Components
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            JListGoo jsonGoo = null;
+            LjsonGoo jsonGoo = null;
 
             // 获取输入参数
             if (!DA.GetData(0, ref jsonGoo)) return;
@@ -64,14 +64,14 @@ namespace GrasshopperSever.Components
                 return;
             }
 
-            JList lst = jsonGoo.Value;
+            Ljson lst = jsonGoo.Value;
 
             // 处理命令并获取结果
             try
             {
                 var res_lst = DoCommand(lst, ref _output_data);
                 DA.SetData(0, res_lst.ToString());
-                DA.SetData(1, new JListGoo(res_lst));
+                DA.SetData(1, new LjsonGoo(res_lst));
                 DA.SetData(2, _output_data);
             }
             catch (Exception ex)
@@ -99,32 +99,41 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// 这里处理数据
         /// </summary>
-        public static JList DoCommand(JList lst, ref string out_data)
+        public static Ljson DoCommand(Ljson lst, ref string out_data)
         {
-            var h_type = JListTypeDetector.DetectType(lst);
+            var h_type = LjsonTypeDetector.DetectType(lst);
+
+            // 辅助方法：将 JsonElement 转换为字符串
+            string ElementToString(System.Text.Json.JsonElement? element)
+            {
+                if (!element.HasValue) return null;
+                var value = element.Value;
+                return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
+            }
+
             // 根据 Value 值判断类型（不区分大小写）
-            var output_data = lst.GetParameter("OUTPUT");
+            var output_data = ElementToString(lst.GetParameter("OUTPUT"));
             switch (h_type)
             {
-                case JListType.Component:
+                case LjsonType.Component:
                     return ActuatorHandle.DoComponentCommand(lst);
 
-                case JListType.Script:
+                case LjsonType.Script:
                     break;
 
-                case JListType.Document:
+                case LjsonType.Document:
                     return ActuatorHandle.DoDocumentCommand(lst);
 
-                case JListType.Rhino:
+                case LjsonType.Rhino:
                     return ActuatorHandle.DoRhinoCommand(lst);
 
-                case JListType.Design:
+                case LjsonType.Design:
                     break;
 
                 default:
                     break;
             }
-            return JList.CreateOKJList("ok");
+            return Ljson.CreateOKLjson("ok");
         }
     }
 }

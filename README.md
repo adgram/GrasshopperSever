@@ -15,32 +15,31 @@
 GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 1. **数据通信**: 通过TCP协议接收和发送数据
-2. **数据转换**: JSON与JList格式互相转换
+2. **数据转换**: JSON与Ljson格式互相转换
 3. **组件信息查询**: 查询和搜索Grasshopper组件信息
 4. **数据执行**: 执行接收到的数据命令
 
 ## 核心数据结构
 
-### JList
+### Ljson
 
-由 `(DateTime time, List<JData>)` 组成的数据结构，用于表示TCP一次消息的多个JData。
-
-- **time**: 队列创建时间，用于标识数据版本
-- **queue**: JData对象的队列
-
-**特性**:
-- 线程安全的队列实现
-- 支持JSON序列化和反序列化
-- 支持深度克隆
-- 支持超时等待和取消令牌
-
-### JData
-
-基本数据单元，包含三个属性：
+统一的数据结构，用于表示单个数据项，包含名称、说明、时间和值。
 
 - **Name**: 数据名称
-- **Description**: 数据描述
-- **Value**: 数据内容（字符串格式）
+- **Info**: 数据说明
+- **Time**: 创建时间，用于标识数据版本
+- **Value**: 数据值（JsonElement，可以是对象、数组或原始值）
+
+**特性**:
+- 支持JSON序列化和反序列化
+- 支持深度克隆
+- 实现IDisposable接口
+- 支持参数的获取、搜索和设置（支持对象和数组格式）
+- 提供静态方法创建常用类型的Ljson（错误、成功、组件信息等）
+
+**LjsonHelper工具类**:
+- `SerializeLjsonArray`: 序列化Ljson数组为JSON字符串
+- `ParseLjsonArray`: 从JSON字符串反序列化为Ljson数组
 
 ## 组件说明
 
@@ -56,7 +55,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 **输出参数**:
 - `Client` (TcpClientParam): Client连接对象
-- `JList` (JListParam): 传入的数据
+- `Ljson` (LjsonParam): 传入的数据
 
 **特性**:
 - 在后台线程接收数据
@@ -69,13 +68,13 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 **输入参数**:
 - `Client` (TcpClientParam): Client连接对象
-- `JList` (JListParam): 发送数据，按顺序发送
+- `Ljson` (LjsonParam): 发送数据，按顺序发送
 
 **输出参数**:
 - `Result` (String): 执行结果，用于显示报错或报告
 
 **特性**:
-- 只有JList.time更新时才会触发发送
+- 只有Ljson.time更新时才会触发发送
 - 自动过滤过期数据
 
 #### GHServer
@@ -91,35 +90,35 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 ### 数据转换组件
 
-#### Json2JList
+#### Json2Ljson
 
-将JSON格式转换为JList。
+将JSON格式转换为Ljson。
 
 **输入参数**:
 - `String` (String): JSON格式字符串
 
 **输出参数**:
-- `JList` (JListParam): 生成的JList对象
+- `Ljson` (LjsonParam): 生成的Ljson对象
 
-#### JList2Json
+#### Ljson2Json
 
-将JList转换为JSON格式。
+将Ljson转换为JSON格式。
 
 **输入参数**:
-- `JList` (JListParam): 需要转换的JList对象
+- `Ljson` (LjsonParam): 需要转换的Ljson对象
 
 **输出参数**:
 - `String` (String): JSON格式字符串
 
-#### StringTreeJList
+#### StringTreeLjson
 
-将String Tree转换为JList。
+将String Tree转换为Ljson。
 
 **输入参数**:
 - `String Tree` (GH_Structure<string>): String Tree结构
 
 **输出参数**:
-- `JList` (JListParam): 生成的JList对象
+- `Ljson` (LjsonParam): 生成的Ljson对象
 
 **特性**:
 - 每个branch只取前三项
@@ -136,15 +135,15 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Refresh` (Boolean): 刷新，值改变就刷新一次time
 
 **输出参数**:
-- `JList` (JListParam): 所有组件的信息
+- `Ljson` (LjsonParam): 所有组件的信息
 
-**输出结构**:
-```
-[
-  categorys,                    // 所有分类
-  count,                        // 组件数量
-  components                    // 所有注册的组件
-]
+**输出结构** (Ljson.Value):
+```json
+{
+  "categorys": "所有分类",
+  "count": "组件数量",
+  "components": "所有注册的组件"
+}
 ```
 
 #### FindComponentsByGuid
@@ -155,23 +154,23 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Guid` (String): 组件的GUID
 
 **输出参数**:
-- `ComponentInfo` (JListParam): 组件信息
+- `ComponentInfo` (LjsonParam): 组件信息
 
-**输出结构** (ComponentJList):
-```
-[
-  ComponentGuid,      // 组件 GUID
-  InstanceGuid,       // 实例 GUID
-  ComponentName,      // 组件名称
-  NickName,           // 组件昵称
-  Description,        // 组件描述
-  Category,           // 主分类
-  SubCategory,        // 子分类
-  Position,           // 位置信息
-  State,              // 状态信息
-  Inputs,             // 输入端信息
-  Outputs             // 输出端信息
-]
+**输出结构** (Ljson.Value):
+```json
+{
+  "ComponentGuid": "组件GUID",
+  "InstanceGuid": "实例GUID",
+  "ComponentName": "组件名称",
+  "NickName": "组件昵称",
+  "Description": "组件描述",
+  "Category": "主分类",
+  "SubCategory": "子分类",
+  "Position": "位置信息",
+  "State": "状态信息",
+  "Inputs": "输入端信息",
+  "Outputs": "输出端信息"
+}
 ```
 
 #### FindComponentsByName
@@ -182,7 +181,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Name` (String): 组件名称
 
 **输出参数**:
-- `ComponentInfo` (JListParam): 组件信息
+- `ComponentInfo` (LjsonParam): 组件信息
 
 #### FindComponentsByCategory
 
@@ -192,7 +191,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Category` (String): 主分类名称
 
 **输出参数**:
-- `ComponentInfo` (JListParam): 组件信息
+- `ComponentInfo` (LjsonParam): 组件信息
 
 #### SearchComponentsByName
 
@@ -202,7 +201,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Keyword` (String): 搜索关键词
 
 **输出参数**:
-- `ComponentInfo` (JListParam): 组件信息列表
+- `ComponentInfo` (LjsonParam): 组件信息列表
 
 #### ComponentConnector
 
@@ -226,7 +225,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 对输入的数据进行执行。
 
 **输入参数**:
-- `JList` (JListParam): 需要执行的数据
+- `Ljson` (LjsonParam): 需要执行的数据
 
 **输出参数**:
 - `Result` (String): 执行结果，用于显示报错或报告
@@ -269,9 +268,9 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 ## 参数类型
 
-### JListParam
+### LjsonParam
 
-用于在Grasshopper电池之间传递JList数据的参数类型。
+用于在Grasshopper电池之间传递Ljson数据的参数类型。
 
 ### TcpClientParam
 
@@ -303,7 +302,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 1. 创建一个 `GHReceiver` 组件，设置端口号（例如6879）
 2. 将 `Enabled` 设置为 `true` 启动接收器
 3. 通过TCP客户端发送JSON数据到指定端口
-4. 数据将被接收并转换为JList格式输出
+4. 数据将被接收并转换为Ljson格式输出
 
 ### 组件查询示例
 
@@ -313,14 +312,14 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 ### 数据转换示例
 
-1. 创建 `Json2JList` 组件
+1. 创建 `Json2Ljson` 组件
 2. 输入JSON字符串
-3. 获取转换后的JList对象
+3. 获取转换后的Ljson对象
 
 ## 注意事项
 
 1. 每个端口只能创建一个TCP接收器
-2. JList的time标签用于版本控制，只接收/发送更新的数据
+2. Ljson的time标签用于版本控制，只接收/发送更新的数据
 3. 数据库文件位于插件目录，确保有写入权限
 4. TCP通信使用UTF-8编码
 5. 建议使用防火墙规则保护TCP端口
