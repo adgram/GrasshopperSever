@@ -110,6 +110,10 @@ namespace GrasshopperSever.Components
             bool hasParamUpdate = (inputParamsGoo?.Value != null) || (outputParamsGoo?.Value != null);
             bool hasCodeUpdate = !string.IsNullOrEmpty(newCode) && !_lastAppliedCode.Equals(newCode, StringComparison.Ordinal);
 
+            // 检查代码中是否包含IO注释标记
+            bool hasIOComment = !string.IsNullOrEmpty(newCode) &&
+                (newCode.Contains("// GH_COMPONENT_IO_START") || newCode.Contains("# GH_COMPONENT_IO_START"));
+
             // 没有任何需要更新的内容，只同步注释并输出信息
             if (!hasCodeUpdate && !hasParamUpdate)
             {
@@ -161,8 +165,12 @@ namespace GrasshopperSever.Components
                     GHScript.SetCode(targetComponent, newCode);
                     _lastAppliedCode = newCode;
 
-                    // 根据新代码更新参数
-                    GHScript.SetParametersFromScript(targetComponent);
+                    // 只有当代码中有IO注释标记时才根据代码更新参数
+                    // 否则保留现有参数，避免意外删除所有输入输出端
+                    if (hasIOComment)
+                    {
+                        GHScript.SetParametersFromScript(targetComponent);
+                    }
                 }
 
                 // 同步参数注释到代码

@@ -2,8 +2,6 @@
 	
   <PropertyGroup>
     <!-- Select the framework(s) you wish to target.
-        Rhino 6: net45
-        Rhino 7: net48
         Rhino 8 Windows: net48, net7.0, net7.0-windows, net7.0-windows10.0.22000.0, etc
         Rhino 8 Mac: net7.0, net7.0-macos, net7.0-macos12.0, etc
     -->
@@ -12,15 +10,13 @@
     <TargetExt>.gha</TargetExt>
     <NoWarn>NU1701;NETSDK1086</NoWarn>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <!-- 确保所有依赖项都复制到输出目录 -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   
   <PropertyGroup>
     <!-- Specifies information for Assembly and Yak -->
     <Version>1.0</Version>
     <Title>GrasshopperSever</Title>
-    <Company>GrasshopperSever Authors</Company>
+    <Company>archigram</Company>
     <Description>Description of GrasshopperSever</Description>
   </PropertyGroup>
   
@@ -32,10 +28,8 @@
   
   <ItemGroup>
     <PackageReference Include="Grasshopper" Version="8.29.26063.11001" ExcludeAssets="runtime" />
-    <PackageReference Include="RhinoCommon" Version="8.29.26063.11001" />
+    <PackageReference Include="RhinoCommon" Version="8.29.26063.11001" ExcludeAssets="runtime" />
     <PackageReference Include="System.Resources.Extensions" Version="10.0.5" />
-    <!-- System.Text.Json 只在 net4.8 框架下引用，net7.0 自带该库 -->
-    <PackageReference Include="System.Text.Json" Version="10.0.5" Condition="'$(TargetFramework)' == 'net4.8'" />
     <!-- SQLite 数据库支持 -->
     <PackageReference Include="System.Data.SQLite" Version="2.0.3" />
   </ItemGroup>
@@ -56,14 +50,17 @@
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="RhinoCodePlatform.GH">
-      <HintPath>Tests\RhinoCodePlatform.GH.dll</HintPath>
+    <Reference Include="Rhino.Runtime.Code">
+      <HintPath>rhino_dll\Rhino.Runtime.Code.dll</HintPath>
     </Reference>
-    <Reference Include="RhinoCodePlatform.GH.Context">
-      <HintPath>Tests\RhinoCodePlatform.GH.Context.dll</HintPath>
+    <Reference Include="RhinoCodePlatform.GH" Private="False">
+      <HintPath>rhino_dll\RhinoCodePlatform.GH.dll</HintPath>
     </Reference>
-    <Reference Include="RhinoCodePluginGH">
-      <HintPath>Tests\RhinoCodePluginGH.gha</HintPath>
+    <Reference Include="RhinoCodePlatform.GH.Context" Private="False">
+      <HintPath>rhino_dll\RhinoCodePlatform.GH.Context.dll</HintPath>
+    </Reference>
+    <Reference Include="RhinoCodePluginGH" Private="False">
+      <HintPath>rhino_dll\RhinoCodePluginGH.gha</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -90,21 +87,5 @@
     <PackageReference Update="System.Data.SQLite" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- Post-build 事件：复制 runtimes 文件夹 -->
-  <PropertyGroup>
-    <PostBuildEvent>if "$(ConfigurationName)" == "Release" (
-    robocopy "$(ProjectDir)bin\Debug\net7.0-windows\runtimes" "$(TargetDir)runtimes" /E /NFL /NDL /NJH /NJS
-    if not "$(PlatformName)" == "AnyCPU" robocopy "$(ProjectDir)bin\Debug\net7.0-windows\runtimes" "$(TargetDir)runtimes" /E /NFL /NDL /NJH /NJS
-)</PostBuildEvent>
-  </PropertyGroup>
-
-  <!-- 将 runtimes 文件夹包含在输出中 -->
-  <ItemGroup>
-    <None Include="runtimes\**\*.*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Pack>true</Pack>
-      <PackagePath>runtimes</PackagePath>
-    </None>
-  </ItemGroup>
 
 </Project>
