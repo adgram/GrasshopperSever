@@ -28,7 +28,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("Guid", "G", "组件的 GUID", GH_ParamAccess.item);
         }
@@ -36,7 +36,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddParameter(new LjsonParam(), "ComponentInfo", "C", "组件信息 (ComponentLjson)", GH_ParamAccess.item);
         }

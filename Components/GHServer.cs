@@ -13,6 +13,7 @@ namespace GrasshopperSever.Components
         private ResponseSender _sender;
         private string _log = "";
         private string _output_data = null;
+        private Ljson _pendingLjson = null;  // 保存待处理的 Ljson 数据
 
         /// <summary>
         /// 从端口接收Json数据并进行处理，默认接收到会立即响应
@@ -201,19 +202,22 @@ namespace GrasshopperSever.Components
         {
             if (lst == null) return;
 
+            // 保存接收到的 Ljson
+            _pendingLjson = lst;
+
             // 更新最新数据
             AddLog($"GHServer: 接收到新数据 (时间: {lst.Time}, 数据项: {lst.Name})");
             _sender.EnqueueLjson(Ljson.CreateOKLjson("数据接收成功"));
+
             // 使用 Actuator 执行 Ljson 中的命令，获取响应
             if (_sender != null)
             {
                 try
                 {
-                    // 执行命令并获取响应
-                    Ljson responseList = GHActuator.DoCommand(lst, ref _output_data);
-                    // 将响应加入发送队列
-                    _sender.EnqueueLjson(responseList);
-                    AddLog($"GHServer: 已添加响应到发送队列 (时间: {responseList.Time}, 数据项: {responseList.Name})");
+                    // 在后台线程中暂存数据，然后在主线程中执行命令
+                    // 这对于 Rhino 命令非常重要，因为 RhinoApp.RunScript 必须在主线程中执行
+                    Rhino.RhinoApp.Idle += ExecuteCommandOnMainThread;
+                    System.Windows.Forms.Application.DoEvents(); // 触发 Idle 事件
                 }
                 catch (Exception ex)
                 {
@@ -225,6 +229,39 @@ namespace GrasshopperSever.Components
             this.OnPingDocument()?.ScheduleSolution(5, (doc) => {
                     this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
                 });
+        }
+
+        /// <summary>
+        /// 在主线程中执行命令
+        /// </summary>
+        private void ExecuteCommandOnMainThread(object sender, EventArgs e)
+        {
+            Rhino.RhinoApp.Idle -= ExecuteCommandOnMainThread;
+
+            if (_sender == null || _pendingLjson == null) return;
+
+            try
+            {
+                // 获取待处理的 Ljson 数据
+                Ljson lst = _pendingLjson;
+                string outputData = null;
+
+                // 执行命令并获取响应
+                Ljson responseList = GHActuator.DoCommand(lst, ref outputData);
+                _output_data = outputData;
+
+                // 将响应加入发送队列
+                _sender.EnqueueLjson(responseList);
+                AddLog($"GHServer: 已添加响应到发送队列 (时间: {responseList.Time}, 数据项: {responseList.Name})");
+
+                // 清空待处理数据
+                _pendingLjson = null;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"GHServer: 主线程执行命令失败: {ex.Message}");
+                _pendingLjson = null;
+            }
         }
         
         public override void RemovedFromDocument(GH_Document document)

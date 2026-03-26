@@ -169,7 +169,7 @@ namespace GrasshopperSever.Commands
                     FROM AllComponents
                     ORDER BY Category, SubCategory, ComponentName";
 
-                using (var command = new System.Data.SQLite.SQLiteCommand(sql, connection))
+                using (var command = new SQLiteCommand(sql, connection))
                 {
                     using (var reader = command.ExecuteReader())
                     {
@@ -579,35 +579,26 @@ namespace GrasshopperSever.Commands
         public static void FillParamFromLjson(Ljson data, IGH_Param targetParam)
         {
             if (targetParam == null) return;
-
-            // 辅助方法：将 JsonElement 转换为字符串
-            string ElementToString(System.Text.Json.JsonElement? element)
-            {
-                if (!element.HasValue) return null;
-                var value = element.Value;
-                return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-            }
-
             // 1. 名称
-            targetParam.Name = ElementToString(data.GetParameter("Name"));
-            targetParam.NickName = ElementToString(data.GetParameter("NickName"));
-            targetParam.Description = ElementToString(data.GetParameter("Description"));
+            targetParam.Name = data.GetParameterString("Name");
+            targetParam.NickName = data.GetParameterString("NickName");
+            targetParam.Description = data.GetParameterString("Description");
 
             // 2. 布尔属性 (从字符串还原)
-            if (bool.TryParse(ElementToString(data.GetParameter("Optional")), out bool opt))
+            if (bool.TryParse(data.GetParameterString("Optional"), out bool opt))
                 targetParam.Optional = opt;
 
-            if (bool.TryParse(ElementToString(data.GetParameter("Reverse")), out bool rev))
+            if (bool.TryParse(data.GetParameterString("Reverse"), out bool rev))
                 targetParam.Reverse = rev;
 
-            if (bool.TryParse(ElementToString(data.GetParameter("Simplify")), out bool sim))
+            if (bool.TryParse(data.GetParameterString("Simplify"), out bool sim))
                 targetParam.Simplify = sim;
 
             // 3. 枚举属性 (使用 Enum.TryParse 忽略大小写还原)
-            if (Enum.TryParse(ElementToString(data.GetParameter("Access")), true, out GH_ParamAccess acc))
+            if (Enum.TryParse(data.GetParameterString("Access"), true, out GH_ParamAccess acc))
                 targetParam.Access = acc;
 
-            if (Enum.TryParse(ElementToString(data.GetParameter("Mapping")), true, out GH_DataMapping map))
+            if (Enum.TryParse(data.GetParameterString("Mapping"), true, out GH_DataMapping map))
                 targetParam.DataMapping = map;
         }
 
@@ -633,23 +624,14 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 从Ljson创建IGH_Param实例
         /// </summary>
-        private static IGH_Param ParamFromLjson(Ljson jlist)
+        private static IGH_Param ParamFromLjson(Ljson data)
         {
-            if (jlist == null)
+            if (data == null)
                 return null;
-
-            // 辅助方法：将 JsonElement 转换为字符串
-            string ElementToString(System.Text.Json.JsonElement? element)
-            {
-                if (!element.HasValue) return null;
-                var value = element.Value;
-                return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-            }
-
             try
             {
                 // 从Ljson中提取ParamGuid创建参数
-                string paramGuid = ElementToString(jlist.GetParameter("ParamGuid"));
+                string paramGuid = data.GetParameterString("ParamGuid");
                 IGH_Param param = null;
 
                 if (!string.IsNullOrWhiteSpace(paramGuid))
@@ -663,22 +645,22 @@ namespace GrasshopperSever.Commands
                 }
 
                 // 填充参数属性
-                param.Name = ElementToString(jlist.GetParameter("Name")) ?? "";
-                param.NickName = ElementToString(jlist.GetParameter("NickName")) ?? "";
-                param.Description = ElementToString(jlist.GetParameter("Description")) ?? "";
+                param.Name = data.GetParameterString("Name") ?? "";
+                param.NickName = data.GetParameterString("NickName") ?? "";
+                param.Description = data.GetParameterString("Description") ?? "";
 
                 // 布尔属性
-                if (bool.TryParse(ElementToString(jlist.GetParameter("Optional")), out bool opt))
+                if (bool.TryParse(data.GetParameterString("Optional"), out bool opt))
                     param.Optional = opt;
-                if (bool.TryParse(ElementToString(jlist.GetParameter("Reverse")), out bool rev))
+                if (bool.TryParse(data.GetParameterString("Reverse"), out bool rev))
                     param.Reverse = rev;
-                if (bool.TryParse(ElementToString(jlist.GetParameter("Simplify")), out bool sim))
+                if (bool.TryParse(data.GetParameterString("Simplify"), out bool sim))
                     param.Simplify = sim;
 
                 // 枚举属性
-                if (Enum.TryParse(ElementToString(jlist.GetParameter("Access")), true, out GH_ParamAccess acc))
+                if (Enum.TryParse(data.GetParameterString("Access"), true, out GH_ParamAccess acc))
                     param.Access = acc;
-                if (Enum.TryParse(ElementToString(jlist.GetParameter("Mapping")), true, out GH_DataMapping map))
+                if (Enum.TryParse(data.GetParameterString("Mapping"), true, out GH_DataMapping map))
                     param.DataMapping = map;
 
                 return param;

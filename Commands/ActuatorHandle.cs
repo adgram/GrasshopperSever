@@ -25,7 +25,7 @@ namespace GrasshopperSever.Commands
 
             // 获取命令类型
             var commandElement = data.GetParameter("Command");
-            if (commandElement == null || commandElement.Value.ValueKind != System.Text.Json.JsonValueKind.String)
+            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
             {
                 return Ljson.CreateErrorLjson("未找到命令类型");
             }
@@ -75,7 +75,7 @@ namespace GrasshopperSever.Commands
 
             // 获取命令类型
             var commandElement = data.GetParameter("Command");
-            if (commandElement == null || commandElement.Value.ValueKind != System.Text.Json.JsonValueKind.String)
+            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
             {
                 return Ljson.CreateErrorLjson("未找到命令类型");
             }
@@ -119,7 +119,7 @@ namespace GrasshopperSever.Commands
 
             // 获取命令类型
             var commandElement = data.GetParameter("Command");
-            if (commandElement == null || commandElement.Value.ValueKind != System.Text.Json.JsonValueKind.String)
+            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
             {
                 return Ljson.CreateErrorLjson("未找到命令类型");
             }
@@ -139,6 +139,9 @@ namespace GrasshopperSever.Commands
                     case "SELECTOBJECTS":
                         return HandleSelectObjects(data);
 
+                    case "GETANDSELECTLASTOBJECTS":
+                        return HandleGetAndSelectLastObjects(data);
+
                     default:
                         return Ljson.CreateErrorLjson($"未知的 Rhino 命令: {commandType}");
                 }
@@ -156,42 +159,12 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
-                string script = ElementToString(data.GetParameter("Script"));
+                string script = data.GetParameterString("Script");
                 if (string.IsNullOrWhiteSpace(script))
                 {
                     return Ljson.CreateErrorLjson("缺少参数: Script");
                 }
-
-                // 重要：RhinoApp.RunScript 必须在主文档上下文执行
-                // 如果是从非命令线程调用，请确保在 Rhino 的 Idle 句柄或主线程中调度
-                var doc = Rhino.RhinoDoc.ActiveDoc;
-
-                // 执行Rhino命令 (true 表示 echo，让命令出现在命令行历史中)
-                // 注意：script 前面建议加一个下划线 _ 以确保在非英文版 Rhino 中也能运行
-                bool result = Rhino.RhinoApp.RunScript(doc.RuntimeSerialNumber, script, true);
-
-                var responseData = new Dictionary<string, object>
-                {
-                    { "Result", result.ToString() },
-                    { "Script", script }
-                };
-
-                if (result)
-                {
-                    return new Ljson("RunScript", "执行Rhino脚本成功", JsonSerializer.SerializeToElement(responseData));
-                }
-                else
-                {
-                    return Ljson.CreateErrorLjson("命令执行失败或被用户取消");
-                }
+                return RhinoCommand.RinoRunScript(script);
             }
             catch (Exception ex)
             {
@@ -204,28 +177,7 @@ namespace GrasshopperSever.Commands
         /// </summary>
         private static Ljson HandleGetLastCreatedObjects(Ljson data)
         {
-            var doc = Rhino.RhinoDoc.ActiveDoc;
-
-            // 技巧：如果你的 RunScript 刚运行完，可以使用以下逻辑获取：
-            doc.Objects.UnselectAll();
-            Rhino.RhinoApp.RunScript(doc.RuntimeSerialNumber, "_SelLast", false);
-            var selectedObjects = doc.Objects.GetSelectedObjects(false, false);
-
-            if (selectedObjects != null)
-            {
-                var objectsData = new Dictionary<string, object>();
-                int count = 0;
-                foreach (var obj in selectedObjects)
-                {
-                    objectsData[$"Object_{count}"] = obj.Id.ToString();
-                    count++;
-                }
-                objectsData["Count"] = count.ToString();
-
-                return new Ljson("GetLastCreatedObjects", "获取最后创建的对象", JsonSerializer.SerializeToElement(objectsData));
-            }
-
-            return new Ljson("GetLastCreatedObjects", "未找到对象", JsonSerializer.SerializeToElement(new Dictionary<string, object>()));
+            return RhinoCommand.GetLastCreatedObjects();
         }
         
         /// <summary>
@@ -235,70 +187,56 @@ namespace GrasshopperSever.Commands
         /// </summary>
         private static Ljson HandleSelectObjects(Ljson data)
         {
+            string objectsParam =data.GetParameterString("Objects");
+            if (string.IsNullOrWhiteSpace(objectsParam))
+            {
+                return Ljson.CreateErrorLjson("缺少参数: Objects");
+            }
+
+            return RhinoCommand.SelectObjects(objectsParam);
+        }
+
+        /// <summary>
+        /// 处理获取并选择最后创建的对象命令
+        /// 输入：Ljson包含 Command="GetAndSelectLastObjects"
+        /// 输出：对象信息和选择结果
+        /// </summary>
+        private static Ljson HandleGetAndSelectLastObjects(Ljson data)
+        {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
+                // 1. 获取最后创建的对象
+                var getObjectsResult = RhinoCommand.GetLastCreatedObjects();
+
+                // 检查是否成功获取对象
+                if (getObjectsResult.Name == "Error" || getObjectsResult.Value.ValueKind != JsonValueKind.Object)
                 {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
+                    return getObjectsResult; // 返回错误信息
                 }
 
-                string objectsParam = ElementToString(data.GetParameter("Objects"));
+                // 2. 将结果转换为 SelectObjects 需要的格式
+                string objectsParam = RhinoCommand.ConvertToSelectObjectsFormat(getObjectsResult);
+
                 if (string.IsNullOrWhiteSpace(objectsParam))
                 {
-                    return Ljson.CreateErrorLjson("缺少参数: Objects");
+                    return Ljson.CreateErrorLjson("未找到任何对象");
                 }
 
-                var doc = Rhino.RhinoDoc.ActiveDoc;
-                if (doc == null)
+                // 3. 选择这些对象
+                var selectResult = RhinoCommand.SelectObjects(objectsParam);
+
+                // 4. 合并返回结果
+                var combinedResult = new Dictionary<string, object>
                 {
-                    return Ljson.CreateErrorLjson("未找到活动文档");
-                }
-
-                // 1. 解析对象 ID (Rhino 使用 System.Guid)
-                var idStrs = objectsParam.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                int successCount = 0;
-
-                // 在执行新选择前，通常需要清除之前的选择（视业务逻辑而定）
-                doc.Objects.UnselectAll();
-
-                foreach (var idStr in idStrs)
-                {
-                    // Rhino 的对象 ID 统一使用 Guid
-                    if (Guid.TryParse(idStr.Trim(), out Guid id))
-                    {
-                        // 2. 通过 ID 查找对象并执行选择
-                        // RhinoDoc.Objects.Select(Guid) 会返回被选择的对象数量 (1 或 0)
-                        bool result = doc.Objects.Select(id);
-                        if (result)
-                        {
-                            successCount++;
-                        }
-                    }
-                }
-
-                // 3. 必须刷新视图，否则界面上看不见选择结果
-                doc.Views.Redraw();
-
-                var responseData = new Dictionary<string, object>
-                {
-                    { "TotalRequested", idStrs.Length.ToString() },
-                    { "TotalSelected", successCount.ToString() }
+                    { "Objects", getObjectsResult.Value },
+                    { "Selection", selectResult.Value }
                 };
 
-                if (successCount == 0)
-                {
-                    // 如果一个都没选上，可能 ID 全错了，返回具体信息
-                    responseData["Message"] = "未能在文档中找到匹配的 ID 或对象不可选";
-                }
-
-                return new Ljson("SelectObjects", "选择对象", JsonSerializer.SerializeToElement(responseData));
+                return new Ljson("GetAndSelectLastObjects", "获取并选择最后创建的对象", JsonSerializer.SerializeToElement(combinedResult));
             }
             catch (Exception ex)
             {
-                return Ljson.CreateErrorLjson($"选择对象失败: {ex.Message}");
+                return Ljson.CreateErrorLjson($"获取并选择对象失败: {ex.Message}");
             }
         }
 
@@ -328,15 +266,7 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
-                string guid = ElementToString(data.GetParameter("Guid"));
+                string guid =data.GetParameterString("Guid");
                 if (string.IsNullOrWhiteSpace(guid))
                 {
                     return Ljson.CreateErrorLjson("缺少参数: Guid");
@@ -365,15 +295,7 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
-                string name = ElementToString(data.GetParameter("Name"));
+                string name =data.GetParameterString("Name");
                 if (string.IsNullOrWhiteSpace(name))
                 {
                     return Ljson.CreateErrorLjson("缺少参数: Name");
@@ -402,17 +324,9 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
-                string category = ElementToString(data.GetParameter("Category"));
-                string subCategory = ElementToString(data.GetParameter("SubCategory"));
-                string name = ElementToString(data.GetParameter("Name"));
+                string category =data.GetParameterString("Category");
+                string subCategory =data.GetParameterString("SubCategory");
+                string name =data.GetParameterString("Name");
 
                 if (string.IsNullOrWhiteSpace(category) && string.IsNullOrWhiteSpace(subCategory) && string.IsNullOrWhiteSpace(name))
                 {
@@ -442,15 +356,7 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
-                string name = ElementToString(data.GetParameter("Name"));
+                string name = data.GetParameterString("Name");
                 if (string.IsNullOrWhiteSpace(name))
                 {
                     return Ljson.CreateErrorLjson("缺少参数: Name");
@@ -486,15 +392,7 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
-                string filePath = ElementToString(data.GetParameter("FilePath"));
+                string filePath = data.GetParameterString("FilePath");
                 var result = DocumentInfo.SaveDocument(filePath);
                 return result;
             }
@@ -513,15 +411,7 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
-                string filePath = ElementToString(data.GetParameter("FilePath"));
+                string filePath = data.GetParameterString("FilePath");
                 if (string.IsNullOrWhiteSpace(filePath))
                 {
                     return Ljson.CreateErrorLjson("缺少参数: FilePath");

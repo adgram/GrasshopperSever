@@ -2,6 +2,27 @@
 
 本教程指导AI客户端如何通过TCP协议连接到GrasshopperSever插件，实现与Grasshopper的双向通信。
 
+## ⚠️ 重要更新说明（2026-03-26）
+
+根据实际测试结果，本教程已进行以下重要修正：
+
+1. **数据格式**: 必须使用单个LJSON对象格式，**不要使用批量格式（Items数组）**
+2. **命令格式**: 发送命令时，Name字段应为命令类型（COMPONENT/DOCUMENT/RHINO等），Value.Command为具体命令名称
+3. **响应处理**: 服务器可能返回多条消息，需要正确处理UTF-8 BOM标记
+4. **解码方式**: 接收数据时使用 `utf-8-sig` 编码以处理BOM
+
+**正确的数据格式**:
+```json
+{
+  "Name": "DOCUMENT",      // 命令类型
+  "Info": "获取数据库路径",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "DATABASEPATH"  // 具体命令
+  }
+}
+```
+
 ## 目录
 
 - [服务概述](#服务概述)
@@ -32,31 +53,22 @@ GrasshopperSever提供TCP服务，允许外部客户端（如AI程序）与Grass
 
 ### Ljson数据结构
 
-所有通信使用Ljson格式，单个数据项包含名称、说明、时间和值：
+所有通信使用Ljson格式，**必须使用单个LJSON对象**（不是批量格式）：
 
 ```json
 {
-  "Name": "数据名称",
+  "Name": "数据名称或命令类型",
   "Info": "数据说明",
   "Time": "2026-03-22T10:30:00",
   "Value": "数据值"
 }
 ```
 
-**批量数据结构**（用于TCP传输，使用LjsonHelper）：
-```json
-{
-  "Time": "2026-03-22T10:30:00",
-  "Items": [
-    {
-      "Name": "数据名称",
-      "Info": "数据说明",
-      "Time": "2026-03-22T10:30:00",
-      "Value": "数据值"
-    }
-  ]
-}
-```
+**重要说明**：
+- 发送数据必须使用单个LJSON对象格式
+- **不要使用**批量格式（Items数组）
+- 发送命令时，Name字段应为命令类型（COMPONENT/DOCUMENT/RHINO等）
+- Value.Command字段存放具体命令名称
 
 ### 通信流程
 
@@ -115,38 +127,48 @@ def connect_to_gh(host='127.0.0.1', port=6879):
     client.connect((host, port))
     return client
 
-# 发送数据
-def send_jlist(client, data_items):
-    jlist = {
+# 发送单个LJSON数据
+def send_ljson(client, name, info, value):
+    data = {
+        "Name": name,
+        "Info": info,
         "Time": datetime.now().isoformat(),
-        "Items": data_items
+        "Value": value
     }
-    message = json.dumps(jlist, ensure_ascii=False)
+    message = json.dumps(data, ensure_ascii=False)
     client.sendall((message + '\n').encode('utf-8'))
 
-# 接收数据
-def receive_jlist(client):
-    data = client.recv(4096).decode('utf-8')
-    if data:
-        return json.loads(data.strip())
-    return None
+# 接收数据（处理UTF-8 BOM和多个消息）
+def receive_messages(client):
+    client.settimeout(10)
+    total_response = b''
+    while True:
+        try:
+            chunk = client.recv(4096)
+            if not chunk:
+                break
+            total_response += chunk
+        except socket.timeout:
+            break
+
+    if total_response:
+        # 使用utf-8-sig解码以处理BOM
+        response = total_response.decode('utf-8-sig')
+        # 分割多个消息（用BOM分隔）
+        messages = [msg for msg in response.split('\ufeff') if msg.strip()]
+        return [json.loads(msg.strip()) for msg in messages]
+    return []
 
 # 使用示例
 client = connect_to_gh()
 
-# 发送测试数据
-test_data = [
-    {
-        "Name": "Test",
-        "Info": "测试消息",
-        "Value": "Hello from AI!"
-    }
-]
-send_jlist(client, test_data)
+# 发送测试数据（单个LJSON）
+send_ljson(client, "TestMessage", "测试消息", "Hello from AI!")
 
 # 接收响应
-response = receive_jlist(client)
-print("响应:", response)
+responses = receive_messages(client)
+for response in responses:
+    print(f"响应: {response['Name']} - {response['Value']}")
 
 client.close()
 ```
@@ -160,19 +182,19 @@ import socket
 import json
 import threading
 from datetime import datetime
-from typing import List, Dict, Optional, Callable
+from typing import Optional, Callable, List, Dict, Any
 
 class GrasshopperClient:
     """GrasshopperSever客户端"""
-    
+
     def __init__(self, host='127.0.0.1', port=6879):
         self.host = host
         self.port = port
         self.client: Optional[socket.socket] = None
         self.connected = False
         self.receive_thread: Optional[threading.Thread] = None
-        self.receive_callback: Optional[Callable] = None
-        
+        self.receive_callback: Optional[Callable[[Dict], None]] = None
+
     def connect(self) -> bool:
         """连接到Grasshopper服务器"""
         try:
@@ -184,7 +206,7 @@ class GrasshopperClient:
         except Exception as e:
             print(f"连接失败: {e}")
             return False
-    
+
     def disconnect(self):
         """断开连接"""
         if self.receive_thread:
@@ -194,57 +216,86 @@ class GrasshopperClient:
             self.client = None
         self.connected = False
         print("已断开连接")
-    
-    def send(self, data_items: List[Dict[str, str]]) -> bool:
-        """发送数据到Grasshopper"""
+
+    def send(self, name: str, info: str, value: Any) -> bool:
+        """发送单个LJSON数据到Grasshopper"""
         if not self.connected or not self.client:
             print("未连接到服务器")
             return False
-        
+
         try:
-            jlist = {
+            data = {
+                "Name": name,
+                "Info": info,
                 "Time": datetime.now().isoformat(),
-                "Items": data_items
+                "Value": value
             }
-            message = json.dumps(jlist, ensure_ascii=False)
+            message = json.dumps(data, ensure_ascii=False)
             self.client.sendall((message + '\n').encode('utf-8'))
-            print(f"已发送: {len(data_items)} 个数据项")
             return True
         except Exception as e:
             print(f"发送失败: {e}")
             return False
-    
-    def receive(self) -> Optional[Dict]:
+
+    def send_command(self, ljson_type: str, command_name: str, params: Dict) -> bool:
+        """发送命令到Grasshopper
+
+        Args:
+            ljson_type: 命令类型 (COMPONENT/DOCUMENT/RHINO/SCRIPT/DESIGN)
+            command_name: 具体命令名称
+            params: 命令参数
+        """
+        return self.send(ljson_type, f"执行{command_name}", {
+            "Command": command_name,
+            **params
+        })
+
+    def receive(self) -> List[Dict]:
         """接收来自Grasshopper的数据（阻塞）"""
         if not self.connected or not self.client:
-            return None
-        
+            return []
+
         try:
-            data = self.client.recv(4096).decode('utf-8')
-            if data:
-                return json.loads(data.strip())
+            self.client.settimeout(10)
+            total_response = b''
+            while True:
+                try:
+                    chunk = self.client.recv(8192)
+                    if not chunk:
+                        break
+                    total_response += chunk
+                except socket.timeout:
+                    break
+
+            if total_response:
+                # 使用utf-8-sig解码以处理BOM
+                response = total_response.decode('utf-8-sig')
+                # 分割多个消息
+                messages = [msg for msg in response.split('\ufeff') if msg.strip()]
+                return [json.loads(msg.strip()) for msg in messages]
         except Exception as e:
             print(f"接收失败: {e}")
-        return None
-    
+        return []
+
     def start_receive_thread(self, callback: Callable[[Dict], None]):
         """启动接收线程，持续接收数据"""
         self.receive_callback = callback
-        
+
         def receive_loop():
             while self.connected and self.client:
-                data = self.receive()
-                if data and self.receive_callback:
-                    self.receive_callback(data)
-        
+                responses = self.receive()
+                for response in responses:
+                    if self.receive_callback:
+                        self.receive_callback(response)
+
         self.receive_thread = threading.Thread(target=receive_loop, daemon=True)
         self.receive_thread.start()
         print("接收线程已启动")
-    
+
     def __enter__(self):
         self.connect()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disconnect()
 ```
@@ -254,176 +305,92 @@ class GrasshopperClient:
 ```python
 # 示例1: 基本发送和接收
 with GrasshopperClient() as gh:
-    # 发送数据
-    gh.send([
-        {"Name": "Point", "Description": "点坐标", "Value": "10,20,30"},
-        {"Name": "Radius", "Description": "半径", "Value": "5.0"}
-    ])
-    
+    # 发送数据（单个LJSON）
+    gh.send("Point", "点坐标", {"x": 10, "y": 20, "z": 30})
+
     # 接收响应
-    response = gh.receive()
-    if response:
-        print("收到响应:", response)
+    responses = gh.receive()
+    for response in responses:
+        print(f"收到响应: {response['Name']} - {response['Value']}")
 
 # 示例2: 持续接收数据
 def on_receive(data):
-    print(f"收到数据: {data['Items'][0]['Name']}")
+    print(f"收到数据: {data['Name']}")
     # 处理接收到的数据
-    for item in data['Items']:
-        print(f"  - {item['Name']}: {item['Value']}")
+    print(f"  值: {data['Value']}")
 
 gh = GrasshopperClient()
 gh.connect()
 gh.start_receive_thread(on_receive)
 
 # 继续发送数据...
-# gh.send([...])
+gh.send("Radius", "半径", 5.0)
+gh.send("Height", "高度", 10.0)
 
 # 示例3: 发送几何数据
-gh.send([
-    {
-        "Name": "Line",
-        "Info": "线段",
-        "Value": json.dumps({
-            "Start": [0, 0, 0],
-            "End": [10, 10, 10]
-        })
-    },
-    {
-        "Name": "Circle",
-        "Info": "圆",
-        "Value": json.dumps({
-            "Center": [5, 5, 0],
-            "Radius": 3.0
-        })
-    }
-])
+with GrasshopperClient() as gh:
+    # 发送线段
+    gh.send("Line", "线段", {
+        "type": "Line",
+        "start": [0, 0, 0],
+        "end": [10, 10, 10]
+    })
+
+    # 发送圆
+    gh.send("Circle", "圆", {
+        "type": "Circle",
+        "center": [5, 5, 0],
+        "radius": 3.0
+    })
 ```
 
 ## 高级功能
 
-### 1. 组件查询
+### 1. 发送命令
 
-AI可以查询Grasshopper中的组件信息：
-
-```python
-def query_components(gh: GrasshopperClient, component_name: str):
-    """查询指定组件"""
-    gh.send([
-        {
-            "Name": "Query",
-            "Info": "组件查询",
-            "Value": component_name
-        }
-    ])
-    
-    response = gh.receive()
-    if response:
-        for item in response['Items']:
-            print(f"{item['Name']}: {item['Value']}")
-
-# 使用示例
-with GrasshopperClient() as gh:
-    query_components(gh, "Circle")
-```
-
-### 2. 参数控制
-
-控制Grasshopper参数：
+AI可以发送各种命令到GrasshopperSever：
 
 ```python
-def set_parameter(gh: GrasshopperClient, param_name: str, value: str):
-    """设置参数值"""
-    gh.send([
-        {
-            "Name": "SetParameter",
-            "Info": "设置参数",
-            "Value": json.dumps({
-                "name": param_name,
-                "value": value
-            })
-        }
-    ])
-
-# 使用示例
+# 获取数据库路径
 with GrasshopperClient() as gh:
-    set_parameter(gh, "radius", "10.5")
-    set_parameter(gh, "segments", "32")
+    gh.send_command("DOCUMENT", "DATABASEPATH", {})
+    responses = gh.receive()
+    for response in responses:
+        if response['Name'] == 'DatabasePath':
+            db_path = response['Value']['DatabasePath']
+            print(f"数据库路径: {db_path}")
+
+# 搜索组件
+with GrasshopperClient() as gh:
+    gh.send_command("COMPONENT", "SEARCHCOMPONENTSBYNAME", {"Name": "Circle"})
+    responses = gh.receive()
+    for response in responses:
+        if response['Name'] == 'SearchComponentsByName':
+            count = response['Value']['Count']
+            print(f"找到 {count} 个Circle组件")
+
+# 获取最后创建的Rhino对象
+with GrasshopperClient() as gh:
+    gh.send_command("RHINO", "GETLASTCREATEDOBJECTS", {})
+    responses = gh.receive()
+    for response in responses:
+        if response['Name'] == 'GetLastCreatedObjects':
+            print(f"最后创建的对象: {response['Value']}")
 ```
 
-### 3. 几何操作
+### 2. 批量操作
 
-发送几何数据到Grasshopper：
-
-```python
-import numpy as np
-
-def send_curve(gh: GrasshopperClient, points: List[List[float]]):
-    """发送曲线数据"""
-    gh.send([
-        {
-            "Name": "Curve",
-            "Info": "控制点曲线",
-            "Value": json.dumps({
-                "type": "NurbsCurve",
-                "points": points,
-                "degree": 3
-            })
-        }
-    ])
-
-def send_surface(gh: GrasshopperClient, u_points: int, v_points: int):
-    """生成并发送曲面"""
-    # 生成网格点
-    u = np.linspace(0, 1, u_points)
-    v = np.linspace(0, 1, v_points)
-    U, V = np.meshgrid(u, v)
-    
-    # 创建曲面点
-    points = []
-    for i in range(u_points):
-        for j in range(v_points):
-            points.append([U[i, j], V[i, j], np.sin(U[i, j]) * np.cos(V[i, j])])
-    
-    gh.send([
-        {
-            "Name": "Surface",
-            "Info": "参数化曲面",
-            "Value": json.dumps({
-                "type": "GridSurface",
-                "u_count": u_points,
-                "v_count": v_points,
-                "points": points
-            })
-        }
-    ])
-
-# 使用示例
-with GrasshopperClient() as gh:
-    # 发送曲线
-    curve_points = [[0, 0, 0], [1, 1, 0], [2, 0, 1], [3, 1, 0]]
-    send_curve(gh, curve_points)
-    
-    # 发送曲面
-    send_surface(gh, 10, 10)
-```
-
-### 4. 批量操作
-
-批量发送多个数据项：
+批量发送多个数据（通过多次send调用）：
 
 ```python
 def batch_send(gh: GrasshopperClient, operations: List[Dict]):
     """批量发送操作"""
-    items = []
     for op in operations:
-        items.append({
-            "Name": op.get("name", "Operation"),
-            "Info": op.get("description", ""),
-            "Value": json.dumps(op.get("data", {}))
-        })
-    
-    gh.send(items)
+        gh.send(
+            op.get("name", "Operation"),
+            op.get("description", ""),
+            op.get("data", {})
+        )
 
 # 使用示例
 operations = [
@@ -446,162 +413,6 @@ operations = [
 
 with GrasshopperClient() as gh:
     batch_send(gh, operations)
-```
-
-## 常见用例
-
-### 用例1: AI生成设计
-
-```python
-import random
-
-def generate_design(gh: GrasshopperClient):
-    """AI生成随机设计"""
-    # 生成随机参数
-    radius = random.uniform(5, 20)
-    height = random.uniform(10, 50)
-    segments = random.randint(8, 32)
-    
-    # 发送到Grasshopper
-    gh.send([
-        {"Name": "Radius", "Info": "半径", "Value": str(radius)},
-        {"Name": "Height", "Info": "高度", "Value": str(height)},
-        {"Name": "Segments", "Info": "分段数", "Value": str(segments)}
-    ])
-    
-    # 等待Grasshopper生成结果
-    response = gh.receive()
-    return response
-
-# 使用示例
-with GrasshopperClient() as gh:
-    for i in range(10):
-        result = generate_design(gh)
-        print(f"生成方案 {i+1}: {result}")
-```
-
-### 用例2: 参数优化
-
-```python
-def optimize_parameter(gh: GrasshopperClient, param_name: str, target_value: float):
-    """优化参数以接近目标值"""
-    current_value = 0
-    step = 1.0
-    
-    for iteration in range(100):
-        # 发送当前参数值
-        gh.send([
-            {
-                "Name": param_name,
-                "Info": "优化参数",
-                "Value": str(current_value)
-            }
-        ])
-        
-        # 接收结果
-        response = gh.receive()
-        if not response:
-            break
-        
-        # 获取计算结果
-        result_value = float(response['Items'][0]['Value'])
-        
-        # 调整参数
-        error = target_value - result_value
-        if abs(error) < 0.01:
-            print(f"优化完成: {param_name} = {current_value}")
-            return current_value
-        
-        current_value += error * step
-    
-    print("优化未收敛")
-    return current_value
-
-# 使用示例
-with GrasshopperClient() as gh:
-    optimize_parameter(gh, "radius", 15.0)
-```
-
-### 用例3: 实时交互
-
-```python
-import time
-
-def interactive_mode(gh: GrasshopperClient):
-    """交互式控制模式"""
-    print("进入交互模式 (输入 'quit' 退出)")
-    
-    while True:
-        # 获取用户输入
-        command = input("> ").strip()
-        
-        if command == 'quit':
-            break
-        
-        if command == 'radius':
-            radius = input("输入半径: ")
-            gh.send([
-                {"Name": "Radius", "Info": "半径", "Value": radius}
-            ])
-        
-        elif command == 'height':
-            height = input("输入高度: ")
-            gh.send([
-                {"Name": "Height", "Info": "高度", "Value": height}
-            ])
-        
-        elif command == 'random':
-            gh.send([
-                {"Name": "Random", "Info": "随机生成", "Value": "true"}
-            ])
-        
-        # 接收响应
-        response = gh.receive()
-        if response:
-            print("响应:", response['Items'][0]['Value'])
-
-# 使用示例
-with GrasshopperClient() as gh:
-    interactive_mode(gh)
-```
-
-### 用例4: 数据可视化
-
-```python
-import matplotlib.pyplot as plt
-
-def visualize_data(gh: GrasshopperClient, data_points: List[List[float]]):
-    """发送数据并可视化结果"""
-    # 发送数据点
-    gh.send([
-        {
-            "Name": "DataPoints",
-            "Info": "数据点",
-            "Value": json.dumps(data_points)
-        }
-    ])
-    
-    # 接收处理结果
-    response = gh.receive()
-    if response:
-        # 解析结果
-        for item in response['Items']:
-            if item['Name'] == 'ProcessedData':
-                points = json.loads(item['Value'])
-                
-                # 可视化
-                plt.figure(figsize=(10, 8))
-                plt.scatter(*zip(*points))
-                plt.title("Grasshopper处理结果")
-                plt.xlabel("X")
-                plt.ylabel("Y")
-                plt.grid(True)
-                plt.show()
-
-# 使用示例
-with GrasshopperClient() as gh:
-    data = [[i, i**2] for i in range(10)]
-    visualize_data(gh, data)
 ```
 
 ## 故障排除
@@ -640,30 +451,29 @@ test_connection()
 **问题**: 发送的数据无法被正确解析
 
 **解决方案**:
-- 确保JSON格式正确
-- 检查Time字段格式
-- 验证Items数组结构
+- 确保使用单个LJSON对象格式（不是Items数组）
+- 检查Name、Info、Time、Value字段是否存在
+- 发送命令时使用正确的格式（Name=命令类型，Value.Command=具体命令）
 
 ```python
-def validate_jlist(data):
+def validate_ljson(data):
     """验证Ljson数据格式"""
     if not isinstance(data, dict):
         return False
-    if "Time" not in data or "Items" not in data:
+    # 单个LJSON对象必须有这4个字段
+    required_fields = ["Name", "Info", "Time", "Value"]
+    if not all(key in data for key in required_fields):
         return False
-    if not isinstance(data["Items"], list):
-        return False
-    for item in data["Items"]:
-        if not all(key in item for key in ["Name", "Info", "Time", "Value"]):
-            return False
     return True
 
-# 使用
-jlist = {
+# 使用示例
+data = {
+    "Name": "TestMessage",
+    "Info": "测试消息",
     "Time": datetime.now().isoformat(),
-    "Items": [...]
+    "Value": "Hello"
 }
-if validate_jlist(jlist):
+if validate_ljson(data):
     print("数据格式正确")
 ```
 
@@ -696,14 +506,26 @@ def receive_with_timeout(gh: GrasshopperClient, timeout=5.0):
 **解决方案**:
 - 确保使用UTF-8编码
 - 在JSON序列化时使用 `ensure_ascii=False`
+- **重要**: 解码响应时使用 `utf-8-sig` 以处理UTF-8 BOM标记
 
 ```python
-# 正确的中文处理
-message = json.dumps(jlist, ensure_ascii=False)
+# 正确的中文处理（发送）
+message = json.dumps(data, ensure_ascii=False)
 encoded_message = message.encode('utf-8')
 
-# 解码时指定编码
-decoded_message = data.decode('utf-8')
+# 正确的解码（接收）- 使用utf-8-sig处理BOM
+decoded_message = data.decode('utf-8-sig')
+
+# 示例
+total_response = b''
+while True:
+    chunk = client.recv(4096)
+    if not chunk:
+        break
+    total_response += chunk
+
+# 使用utf-8-sig解码
+response = total_response.decode('utf-8-sig')
 ```
 
 ### 调试技巧
@@ -719,15 +541,17 @@ logging.basicConfig(
 )
 
 class DebugGrasshopperClient(GrasshopperClient):
-    def send(self, data_items):
-        logging.debug(f"发送数据: {data_items}")
-        result = super().send(data_items)
+    def send(self, name, info, value):
+        logging.debug(f"发送数据: Name={name}, Info={info}, Value={value}")
+        result = super().send(name, info, value)
         logging.debug(f"发送结果: {result}")
         return result
-    
+
     def receive(self):
         data = super().receive()
-        logging.debug(f"接收数据: {data}")
+        logging.debug(f"接收数据: {len(data)} 条消息")
+        for i, msg in enumerate(data):
+            logging.debug(f"  消息{i}: {msg['Name']}")
         return data
 ```
 
@@ -738,21 +562,21 @@ def monitor_traffic(gh: GrasshopperClient):
     """监控网络流量"""
     sent_count = 0
     received_count = 0
-    
-    def wrapped_send(data_items):
+
+    def wrapped_send(name, info, value):
         nonlocal sent_count
         sent_count += 1
-        print(f"[发送 #{sent_count}] {len(data_items)} 项")
-        return gh.send(data_items)
-    
+        print(f"[发送 #{sent_count}] Name={name}")
+        return gh.send(name, info, value)
+
     def wrapped_receive():
         nonlocal received_count
         data = gh.receive()
         if data:
             received_count += 1
-            print(f"[接收 #{received_count}] {len(data['Items'])} 项")
+            print(f"[接收 #{received_count}] {len(data)} 条消息")
         return data
-    
+
     gh.send = wrapped_send
     gh.receive = wrapped_receive
 ```

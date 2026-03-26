@@ -259,4 +259,9 @@ pManager.AddTextParameter("GUID", "G", "组件的GUID", GH_ParamAccess.item);
 pManager.AddTextParameter("Instance", "I", "组件实例的GUID", GH_ParamAccess.item);
 ```
 
+### 计划
 
+- 增加help
+
+- 再次尝试静默运行脚本。
+- 序列化xml

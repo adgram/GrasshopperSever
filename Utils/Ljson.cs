@@ -1,9 +1,10 @@
+using Grasshopper.Kernel;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Grasshopper.Kernel;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace GrasshopperSever.Utils
@@ -257,6 +258,14 @@ namespace GrasshopperSever.Utils
             }
 
             return null;
+        }
+
+        public string GetParameterString(string paramName)
+        {
+            var element = GetParameter(paramName);
+            if (!element.HasValue) return null;
+            var value = element.Value;
+            return value.ValueKind == JsonValueKind.String ? value.GetString() : value.GetRawText();
         }
 
         /// <summary>

@@ -160,6 +160,7 @@ namespace GrasshopperSever.Components
             // 设置输出
             DA.SetData(0, new TcpClientGoo(_client));
             DA.SetData(1, new LjsonGoo(_latestData));
+            DA.SetData(2, _log);
         }
 
         /// <summary>

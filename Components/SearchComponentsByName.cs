@@ -28,7 +28,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("Name", "N", "搜索关键词（模糊匹配）", GH_ParamAccess.item);
         }
@@ -36,7 +36,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddParameter(new LjsonParam(), "Components", "C", "匹配的组件信息列表 (ComponentLjson)", GH_ParamAccess.list);
         }

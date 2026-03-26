@@ -5,11 +5,146 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Data.SQLite;
 
 namespace GrasshopperSever.Commands
 {
     internal class GHScript
     {
+        #region 数据库操作
+
+        /// <summary>
+        /// 初始化 GHScript 修改记录表
+        /// </summary>
+        private static void InitializeScriptModifyTable()
+        {
+            try
+            {
+                if (!DatabaseManager.TableExists("GHScriptModifyHistory"))
+                {
+                    string createTableSql = @"
+                        CREATE TABLE GHScriptModifyHistory (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            InstanceGuid TEXT NOT NULL,
+                            ComponentGuid TEXT NOT NULL,
+                            ComponentName TEXT,
+                            ModifyType TEXT NOT NULL,
+                            ModifyContent TEXT,
+                            Description TEXT,
+                            ModifyTime DATETIME DEFAULT CURRENT_TIMESTAMP
+                        )";
+
+                    if (DatabaseManager.CreateTable("GHScriptModifyHistory", createTableSql, "存储GHScript组件修改历史"))
+                    {
+                        System.Diagnostics.Debug.WriteLine("GHScript修改记录表创建成功");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"初始化GHScript修改记录表失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 记录组件修改历史
+        /// </summary>
+        /// <param name="instanceGuid">实例GUID</param>
+        /// <param name="componentGuid">组件GUID</param>
+        /// <param name="componentName">组件名称</param>
+        /// <param name="modifyType">修改类型</param>
+        /// <param name="modifyContent">修改内容（JSON格式）</param>
+        /// <param name="description">描述</param>
+        private static void RecordModifyHistory(string instanceGuid, string componentGuid, string componentName, string modifyType, string modifyContent, string description = null)
+        {
+            try
+            {
+                InitializeScriptModifyTable();
+
+                using (var connection = DatabaseManager.GetConnection())
+                {
+                    string sql = @"
+                        INSERT INTO GHScriptModifyHistory 
+                        (InstanceGuid, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description)
+                        VALUES (@instanceGuid, @componentGuid, @componentName, @modifyType, @modifyContent, @description)";
+
+                    using (var command = new SQLiteCommand(sql, connection))
+                    {
+                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
+                        command.Parameters.AddWithValue("@componentGuid", componentGuid);
+                        command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
+                        command.Parameters.AddWithValue("@modifyType", modifyType);
+                        command.Parameters.AddWithValue("@modifyContent", modifyContent ?? string.Empty);
+                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                // 更新表时间戳
+                DatabaseManager.UpdateTableTimestamp("GHScriptModifyHistory");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"记录修改历史失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 获取组件的修改历史
+        /// </summary>
+        /// <param name="instanceGuid">实例GUID</param>
+        /// <returns>修改历史列表</returns>
+        public static List<Dictionary<string, object>> GetModifyHistory(string instanceGuid)
+        {
+            var history = new List<Dictionary<string, object>>();
+
+            try
+            {
+                InitializeScriptModifyTable();
+
+                using (var connection = DatabaseManager.GetConnection())
+                {
+                    string sql = @"
+                        SELECT Id, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description, ModifyTime
+                        FROM GHScriptModifyHistory
+                        WHERE InstanceGuid = @instanceGuid
+                        ORDER BY ModifyTime DESC
+                        LIMIT 100";
+
+                    using (var command = new SQLiteCommand(sql, connection))
+                    {
+                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                history.Add(new Dictionary<string, object>
+                                {
+                                    { "Id", reader["Id"].ToString() },
+                                    { "ComponentGuid", reader["ComponentGuid"].ToString() },
+                                    { "ComponentName", reader["ComponentName"].ToString() },
+                                    { "ModifyType", reader["ModifyType"].ToString() },
+                                    { "ModifyContent", reader["ModifyContent"].ToString() },
+                                    { "Description", reader["Description"].ToString() },
+                                    { "ModifyTime", reader["ModifyTime"].ToString() }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取修改历史失败: {ex.Message}");
+            }
+
+            return history;
+        }
+
+        #endregion
+
         /// <summary>
         /// 获取组件类型的友好名称
         /// </summary>
@@ -231,7 +366,36 @@ namespace GrasshopperSever.Commands
         }
         public static void SetCode(BaseLanguageComponent component, string code)
         {
+            // 记录修改前的代码
+            string oldCode = GetCode(component);
+
+            // 设置新代码
             component.SetSource(code);
+
+            // 记录修改历史
+            try
+            {
+                var modifyData = new Dictionary<string, object>
+                {
+                    { "OldCodeLength", oldCode.Length },
+                    { "NewCodeLength", code.Length },
+                    { "CodeChanged", oldCode != code },
+                    { "ComponentType", GetComponentTypeName(component) }
+                };
+
+                RecordModifyHistory(
+                    instanceGuid: component.InstanceGuid.ToString(),
+                    componentGuid: component.ComponentGuid.ToString(),
+                    componentName: component.Name,
+                    modifyType: "CODE_CHANGE",
+                    modifyContent: JsonSerializer.Serialize(modifyData),
+                    description: "修改脚本代码"
+                );
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"记录代码修改历史失败: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -239,33 +403,29 @@ namespace GrasshopperSever.Commands
         /// 输入格式：Ljson中包含InputParams和OutputParams（JSON格式的参数定义数组）
         /// 功能：按照参数定义匹配参数，缺少的添加，多余的删除（少加多补）
         /// </summary>
-        public static Ljson UpdateParameters(BaseLanguageComponent component, Ljson pas)
+        public static Ljson UpdateParameters(BaseLanguageComponent component, Ljson data)
         {
             try
             {
                 if (component == null)
                     return Ljson.CreateErrorLjson("目标组件无效");
 
-                if (pas == null)
+                if (data == null)
                     return Ljson.CreateErrorLjson("参数数据为空");
 
-                // 辅助方法：将 JsonElement 转换为字符串
-                string ElementToString(System.Text.Json.JsonElement? element)
-                {
-                    if (!element.HasValue) return null;
-                    var value = element.Value;
-                    return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-                }
-
                 // 1. 从Ljson中获取参数定义JSON
-                string inputParamsJson = ElementToString(pas.GetParameter("InputParams")) ?? "[]";
-                string outputParamsJson = ElementToString(pas.GetParameter("OutputParams")) ?? "[]";
+                string inputParamsJson = data.GetParameterString("InputParams") ?? "[]";
+                string outputParamsJson = data.GetParameterString("OutputParams") ?? "[]";
 
                 // 2. 解析参数定义
                 var targetInputParams = ParamExchange.DeserializeParamDefinitions(inputParamsJson);
                 var targetOutputParams = ParamExchange.DeserializeParamDefinitions(outputParamsJson);
 
-                // 3. 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
+                // 3. 记录修改前的参数信息
+                var oldInputParamsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
+                var oldOutputParamsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
+
+                // 4. 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
                 var doc = Grasshopper.Instances.ActiveCanvas?.Document;
                 if (doc == null)
                     return Ljson.CreateErrorLjson("无法获取Grasshopper文档");
@@ -278,10 +438,38 @@ namespace GrasshopperSever.Commands
                     // 处理输出端：少加多补
                     SyncParameters(component, component.Params.Output, targetOutputParams, false);
 
-                    // 4. 刷新组件外观和布局
+                    // 5. 刷新组件外观和布局
                     component.Params.OnParametersChanged();
                     component.OnAttributesChanged();
                     component.ExpireSolution(false);
+
+                    // 6. 记录修改历史
+                    try
+                    {
+                        var modifyData = new Dictionary<string, object>
+                        {
+                            { "OldInputParams", oldInputParamsJson },
+                            { "OldOutputParams", oldOutputParamsJson },
+                            { "NewInputParams", inputParamsJson },
+                            { "NewOutputParams", outputParamsJson },
+                            { "InputParamCount", targetInputParams.Count },
+                            { "OutputParamCount", targetOutputParams.Count },
+                            { "ComponentType", GetComponentTypeName(component) }
+                        };
+
+                        RecordModifyHistory(
+                            instanceGuid: component.InstanceGuid.ToString(),
+                            componentGuid: component.ComponentGuid.ToString(),
+                            componentName: component.Name,
+                            modifyType: "PARAM_CHANGE",
+                            modifyContent: JsonSerializer.Serialize(modifyData),
+                            description: "修改组件参数"
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"记录参数修改历史失败: {ex.Message}");
+                    }
                 });
 
                 var responseData = new Dictionary<string, object>

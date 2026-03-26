@@ -2,6 +2,7 @@
 using System.Linq;
 using Grasshopper.Kernel;
 using GrasshopperSever.Params;
+using System.Text.Json;
 
 namespace GrasshopperSever.Components
 {
@@ -67,15 +68,15 @@ namespace GrasshopperSever.Components
             // 查找参数值
             var jlist = jlistGoo.Value;
             // 辅助方法：将 JsonElement 转换为基本类型或字符串
-            object ElementToBasicType(System.Text.Json.JsonElement? element)
+            object ElementToBasicType(JsonElement? element)
             {
                 if (!element.HasValue) return null;
                 var _value = element.Value;
                 switch (_value.ValueKind)
                 {
-                    case System.Text.Json.JsonValueKind.String:
+                    case JsonValueKind.String:
                         return _value.GetString();
-                    case System.Text.Json.JsonValueKind.Number:
+                    case JsonValueKind.Number:
                         if (_value.TryGetInt32(out int intVal))
                             return intVal;
                         if (_value.TryGetInt64(out long longVal))
@@ -83,11 +84,11 @@ namespace GrasshopperSever.Components
                         if (_value.TryGetDouble(out double doubleVal))
                             return doubleVal;
                         return _value.GetRawText();
-                    case System.Text.Json.JsonValueKind.True:
+                    case JsonValueKind.True:
                         return true;
-                    case System.Text.Json.JsonValueKind.False:
+                    case JsonValueKind.False:
                         return false;
-                    case System.Text.Json.JsonValueKind.Null:
+                    case JsonValueKind.Null:
                         return null;
                     default:
                         // 对于对象、数组等复杂类型，转为字符串

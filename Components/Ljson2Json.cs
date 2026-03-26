@@ -25,7 +25,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "需要转换的Ljson", GH_ParamAccess.item);
         }
@@ -33,7 +33,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("String", "S", "Json格式", GH_ParamAccess.item);
         }
@@ -52,7 +52,6 @@ namespace GrasshopperSever.Components
 
             if (jlistGoo == null || !jlistGoo.IsValid)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Ljson 输入无效");
                 return;
             }
 

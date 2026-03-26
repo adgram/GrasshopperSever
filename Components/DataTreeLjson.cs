@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
@@ -15,25 +16,20 @@ namespace GrasshopperSever.Components
     public class DataTreeLjson : GH_Component
     {
         /// <summary>
-        /// Initializes a new instance of the StringTreeLjson class.
+        /// Initializes a new instance of the DataTreeLjson class.
         /// </summary>
         public DataTreeLjson()
-          : base("StringTreeLjson", "ST2Q",
+          : base("DataTreeLjson", "ST2Q",
               "将 Name, Info 和 Data Tree 构造为 Ljson。每个 branch 只能包含 1 个或 2 个元素：1 个元素转为 list，2 个元素转为 dict。",
               "Maths", "Sever")
         {
         }
-        public override GH_Exposure Exposure
-        {
-            get
-            {
-                return GH_Exposure.last;
-            }
-        }
+        public override GH_Exposure Exposure => GH_Exposure.last;
+
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("Name", "N", "Ljson 的名称", GH_ParamAccess.item);
             pManager.AddTextParameter("Info", "I", "Ljson 的说明", GH_ParamAccess.item);
@@ -43,7 +39,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "生成的Ljson", GH_ParamAccess.item);
         }
@@ -95,7 +91,7 @@ namespace GrasshopperSever.Components
                 }
 
                 // 序列化为 JsonElement
-                var jsonElement = System.Text.Json.JsonSerializer.SerializeToElement(jsonArray);
+                var jsonElement = JsonSerializer.SerializeToElement(jsonArray);
 
                 // 直接构造 Ljson
                 Ljson ljson = new Ljson(name, info, jsonElement);

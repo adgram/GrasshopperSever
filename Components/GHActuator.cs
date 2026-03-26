@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.Json;
 using Grasshopper.Kernel;
 using GrasshopperSever.Commands;
 using GrasshopperSever.Params;
@@ -103,23 +104,12 @@ namespace GrasshopperSever.Components
         {
             var h_type = LjsonTypeDetector.DetectType(lst);
 
-            // 辅助方法：将 JsonElement 转换为字符串
-            string ElementToString(System.Text.Json.JsonElement? element)
-            {
-                if (!element.HasValue) return null;
-                var value = element.Value;
-                return value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() : value.GetRawText();
-            }
-
             // 根据 Value 值判断类型（不区分大小写）
-            var output_data = ElementToString(lst.GetParameter("OUTPUT"));
+            out_data = lst.GetParameterString("OUTPUT");
             switch (h_type)
             {
                 case LjsonType.Component:
                     return ActuatorHandle.DoComponentCommand(lst);
-
-                case LjsonType.Script:
-                    break;
 
                 case LjsonType.Document:
                     return ActuatorHandle.DoDocumentCommand(lst);

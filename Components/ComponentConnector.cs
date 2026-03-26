@@ -16,32 +16,25 @@ namespace GrasshopperSever.Components
         {
         }
 
-        public override GH_Exposure Exposure
-        {
-            get
-            {
-                return GH_Exposure.secondary;
-            }
-        }
+        public override GH_Exposure Exposure => GH_Exposure.secondary;
 
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddBooleanParameter("Refresh", "R", "刷新，值改变就刷新一次", GH_ParamAccess.item, false);
             pManager.AddGenericParameter("Input", "I", "连接一个组件", GH_ParamAccess.tree);
-            pManager[1].Optional = true;
+            pManager[0].Optional = true;
         }
 
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Name", "N", "组件名字", GH_ParamAccess.list);
             pManager.AddTextParameter("GUID", "ID", "组件的GUID", GH_ParamAccess.list);
-            pManager.AddTextParameter("Instance", "Inst", "组件对象的GUID", GH_ParamAccess.list);
+            pManager.AddTextParameter("Instance", "TS", "组件对象的GUID", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -50,9 +43,6 @@ namespace GrasshopperSever.Components
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            bool refresh = true;
-            DA.GetData(0, ref refresh);
-
             // Get the connected components
             var connectedComponents = GetConnectedComponents();
 
@@ -83,7 +73,7 @@ namespace GrasshopperSever.Components
         private List<IGH_DocumentObject> GetConnectedComponents()
         {
             List<IGH_DocumentObject> connectedComponents = new List<IGH_DocumentObject>();
-            foreach (var source in Params.Input[1].Sources)
+            foreach (var source in Params.Input[0].Sources)
             {
                 IGH_DocumentObject sourceComponent = null;
 
