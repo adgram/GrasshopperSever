@@ -499,6 +499,19 @@ namespace GrasshopperSever.Commands
             }
         }
 
+        public static List<ScriptVariableParam> CreatParams(string json, bool isInput)
+        {
+            var jlists = JsonSerializer.Deserialize<List<JsonElement>>(json);
+            var pas = new List<ScriptVariableParam>();
+            // 将每个Ljson转换为IGH_Param
+            foreach (var jlist in jlists)
+            {
+                pas.Add(new ScriptParamConfig(jlist, isInput).CreateParam());
+            }
+            return pas;
+        }
+
+
         /// <summary>
         /// 处理动态修改组件输入输出端
         /// 输入格式：Ljson中包含InputParams和OutputParams（JSON格式的参数定义数组）
@@ -538,11 +551,9 @@ namespace GrasshopperSever.Commands
                 doc.ScheduleSolution(5, (d) =>
                 {
                     //// 处理输入端：少加多补
-                    //SyncParameters(component, component.Params.Input, targetInputParams, true);
+                    SyncParameters(component, component.Params.Input, CreatParams(inputParamsJson, true), true);
                     //// 处理输出端：少加多补
-                    //SyncParameters(component, component.Params.Output, targetOutputParams, false);
-                    ConfigureCustomParams(component, inputParamsJson, true);
-                    ConfigureCustomParams(component, outputParamsJson, false);
+                    SyncParameters(component, component.Params.Output, CreatParams(outputParamsJson, false), false);
                     // 5. 刷新组件外观和布局
                     component.Params.OnParametersChanged();
                     component.OnAttributesChanged();
@@ -590,7 +601,7 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 同步参数列表：少加多补
         /// </summary>
-        public static void SyncParameters(BaseLanguageComponent component, IList<IGH_Param> currentParams, List<IGH_Param> targetParams, bool isInput)
+        public static void SyncParameters(BaseLanguageComponent component, IList<IGH_Param> currentParams, List<ScriptVariableParam> targetParams, bool isInput)
         {
             var currentNames = currentParams.Select(p => p.NickName).ToList();
             var targetNames = targetParams.Select(p => p.NickName).ToList();
