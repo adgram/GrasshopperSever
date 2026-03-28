@@ -34,7 +34,8 @@ namespace GrasshopperSever.Components
         {
             pManager.AddTextParameter("Name", "N", "组件名字", GH_ParamAccess.list);
             pManager.AddTextParameter("GUID", "ID", "组件的GUID", GH_ParamAccess.list);
-            pManager.AddTextParameter("Instance", "TS", "组件对象的GUID", GH_ParamAccess.list);
+            pManager.AddTextParameter("InsGUID", "TS", "组件对象的GUID", GH_ParamAccess.list);
+            pManager.AddGenericParameter("Instance", "IT", "组件对象", GH_ParamAccess.list);
         }
 
         /// <summary>
@@ -55,19 +56,20 @@ namespace GrasshopperSever.Components
             // Extract component information
             List<string> names = new List<string>();
             List<string> ids = new List<string>();
-            List<string> ints = new List<string>();
+            List<string> istids = new List<string>();
 
             foreach (var component in connectedComponents)
             {
                 names.Add(component.Name);
                 ids.Add(component.ComponentGuid.ToString());
-                ints.Add(component.InstanceGuid.ToString());
+                istids.Add(component.InstanceGuid.ToString());
             }
 
             // Set output
             DA.SetDataList(0, names);
             DA.SetDataList(1, ids);
-            DA.SetDataList(2, ints);
+            DA.SetDataList(2, istids);
+            DA.SetDataList(3, connectedComponents);
         }
 
         private List<IGH_DocumentObject> GetConnectedComponents()

@@ -110,12 +110,13 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 **输出参数**:
 - `String` (String): JSON格式字符串
 
-#### StringTreeLjson
+#### DataTreeLjson
 
-将String Tree转换为Ljson。
+将Data Tree转换为Ljson。
 
 **输入参数**:
-- `String Tree` (GH_Structure<string>): String Tree结构
+
+- `String Tree` (GH_Structure\<string\>): String Tree结构
 
 **输出参数**:
 - `Ljson` (LjsonParam): 生成的Ljson对象
@@ -209,7 +210,6 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 **输入参数**:
 
-- `Refresh` (bool): 刷新输出
 - Input: 连接一个组件
 
 **输出参数**:

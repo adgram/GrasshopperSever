@@ -27,7 +27,7 @@
 
 **关键点**：
 - Name字段可以自定义，这里使用"ScriptEditor"
-- Value中可以自定义，但是需要手动提取，建议使用”OUTPUT“自动提取。
+- Value字段可以自定义，但值需要手动提取，建议使用”OUTPUT“自动提取。
 - Code的值是完整的GHPython3代码字符串
 - 代码中定义输出变量（如`a`），用于返回结果
 
@@ -51,6 +51,7 @@
 - 自动添加输入参数信息（INPUT_PARAMS）
 - 自动添加输出参数信息（OUTPUT_PARAMS）
 - 代码被包裹在`# GH_COMPONENT_IO_START`和`# GH_COMPONENT_IO_END`之间
+- 输入输出必须是ScriptVariableParam类型。
 
 #### 响应2: OK（连接确认）
 ```json

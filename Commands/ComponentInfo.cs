@@ -238,7 +238,7 @@ namespace GrasshopperSever.Commands
                     FROM AllComponents
                     WHERE ComponentGuid = @guid";
 
-                using (var command = new System.Data.SQLite.SQLiteCommand(sql, connection))
+                using (var command = new SQLiteCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@guid", guid);
 
@@ -461,7 +461,7 @@ namespace GrasshopperSever.Commands
         /// </summary>
         /// <param name="componentGuid">组件 GUID</param>
         /// <returns>包含 inputs 和 outputs JSON 字符串的元组</returns>
-        private static (string inputs, string outputs) GetComponentIOInfo(string componentGuid)
+        private static (Ljson inputs, Ljson outputs) GetComponentIOInfo(string componentGuid)
         {
             try
             {
@@ -520,7 +520,7 @@ namespace GrasshopperSever.Commands
                 System.Diagnostics.Debug.WriteLine($"获取组件 IO 信息失败 ({componentGuid}): {ex.Message}");
             }
 
-            return ("", "");
+            return (null, null);
         }
 
         /// <summary>
@@ -539,13 +539,13 @@ namespace GrasshopperSever.Commands
                 var (newInputs, newOutputs) = GetComponentIOInfo(componentGuid);
 
                 // 更新引用
-                if (!string.IsNullOrWhiteSpace(newInputs))
-                    inputs = newInputs;
-                if (!string.IsNullOrWhiteSpace(newOutputs))
-                    outputs = newOutputs;
+                if (newInputs != null)
+                    inputs = newInputs.ToJson();
+                if (newOutputs != null)
+                    outputs = newOutputs.ToJson();
 
                 // 如果获取到了新信息，更新数据库
-                if (!string.IsNullOrWhiteSpace(newInputs) || !string.IsNullOrWhiteSpace(newOutputs))
+                if (!string.IsNullOrWhiteSpace(inputs) || !string.IsNullOrWhiteSpace(outputs))
                 {
                     AllComponentsDB.UpdateComponentIO(componentGuid, inputs, outputs);
                 }
@@ -672,45 +672,39 @@ namespace GrasshopperSever.Commands
             }
         }
 
-
-
         /// <summary>
         /// 获取参数定义信息（不包含连线，用于组件定义）
         /// </summary>
         /// <param name="parameters">参数列表</param>
         /// <returns>参数定义信息JSON字符串</returns>
-        public static string SerializeParamDefinitions(IList<IGH_Param> parameters)
+        public static Ljson SerializeParamDefinitions(IList<IGH_Param> parameters)
         {
-            var paramLjsons = new List<Ljson>();
+            var paramLjsons = new List<JsonElement>();
             for (int i = 0; i < parameters.Count; i++)
             {
-                var p = parameters[i];
-                paramLjsons.Add(ParamToLjson(p));
+                paramLjsons.Add(ParamToLjson(parameters[i]).Value);
             }
-
-            return LjsonHelper.SerializeLjsonArray(paramLjsons);
+            return new Ljson("IList<IGH_Param>", "将IList<IGH_Param>转换为Ljson", JsonSerializer.SerializeToElement(paramLjsons));
         }
 
         /// <summary>
         /// 解析参数定义JSON字符串为IGH_Param列表
         /// 与SerializeParamDefinitions成对使用，解析LjsonHelper.SerializeLjsonArray的输出
         /// </summary>
-        public static List<IGH_Param> DeserializeParamDefinitions(string json)
+        public static List<IGH_Param> DeserializeParamDefinitions(Ljson json)
         {
             var result = new List<IGH_Param>();
 
-            if (string.IsNullOrWhiteSpace(json))
+            if (json == null || json.Name != "IList<IGH_Param>")
                 return result;
-
             try
             {
-                // 使用LjsonHelper.ParseLjsonArray解析SerializeLjsonArray的输出
-                var jlists = LjsonHelper.ParseLjsonArray(json);
+                var jlists = JsonSerializer.Deserialize<List<JsonElement>>(json.Value.GetRawText());
 
                 // 将每个Ljson转换为IGH_Param
                 foreach (var jlist in jlists)
                 {
-                    var param = ParamFromLjson(jlist);
+                    var param = ParamFromLjson(new Ljson("", "", jlist));
                     if (param != null)
                         result.Add(param);
                 }

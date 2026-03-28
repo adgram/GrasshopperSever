@@ -4,6 +4,7 @@ using GrasshopperSever.Params;
 using GrasshopperSever.Utils;
 using RhinoCodePluginGH.Components;
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 
 namespace GrasshopperSever.Components
@@ -44,8 +45,8 @@ namespace GrasshopperSever.Components
         {
             pManager.AddGenericParameter("ScriptComponent", "SC", "Rhino8 Grasshopper 的脚本组件，仅支持操作一个组件", GH_ParamAccess.tree);
             pManager.AddTextParameter("Code", "C", "脚本代码", GH_ParamAccess.item, "");
-            pManager.AddParameter(new LjsonParam(), "IntputParams", "IP", "输入端参数定义（Ljson格式）", GH_ParamAccess.item);
-            pManager.AddParameter(new LjsonParam(), "OutputParams", "OP", "输出端参数定义（Ljson格式）", GH_ParamAccess.item);
+            pManager.AddTextParameter("IntputParams", "IP", "输入端参数定义", GH_ParamAccess.item);
+            pManager.AddTextParameter("OutputParams", "OP", "输出端参数定义", GH_ParamAccess.item);
             Params.Input[2].Optional = true;
             Params.Input[3].Optional = true;
         }
@@ -59,8 +60,8 @@ namespace GrasshopperSever.Components
             pManager.AddTextParameter("ComponentType", "T", "显示组件信息", GH_ParamAccess.item);
             pManager.AddBooleanParameter("IsSDKMode", "SDK", "代码是否是SDK模式", GH_ParamAccess.item);
             pManager.AddTextParameter("SourceCode", "SC", "代码code", GH_ParamAccess.item);
-            pManager.AddParameter(new LjsonParam(), "InputParams", "IP", "当前输入端参数信息", GH_ParamAccess.item);
-            pManager.AddParameter(new LjsonParam(), "OutputParams", "OP", "当前输出端参数信息", GH_ParamAccess.item);
+            pManager.AddTextParameter("InputParams", "IP", "当前输入端参数信息", GH_ParamAccess.item);
+            pManager.AddTextParameter("OutputParams", "OP", "当前输出端参数信息", GH_ParamAccess.item);
         }
 
         /// <summary>
@@ -103,12 +104,12 @@ namespace GrasshopperSever.Components
             DA.GetData(1, ref newCode);
 
             // 获取可选的输入/输出参数定义
-            LjsonGoo inputParamsGoo = null;
-            LjsonGoo outputParamsGoo = null;
+            string inputParamsGoo = null;
+            string outputParamsGoo = null;
             DA.GetData(2, ref inputParamsGoo);
             DA.GetData(3, ref outputParamsGoo);
 
-            bool hasParamUpdate = (inputParamsGoo?.Value != null) || (outputParamsGoo?.Value != null);
+            bool hasParamUpdate = (inputParamsGoo != null) || (outputParamsGoo != null);
             bool hasCodeUpdate = !string.IsNullOrEmpty(newCode) && !_lastAppliedCode.Equals(newCode, StringComparison.Ordinal);
 
             // 检查代码中是否包含IO注释标记
@@ -130,25 +131,18 @@ namespace GrasshopperSever.Components
                 // 处理参数更新
                 if (hasParamUpdate)
                 {
-                    var paramData = new System.Collections.Generic.Dictionary<string, object>();
+                    var paramData = new Dictionary<string, object>();
 
-                    if (inputParamsGoo?.Value != null)
-                    {
-                        string inputJson = inputParamsGoo.Value.GetParameterString("InputParams");
-                        if (!string.IsNullOrEmpty(inputJson))
-                            paramData["InputParams"] = inputJson;
-                    }
-                    if (outputParamsGoo?.Value != null)
-                    {
-                        string outputJson = outputParamsGoo.Value.GetParameterString("OutputParams");
-                        if (!string.IsNullOrEmpty(outputJson))
-                            paramData["OutputParams"] = outputJson;
-                    }
+                    if (!string.IsNullOrEmpty(inputParamsGoo))
+                        paramData["InputParams"] = inputParamsGoo;
+
+                    if (!string.IsNullOrEmpty(outputParamsGoo))
+                        paramData["OutputParams"] = outputParamsGoo;
 
                     if (paramData.Count > 0)
                     {
                         var paramLjson = new Ljson("UpdateParams", "更新参数", JsonSerializer.SerializeToElement(paramData));
-                        GHScript.UpdateParameters(targetComponent, paramLjson);
+                        ScriptParamConfig.UpdateParameters(targetComponent, paramLjson);
                     }
                 }
 
@@ -259,22 +253,12 @@ namespace GrasshopperSever.Components
             DA.SetData(3, source);
 
             // Input Params - 使用 ParamExchange 获取详细参数信息
-            string inputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
-            var inputData = new System.Collections.Generic.Dictionary<string, object>
-            {
-                { "InputParams", inputsJson },
-                { "GUID", component.InstanceGuid.ToString() }
-            };
-            DA.SetData(4, new LjsonGoo(new Ljson("InputParams", "输入参数信息", JsonSerializer.SerializeToElement(inputData))));
+            string inputsJson = JsonSerializer.Serialize(ParamExchange.SerializeParamDefinitions(component.Params.Input).Value);
+            DA.SetData(4, inputsJson);
 
             // Output Params - 使用 ParamExchange 获取详细参数信息
-            string outputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
-            var outputData = new System.Collections.Generic.Dictionary<string, object>
-            {
-                { "OutputParams", outputsJson },
-                { "GUID", component.InstanceGuid.ToString() }
-            };
-            DA.SetData(5, new LjsonGoo(new Ljson("OutputParams", "输出参数信息", JsonSerializer.SerializeToElement(outputData))));
+            string outputsJson = JsonSerializer.Serialize(ParamExchange.SerializeParamDefinitions(component.Params.Output));
+            DA.SetData(5, outputsJson);
         }
 
         /// <summary>

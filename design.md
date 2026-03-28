@@ -66,13 +66,13 @@ pManager.AddTextParameter("String", "S", "将Json格式转换为Ljson", GH_Param
 pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "生成的Ljson", GH_ParamAccess.item);
 ```
 
-##### StringTreeLjson
+##### DataTreeLjson
 
 将string tree转换为Ljson。
 
 ```c#
 //输入
-pManager.AddTextParameter("String Tree", "ST", "将string tree转换为Ljson", GH_ParamAccess.tree);
+pManager.AddGParameter("Data Tree", "ST", "将string tree转换为Ljson", GH_ParamAccess.tree);
 // string tree每个branch只取前三项，非string格式转为string，项目不足则使用空值补齐。
 ```
 
@@ -248,7 +248,6 @@ pManager.AddParameter(new LjsonParam(), "ComponentInfo", "C", "组件信息", GH
 
 ```c#
 // 输入
-pManager.AddBooleanParameter("Refresh", "R", "刷新输出", GH_ParamAccess.item, false);
 // Input: 连接一个组件
 ```
 

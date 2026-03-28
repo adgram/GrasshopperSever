@@ -50,7 +50,7 @@
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Rhino.Runtime.Code">
+    <Reference Include="Rhino.Runtime.Code" Private="False">
       <HintPath>rhino_dll\Rhino.Runtime.Code.dll</HintPath>
     </Reference>
     <Reference Include="RhinoCodePlatform.GH" Private="False">
@@ -58,6 +58,12 @@
     </Reference>
     <Reference Include="RhinoCodePlatform.GH.Context" Private="False">
       <HintPath>rhino_dll\RhinoCodePlatform.GH.Context.dll</HintPath>
+    </Reference>
+    <Reference Include="RhinoCodePlatform.GH1" Private="False">
+      <HintPath>rhino_dll\RhinoCodePlatform.GH1.dll</HintPath>
+    </Reference>
+    <Reference Include="RhinoCodePlatform.Rhino3D" Private="False">
+      <HintPath>rhino_dll\RhinoCodePlatform.Rhino3D.dll</HintPath>
     </Reference>
     <Reference Include="RhinoCodePluginGH" Private="False">
       <HintPath>rhino_dll\RhinoCodePluginGH.gha</HintPath>
@@ -77,15 +83,13 @@
     </EmbeddedResource>
   </ItemGroup>
 
-  <!-- 确保 SQLite 原生库被正确复制到输出目录 -->
+  <!-- 确保 SQLite 原生库被正确复制到输出目录
   <ItemGroup>
-    <!-- SQLitePCLRaw 提供的原生库 -->
     <PackageReference Update="SQLitePCLRaw.core" PrivateAssets="all" />
     <PackageReference Update="SQLitePCLRaw.lib.e_sqlite3" PrivateAssets="all" />
     <PackageReference Update="SQLitePCLRaw.provider.e_sqlite3" PrivateAssets="all" />
-    <!-- System.Data.SQLite 提供的原生库 -->
     <PackageReference Update="System.Data.SQLite" PrivateAssets="all" />
   </ItemGroup>
-
+ -->
 
 </Project>
