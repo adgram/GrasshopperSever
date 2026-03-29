@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Data.SQLite;
+using System.Diagnostics;
 
 namespace GrasshopperSever.Commands
 {
@@ -63,10 +64,10 @@ namespace GrasshopperSever.Commands
             int totalCount = 0;
 
             // 初始化数据库表
-            AllComponentsDB.InitializeAllComponentsTable();
+            ComponentsDB.InitializeAllComponentsTable();
 
             // 性能优化：清空原表并重建，避免查询已存在 GUID 的开销
-            AllComponentsDB.ClearAllComponents();
+            ComponentsDB.ClearAllComponents();
 
             // 收集所有组件信息（批量插入优化）
             var componentsToInsert = new List<(string componentGuid, string componentName, string nickName,
@@ -131,7 +132,7 @@ namespace GrasshopperSever.Commands
             // 批量插入所有组件（性能优化：一次性插入所有组件）
             if (componentsToInsert.Count > 0)
             {
-                AllComponentsDB.BulkUpsertComponents(componentsToInsert);
+                ComponentsDB.BulkUpsertComponents(componentsToInsert);
             }
 
             // 3. outdata 结构进行封装
@@ -221,7 +222,7 @@ namespace GrasshopperSever.Commands
                 { "AllCategorys", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options) },
                 { "Count", totalCount },
                 { "AllComponents", JsonSerializer.Serialize(componentsDict, options) },
-                { "UpdateTime", AllComponentsDB.GetLastUpdateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知" }
+                { "UpdateTime", ComponentsDB.GetLastUpdateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知" }
             };
 
             return new Ljson("AllComponentsInfo", "数据库中的所有组件信息", JsonSerializer.SerializeToElement(data));
@@ -496,7 +497,7 @@ namespace GrasshopperSever.Commands
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"EmitObjectProxy 方法失败 ({componentGuid}): {ex.Message}，回退到字典缓存方案");
+                Debug.WriteLine($"EmitObjectProxy 方法失败 ({componentGuid}): {ex.Message}，回退到字典缓存方案");
             }
 
             // 方法2：回退到字典缓存方案（兼容性更好）
@@ -517,7 +518,7 @@ namespace GrasshopperSever.Commands
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取组件 IO 信息失败 ({componentGuid}): {ex.Message}");
+                Debug.WriteLine($"获取组件 IO 信息失败 ({componentGuid}): {ex.Message}");
             }
 
             return (null, null);
@@ -547,7 +548,7 @@ namespace GrasshopperSever.Commands
                 // 如果获取到了新信息，更新数据库
                 if (!string.IsNullOrWhiteSpace(inputs) || !string.IsNullOrWhiteSpace(outputs))
                 {
-                    AllComponentsDB.UpdateComponentIO(componentGuid, inputs, outputs);
+                    ComponentsDB.UpdateComponentIO(componentGuid, inputs, outputs);
                 }
             }
         }
@@ -667,7 +668,7 @@ namespace GrasshopperSever.Commands
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"从Ljson创建参数失败: {ex.Message}");
+                Debug.WriteLine($"从Ljson创建参数失败: {ex.Message}");
                 return null;
             }
         }
@@ -699,7 +700,7 @@ namespace GrasshopperSever.Commands
                 return result;
             try
             {
-                var jlists = JsonSerializer.Deserialize<List<JsonElement>>(json.Value.GetRawText());
+                var jlists = json.Value.EnumerateArray().ToList();
 
                 // 将每个Ljson转换为IGH_Param
                 foreach (var jlist in jlists)
@@ -711,7 +712,7 @@ namespace GrasshopperSever.Commands
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"解析参数定义失败: {ex.Message}");
+                Debug.WriteLine($"解析参数定义失败: {ex.Message}");
             }
 
             return result;

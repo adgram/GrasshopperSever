@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Data.SQLite;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace GrasshopperSever.Utils
 {
@@ -55,11 +56,11 @@ namespace GrasshopperSever.Utils
                     // 检查 MetaInfo 表是否存在
                     EnsureMetaInfoTableExists();
                 }
-                System.Diagnostics.Debug.WriteLine($"数据库已初始化: {DatabasePath}");
+                Debug.WriteLine($"数据库已初始化: {DatabasePath}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"数据库初始化失败: {ex.Message}");
+                Debug.WriteLine($"数据库初始化失败: {ex.Message}");
             }
         }
 
@@ -175,7 +176,7 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"创建表失败: {ex.Message}");
+                Debug.WriteLine($"创建表失败: {ex.Message}");
                 return false;
             }
         }
@@ -207,7 +208,7 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"更新表时间戳失败: {ex.Message}");
+                Debug.WriteLine($"更新表时间戳失败: {ex.Message}");
                 return false;
             }
         }
@@ -243,7 +244,7 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取表时间戳失败: {ex.Message}");
+                Debug.WriteLine($"获取表时间戳失败: {ex.Message}");
             }
             return null;
         }
@@ -278,7 +279,7 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"检查表存在失败: {ex.Message}");
+                Debug.WriteLine($"检查表存在失败: {ex.Message}");
                 return false;
             }
         }
@@ -335,7 +336,7 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"执行命令失败: {ex.Message}");
+                Debug.WriteLine($"执行命令失败: {ex.Message}");
                 return -1;
             }
         }

@@ -52,47 +52,54 @@ namespace GrasshopperSever.Components
         {
             string name = "";
             string info = "";
-            GH_Structure<IGH_Goo> dataTree = new GH_Structure<IGH_Goo>();
+            var dataTree = new GH_Structure<IGH_Goo>();
 
             if (!DA.GetData(0, ref name)) return;
             if (!DA.GetData(1, ref info)) return;
             if (!DA.GetDataTree(2, out dataTree)) return;
 
+            if(dataTree.PathCount == 1 && dataTree[0].Count == 1)
+            {
+                // 直接构造 Ljson
+                var j = JsonSerializer.Deserialize<JsonElement>(ConvertGooToBasicType(dataTree.First()).ToString());
+                Ljson ljson = new Ljson(name, info, j);
+                DA.SetData(0, ljson);
+                return;
+            }
+
             try
             {
                 // 将 Data Tree 转换为 Json 数组
                 var jsonArray = new List<object>();
+                var jsonDict = new Dictionary<string, object>();
 
                 foreach (GH_Path path in dataTree.Paths)
                 {
                     var branchList = dataTree[path];
-                    var branchArray = branchList.Select(item => DataTreeLjson.ConvertGooToBasicType(item)).ToList();
 
                     // 检查 branch 的元素数量
-                    if (branchArray.Count == 1)
+                    if (branchList.Count == 1)
                     {
                         // 1 个元素，直接存入
-                        jsonArray.Add(branchArray[0]);
-                    }
-                    else if (branchArray.Count == 2)
-                    {
-                        // 2 个元素，转为 dict (key-value)
-                        var dict = new Dictionary<string, object>
-                        {
-                            { branchArray[0].ToString(), branchArray[1] }
-                        };
-                        jsonArray.Add(dict);
+                        jsonArray.Add(ConvertGooToBasicType(branchList[0]));
                     }
                     else
                     {
-                        // 其他情况报错
-                        throw new ArgumentException($"Branch {path} 包含 {branchArray.Count} 个元素，只能包含 1 个或 2 个元素");
+                        // 2 个元素，转为 dict (key-value)
+                        jsonDict.Add(ConvertGooToBasicType(branchList[0]).ToString(),
+                                ConvertGooToBasicType(branchList[1]));
                     }
                 }
-
                 // 序列化为 JsonElement
-                var jsonElement = JsonSerializer.SerializeToElement(jsonArray);
-
+                var jsonElement = new JsonElement();
+                if (jsonDict.Count > 0)
+                {
+                    jsonElement = JsonSerializer.SerializeToElement(jsonDict);
+                }
+                else if (jsonArray.Count > 0)
+                {
+                    jsonElement = JsonSerializer.SerializeToElement(jsonArray);
+                }
                 // 直接构造 Ljson
                 Ljson ljson = new Ljson(name, info, jsonElement);
 
@@ -122,6 +129,8 @@ namespace GrasshopperSever.Components
                 return ghInteger.Value;
             if (goo is GH_Number ghNumber)
                 return ghNumber.Value;
+            if (goo is LjsonGoo ljson)
+                return ljson.Value;
 
             // 对于其他类型，尝试转为字符串
             try

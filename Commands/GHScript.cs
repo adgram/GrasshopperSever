@@ -4,7 +4,7 @@ using RhinoCodePluginGH.Components;
 using RhinoCodePluginGH.Parameters;
 using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 
@@ -12,142 +12,8 @@ namespace GrasshopperSever.Commands
 {
     internal class GHScript
     {
-        #region 数据库操作
-
         /// <summary>
-        /// 初始化 GHScript 修改记录表
-        /// </summary>
-        private static void InitializeScriptModifyTable()
-        {
-            try
-            {
-                if (!DatabaseManager.TableExists("GHScriptModifyHistory"))
-                {
-                    string createTableSql = @"
-                        CREATE TABLE GHScriptModifyHistory (
-                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            InstanceGuid TEXT NOT NULL,
-                            ComponentGuid TEXT NOT NULL,
-                            ComponentName TEXT,
-                            ModifyType TEXT NOT NULL,
-                            ModifyContent TEXT,
-                            Description TEXT,
-                            ModifyTime DATETIME DEFAULT CURRENT_TIMESTAMP
-                        )";
-
-                    if (DatabaseManager.CreateTable("GHScriptModifyHistory", createTableSql, "存储GHScript组件修改历史"))
-                    {
-                        System.Diagnostics.Debug.WriteLine("GHScript修改记录表创建成功");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"初始化GHScript修改记录表失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 记录组件修改历史
-        /// </summary>
-        /// <param name="instanceGuid">实例GUID</param>
-        /// <param name="componentGuid">组件GUID</param>
-        /// <param name="componentName">组件名称</param>
-        /// <param name="modifyType">修改类型</param>
-        /// <param name="modifyContent">修改内容（JSON格式）</param>
-        /// <param name="description">描述</param>
-        public static void RecordModifyHistory(string instanceGuid, string componentGuid, string componentName, string modifyType, string modifyContent, string description = null)
-        {
-            try
-            {
-                InitializeScriptModifyTable();
-
-                using (var connection = DatabaseManager.GetConnection())
-                {
-                    string sql = @"
-                        INSERT INTO GHScriptModifyHistory 
-                        (InstanceGuid, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description)
-                        VALUES (@instanceGuid, @componentGuid, @componentName, @modifyType, @modifyContent, @description)";
-
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
-                        command.Parameters.AddWithValue("@componentGuid", componentGuid);
-                        command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
-                        command.Parameters.AddWithValue("@modifyType", modifyType);
-                        command.Parameters.AddWithValue("@modifyContent", modifyContent ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
-
-                        command.ExecuteNonQuery();
-                    }
-                }
-
-                // 更新表时间戳
-                DatabaseManager.UpdateTableTimestamp("GHScriptModifyHistory");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"记录修改历史失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 获取组件的修改历史
-        /// </summary>
-        /// <param name="instanceGuid">实例GUID</param>
-        /// <returns>修改历史列表</returns>
-        public static List<Dictionary<string, object>> GetModifyHistory(string instanceGuid)
-        {
-            var history = new List<Dictionary<string, object>>();
-
-            try
-            {
-                InitializeScriptModifyTable();
-
-                using (var connection = DatabaseManager.GetConnection())
-                {
-                    string sql = @"
-                        SELECT Id, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description, ModifyTime
-                        FROM GHScriptModifyHistory
-                        WHERE InstanceGuid = @instanceGuid
-                        ORDER BY ModifyTime DESC
-                        LIMIT 100";
-
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
-
-                        using (var reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                history.Add(new Dictionary<string, object>
-                                {
-                                    { "Id", reader["Id"].ToString() },
-                                    { "ComponentGuid", reader["ComponentGuid"].ToString() },
-                                    { "ComponentName", reader["ComponentName"].ToString() },
-                                    { "ModifyType", reader["ModifyType"].ToString() },
-                                    { "ModifyContent", reader["ModifyContent"].ToString() },
-                                    { "Description", reader["Description"].ToString() },
-                                    { "ModifyTime", reader["ModifyTime"].ToString() }
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"获取修改历史失败: {ex.Message}");
-            }
-
-            return history;
-        }
-
-        #endregion
-
-        /// <summary>
-        /// 获取组件类型的友好名称
+        /// 获取组件类型的名称
         /// </summary>
         public static string GetComponentTypeName(BaseLanguageComponent component)
         {
@@ -172,6 +38,10 @@ namespace GrasshopperSever.Commands
             return $"Script ({typeName})";
         }
 
+        /// <summary>
+        /// 从脚本里获取对端口的标注，同步到组件
+        /// </summary>
+        /// <param name="component"></param>
         public static void SetParametersFromScript(BaseLanguageComponent component)
         {
             //component.SetParametersFromScript();// 这个在c#起作用，但是这个不可控
@@ -181,6 +51,10 @@ namespace GrasshopperSever.Commands
             ScriptParamConfig.UpdateParameters(component, pas);
         }
 
+        /// <summary>
+        /// 获取端口信息，并填入脚本
+        /// </summary>
+        /// <param name="component"></param>
         public static void SetParametersToScript(BaseLanguageComponent component)
         {
             //component.SetParametersToScript();// 这个在c#起作用，但是这个不可控
@@ -310,7 +184,11 @@ namespace GrasshopperSever.Commands
                 return null;
             }
         }
-
+        /// <summary>
+        /// 从组件获取端口信息
+        /// </summary>
+        /// <param name="component"></param>
+        /// <returns></returns>
         public static Ljson GetParametersFromComponent(BaseLanguageComponent component)
         {
             if (component == null)
@@ -336,6 +214,11 @@ namespace GrasshopperSever.Commands
             return new Ljson("GetParametersFromComponent", "从组件提取参数", JsonSerializer.SerializeToElement(data));
         }
 
+        /// <summary>
+        /// 获取脚本
+        /// </summary>
+        /// <param name="component"></param>
+        /// <returns></returns>
         public static string GetCode(BaseLanguageComponent component)
         {
             try
@@ -348,6 +231,11 @@ namespace GrasshopperSever.Commands
             }
         }
 
+        /// <summary>
+        /// 设置脚本
+        /// </summary>
+        /// <param name="component"></param>
+        /// <param name="code"></param>
         public static void SetCode(BaseLanguageComponent component, string code)
         {
             // 记录修改前的代码
@@ -367,7 +255,7 @@ namespace GrasshopperSever.Commands
                     { "ComponentType", GetComponentTypeName(component) }
                 };
 
-                RecordModifyHistory(
+                GHScriptDB.RecordModifyHistory(
                     instanceGuid: component.InstanceGuid.ToString(),
                     componentGuid: component.ComponentGuid.ToString(),
                     componentName: component.Name,
@@ -378,7 +266,7 @@ namespace GrasshopperSever.Commands
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"记录代码修改历史失败: {ex.Message}");
+                Debug.WriteLine($"记录代码修改历史失败: {ex.Message}");
             }
         }
 
@@ -398,6 +286,13 @@ namespace GrasshopperSever.Commands
         public bool Simplify { get; set; } = false;
         public GH_DataMapping DataMapping { get; set; } = GH_DataMapping.None;
 
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="access"></param>
+        /// <param name="isInput"></param>
+        /// <param name="optional"></param>
         public ScriptParamConfig(string name, GH_ParamAccess access = GH_ParamAccess.item, bool isInput = false, bool optional = false)
         {
             Name = name;
@@ -437,6 +332,13 @@ namespace GrasshopperSever.Commands
             var newParam = new ScriptVariableParam(Name);
             newParam.Access = Access;
             newParam.Optional = Optional;
+            newParam.Description = Description;
+            newParam.Reverse = Reverse;
+            newParam.Simplify = Simplify;
+            newParam.DataMapping = DataMapping;
+            //string source = "";
+            //component.TryGetSource(out source);
+            //newParam.UpdateConverter(new Grasshopper1Script(source).LanguageSpec, ParamType paramType);
             return newParam;
         }
 
@@ -455,9 +357,6 @@ namespace GrasshopperSever.Commands
                 return; // 已存在，无需创建
             }
             var newParam = CreateParam();
-            //string source = "";
-            //component.TryGetSource(out source);
-            //newParam.UpdateConverter(new Grasshopper1Script(source).LanguageSpec, ParamType paramType);
             // 注册参数
             if (IsInput)
             {
@@ -470,33 +369,19 @@ namespace GrasshopperSever.Commands
 
             component.Params.OnParametersChanged();
         }
+
+        /// <summary>
+        /// 确保内部组件包含指定的参数（输入或输出）
+        /// </summary>
+        /// <param name="component"></param>
+        /// <param name="name"></param>
+        /// <param name="access"></param>
+        /// <param name="isInput"></param>
+        /// <param name="optional"></param>
         public static void EnsureParameter(BaseLanguageComponent component, string name, GH_ParamAccess access = GH_ParamAccess.item, bool isInput = false, bool optional = false)
         {
             var config = new ScriptParamConfig(name, access, isInput, optional);
             config.EnsureComponentParameter(component);
-        }
-
-        /// <summary>
-        /// 配置自定义参数
-        /// </summary>
-        public static void ConfigureCustomParams(BaseLanguageComponent component, ScriptParamConfig[] customParams)
-        {
-            if (customParams == null || customParams.Length == 0)
-                return;
-
-            foreach (var paramConfig in customParams)
-            {
-                paramConfig.EnsureComponentParameter(component);
-            }
-        }
-        public static void ConfigureCustomParams(BaseLanguageComponent component, string json, bool isInput)
-        {
-            var jlists = JsonSerializer.Deserialize<List<JsonElement>>(json);
-            // 将每个Ljson转换为IGH_Param
-            foreach (var jlist in jlists)
-            {
-                new ScriptParamConfig(jlist, isInput).EnsureComponentParameter(component);
-            }
         }
 
         public static List<ScriptVariableParam> CreatParams(string json, bool isInput)
@@ -571,7 +456,7 @@ namespace GrasshopperSever.Commands
                             { "ComponentType", GHScript.GetComponentTypeName(component) }
                         };
 
-                        GHScript.RecordModifyHistory(
+                        GHScriptDB.RecordModifyHistory(
                             instanceGuid: component.InstanceGuid.ToString(),
                             componentGuid: component.ComponentGuid.ToString(),
                             componentName: component.Name,
@@ -582,7 +467,7 @@ namespace GrasshopperSever.Commands
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"记录参数修改历史失败: {ex.Message}");
+                        Debug.WriteLine($"记录参数修改历史失败: {ex.Message}");
                     }
                 });
 

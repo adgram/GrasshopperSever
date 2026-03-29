@@ -1,5 +1,7 @@
 ﻿using Grasshopper.Kernel.Types;
 using GrasshopperSever.Utils;
+using Rhino.Runtime.Code.Languages;
+using Rhino.Runtime.Code.Storage;
 using System;
 
 namespace GrasshopperSever.Params
@@ -11,29 +13,11 @@ namespace GrasshopperSever.Params
     {
         /// <summary>
         /// </summary>
-        public override bool IsValid
-        {
-            get
-            {
-                return this.Value != null;
-            }
-        }
+        public override bool IsValid => this.Value != null;
 
-        public override string TypeName
-        {
-            get
-            {
-                return "Ljson";
-            }
-        }
+        public override string TypeName => "Ljson";
 
-        public override string TypeDescription
-        {
-            get
-            {
-                return "由`(DateTime time, string name，string description，JsonElement value)`组成的数据";
-            }
-        }
+        public override string TypeDescription => "由`(DateTime time, string name，string description，JsonElement value)`组成的数据";
 
         public LjsonGoo()
         {
@@ -43,6 +27,11 @@ namespace GrasshopperSever.Params
         public LjsonGoo(Ljson obj)
         {
             this.Value = obj;
+        }
+
+        public LjsonGoo(GH_String obj)
+        {
+            this.Value = new Ljson(obj.Value);
         }
 
         public override IGH_Goo Duplicate()
@@ -59,8 +48,9 @@ namespace GrasshopperSever.Params
             return this.Value.ToString();
         }
 
+
         /// <summary>
-        /// 尝试从其他类型转换为LjsonGoo
+        /// 尝试从其他类型转换为JListGoo
         /// 支持从string（JSON格式）自动转换
         /// </summary>
         /// <param name="source">源对象</param>
@@ -87,15 +77,28 @@ namespace GrasshopperSever.Params
                     return false;
                 }
             }
+            if (source is GH_String ghjson)
+            {
+                try
+                {
+                    this.Value = new Ljson(ghjson.Value);
+                    return true;
+                }
+                catch (Exception)
+                {
+                    // JSON解析失败，无法转换
+                    return false;
+                }
+            }
 
-            // 尝试从Ljson转换
+            // 尝试从JList转换
             if (source is Ljson lst)
             {
                 this.Value = lst;
                 return true;
             }
 
-            // 尝试从另一个LjsonGoo转换
+            // 尝试从另一个JListGoo转换
             if (source is LjsonGoo goo)
             {
                 this.Value = goo.Value;

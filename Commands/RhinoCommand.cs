@@ -1,95 +1,14 @@
 ﻿using GrasshopperSever.Utils;
+using Rhino;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
-using System.Data.SQLite;
 
 namespace GrasshopperSever.Commands
 {
     internal class RhinoCommand
     {
-        /// <summary>
-        /// 初始化对象信息表
-        /// </summary>
-        private static void InitializeObjectTable()
-        {
-            try
-            {
-                if (!DatabaseManager.TableExists("RhinoObjects"))
-                {
-                    string createTableSql = @"
-                        CREATE TABLE RhinoObjects (
-                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            ObjectId TEXT NOT NULL,
-                            ObjectType TEXT,
-                            LayerName TEXT,
-                            ObjectName TEXT,
-                            CreateTime DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            DocumentSerialNumber TEXT,
-                            Description TEXT
-                        )";
-
-                    if (DatabaseManager.CreateTable("RhinoObjects", createTableSql, "存储Rhino对象信息"))
-                    {
-                        System.Diagnostics.Debug.WriteLine("对象表创建成功");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"初始化对象表失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 插入对象记录
-        /// </summary>
-        /// <param name="objectId">对象ID</param>
-        /// <param name="objectType">对象类型</param>
-        /// <param name="layerName">图层名称</param>
-        /// <param name="objectName">对象名称</param>
-        /// <param name="documentSerialNumber">文档序列号</param>
-        /// <param name="description">描述</param>
-        /// <returns>插入的记录ID，失败返回-1</returns>
-        private static long InsertObjectRecord(string objectId, string objectType = null, string layerName = null, string objectName = null, string documentSerialNumber = null, string description = null)
-        {
-            try
-            {
-                using (var connection = DatabaseManager.GetConnection())
-                {
-                    string sql = @"
-                        INSERT INTO RhinoObjects (ObjectId, ObjectType, LayerName, ObjectName, DocumentSerialNumber, Description)
-                        VALUES (@objectId, @objectType, @layerName, @objectName, @documentSerialNumber, @description)";
-
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@objectId", objectId);
-                        command.Parameters.AddWithValue("@objectType", objectType ?? string.Empty);
-                        command.Parameters.AddWithValue("@layerName", layerName ?? string.Empty);
-                        command.Parameters.AddWithValue("@objectName", objectName ?? string.Empty);
-                        command.Parameters.AddWithValue("@documentSerialNumber", documentSerialNumber ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
-
-                        command.ExecuteNonQuery();
-
-                        // 获取插入的记录ID
-                        command.CommandText = "SELECT last_insert_rowid()";
-                        long insertedId = (long)command.ExecuteScalar();
-
-                        // 更新表时间戳
-                        DatabaseManager.UpdateTableTimestamp("RhinoObjects");
-
-                        return insertedId;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"插入对象记录失败: {ex.Message}");
-                return -1;
-            }
-        }
-
         /// <summary>
         /// 处理运行Rhino脚本命令
         /// </summary>
@@ -97,11 +16,11 @@ namespace GrasshopperSever.Commands
         {
             // 重要：RhinoApp.RunScript 必须在主文档上下文执行
             // 如果是从非命令线程调用，请确保在 Rhino 的 Idle 句柄或主线程中调度
-            var doc = Rhino.RhinoDoc.ActiveDoc;
+            var doc = RhinoDoc.ActiveDoc;
 
             // 执行Rhino命令 (true 表示 echo，让命令出现在命令行历史中)
             // 注意：script 前面建议加一个下划线 _ 以确保在非英文版 Rhino 中也能运行
-            bool result = Rhino.RhinoApp.RunScript(doc.RuntimeSerialNumber, script, true);
+            bool result = RhinoApp.RunScript(doc.RuntimeSerialNumber, script, true);
 
             var responseData = new Dictionary<string, object>
             {
@@ -125,13 +44,13 @@ namespace GrasshopperSever.Commands
         public static Ljson GetLastCreatedObjects()
         {
             // 确保对象表已初始化
-            InitializeObjectTable();
+            RhinoObjectDB.InitializeObjectTable();
 
-            var doc = Rhino.RhinoDoc.ActiveDoc;
+            var doc = RhinoDoc.ActiveDoc;
 
             // 技巧：如果你的 RunScript 刚运行完，可以使用以下逻辑获取：
             doc.Objects.UnselectAll();
-            Rhino.RhinoApp.RunScript(doc.RuntimeSerialNumber, "_SelLast", false);
+            RhinoApp.RunScript(doc.RuntimeSerialNumber, "_SelLast", false);
             var selectedObjects = doc.Objects.GetSelectedObjects(false, false);
 
             if (selectedObjects != null)
@@ -148,7 +67,7 @@ namespace GrasshopperSever.Commands
                     string objectName = obj.Attributes.Name;
 
                     // 将对象信息存入数据库
-                    long recordId = InsertObjectRecord(
+                    long recordId = RhinoObjectDB.InsertObjectRecord(
                         objectId: obj.Id.ToString(),
                         objectType: objectType,
                         layerName: layerName,
@@ -184,7 +103,7 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                var doc = Rhino.RhinoDoc.ActiveDoc;
+                var doc = RhinoDoc.ActiveDoc;
                 if (doc == null)
                 {
                     return Ljson.CreateErrorLjson("未找到活动文档");
@@ -293,7 +212,7 @@ namespace GrasshopperSever.Commands
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"转换 SelectObjects 格式失败: {ex.Message}");
+                Debug.WriteLine($"转换 SelectObjects 格式失败: {ex.Message}");
                 return null;
             }
         }

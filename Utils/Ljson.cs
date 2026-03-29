@@ -1,10 +1,10 @@
 using Grasshopper.Kernel;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 
 namespace GrasshopperSever.Utils
@@ -35,7 +35,9 @@ namespace GrasshopperSever.Utils
         /// </summary>
         public JsonElement Value { get; set; }
         
-        // 跟踪对象的释放状态
+        /// <summary>
+        /// 跟踪对象的释放状态
+        /// </summary>
         private bool _disposed = false;
 
         /// <summary>
@@ -142,26 +144,40 @@ namespace GrasshopperSever.Utils
             {
                 var root = doc.RootElement;
 
-                // 读取 Name
-                Name = root.TryGetProperty("Name", out var nameElement) ? nameElement.GetString() : null;
+                // 检查 Name 和 Value 的存在性
+                bool hasName = root.TryGetProperty("Name", out var nameElement);
+                bool hasValue = root.TryGetProperty("Value", out var valueElement);
 
-                // 读取 Info
-                Info = root.TryGetProperty("Info", out var infoElement) ? infoElement.GetString() : null;
-
-                // 读取 Time
-                if (root.TryGetProperty("Time", out var timeElement))
+                // 情况1: Name 和 Value 都存在
+                if (hasName && hasValue)
                 {
-                    Time = timeElement.GetDateTime();
+                    Name = nameElement.GetString();
+                    Info = root.TryGetProperty("Info", out var infoElement) ? infoElement.GetString() : null;
+
+                    // 读取 Time
+                    if (root.TryGetProperty("Time", out var timeElement))
+                    {
+                        Time = timeElement.GetDateTime();
+                    }
+                    else
+                    {
+                        Time = DateTime.Now;
+                    }
+
+                    Value = valueElement.Clone();
                 }
+                // 情况2: Name 和 Value 都不存在 - 整体作为 JsonElement 赋值给 value
+                else if (!hasName && !hasValue)
+                {
+                    Name = null;
+                    Info = null;
+                    Time = DateTime.Now;
+                    Value = root.Clone();
+                }
+                // 情况3: Name 和 Value 中只有一个存在 - 报错
                 else
                 {
-                    Time = DateTime.Now;
-                }
-
-                // 读取 Value - 直接克隆 JsonElement
-                if (root.TryGetProperty("Value", out var valueElement))
-                {
-                    Value = valueElement.Clone();
+                    throw new ArgumentException("JSON格式错误：Name 和 Value 必须同时存在或同时不存在", nameof(json));
                 }
             }
         }
@@ -259,7 +275,11 @@ namespace GrasshopperSever.Utils
 
             return null;
         }
-
+        /// <summary>
+        /// 从Value中获取指定参数的值
+        /// </summary>
+        /// <param name="paramName">参数名称</param>
+        /// <returns>参数值（string），如果不存在则返回null</returns>
         public string GetParameterString(string paramName)
         {
             var element = GetParameter(paramName);
@@ -432,17 +452,6 @@ namespace GrasshopperSever.Utils
         }
 
         /// <summary>
-        /// 创建成功响应Ljson
-        /// </summary>
-        /// <param name="message">成功信息</param>
-        /// <returns>成功Ljson</returns>
-        public static Ljson CreateSuccessLjson()
-        {
-            return new Ljson("Success", "操作成功", 
-                JsonSerializer.SerializeToElement(new Dictionary<string, string>()));
-        }
-
-        /// <summary>
         /// 创建组件信息Ljson
         /// </summary>
         public static Ljson ComponentLjson(string componentGuid, string instanceGuid,
@@ -577,7 +586,7 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ParseLjsonArray失败: {ex.Message}");
+                Debug.WriteLine($"ParseLjsonArray失败: {ex.Message}");
             }
 
             return result;

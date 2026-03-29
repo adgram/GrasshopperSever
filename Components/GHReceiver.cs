@@ -69,7 +69,7 @@ namespace GrasshopperSever.Components
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddParameter(new TcpClientParam(), "Client", "CL", "客户端连接，可传递给GHActuator用于发送响应", GH_ParamAccess.item);
-            pManager.AddParameter(new LjsonParam(), "Json", "JS", "接收到的Ljson数据", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "LJson", "LJ", "接收到的Ljson数据", GH_ParamAccess.item);
             pManager.AddTextParameter("Status", "ST", "状态", GH_ParamAccess.item);
         }
 

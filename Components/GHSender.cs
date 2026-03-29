@@ -35,7 +35,7 @@ namespace GrasshopperSever.Components
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddParameter(new TcpClientParam(), "Client", "CL", "从GHServer接收的TcpClient连接", GH_ParamAccess.item);
-            pManager.AddParameter(new LjsonParam(), "Json", "JS", "要发送的Ljson数据", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "LJson", "LJ", "要发送的Ljson数据", GH_ParamAccess.item);
         }
 
         /// <summary>

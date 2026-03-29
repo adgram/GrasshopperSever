@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Diagnostics;
 
 namespace GrasshopperSever.Utils
 {
-    internal class AllComponentsDB
+    internal class ComponentsDB
     {
         /// <summary>
         /// 初始化 AllComponents 表
@@ -290,7 +291,7 @@ namespace GrasshopperSever.Utils
                     {
                         // 回滚事务
                         transaction.Rollback();
-                        System.Diagnostics.Debug.WriteLine($"批量插入组件失败: {ex.Message}");
+                        Debug.WriteLine($"批量插入组件失败: {ex.Message}");
                         return -1;
                     }
                 }

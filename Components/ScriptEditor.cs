@@ -1,6 +1,5 @@
 ﻿using Grasshopper.Kernel;
 using GrasshopperSever.Commands;
-using GrasshopperSever.Params;
 using GrasshopperSever.Utils;
 using RhinoCodePluginGH.Components;
 using System;

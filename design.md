@@ -5,11 +5,6 @@
 统一的数据结构，表示单个数据项，包含名称、说明、时间和值。
 
 ```c#
-public Ljson()
-{
-    Time = DateTime.Now;           // 每个数据创建时自动生成，用于检查数据是否被使用过
-}
-
 public Ljson(string name, string info, JsonElement value)
 {
     Name = name;                   // 数据名称
