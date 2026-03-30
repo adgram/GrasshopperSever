@@ -42,13 +42,13 @@ namespace GrasshopperSever.Commands
         /// 从脚本里获取对端口的标注，同步到组件
         /// </summary>
         /// <param name="component"></param>
-        public static void SetParametersFromScript(BaseLanguageComponent component)
+        public static string SetParametersFromScript(BaseLanguageComponent component, string code)
         {
             //component.SetParametersFromScript();// 这个在c#起作用，但是这个不可控
-            var pas = GetParametersFromScript(GetCode(component));
+            var (ipas, opas) = GetParametersFromScript(code);
             // 假设这里[]表示无参数，"null"表示未设置。只要获取成功，说明已经设置了。
-            if (pas == null) return;
-            ScriptParamConfig.UpdateParameters(component, pas);
+            if (ipas == null && opas == null) return null;
+            return ScriptParamConfig.UpdateParameters(component, ipas, opas);
         }
 
         /// <summary>
@@ -139,11 +139,11 @@ namespace GrasshopperSever.Commands
                 System.Text.RegularExpressions.RegexOptions.Singleline);
         }
 
-        public static Ljson GetParametersFromScript(string code)
+        public static (List<JsonElement>, List<JsonElement>) GetParametersFromScript(string code)
         {
             if (string.IsNullOrEmpty(code))
             {
-                return null;
+                return (null, null);
             }
 
             // 尝试从代码中的特殊注释标记提取输入输出信息
@@ -153,35 +153,25 @@ namespace GrasshopperSever.Commands
                 // 首先尝试匹配C#格式的注释
                 string csharpPattern = @"// GH_COMPONENT_IO_START\s*// INPUT_PARAMS: (.*?)\s*// OUTPUT_PARAMS: (.*?)\s*// GH_COMPONENT_IO_END";
                 var match = System.Text.RegularExpressions.Regex.Match(code, csharpPattern, System.Text.RegularExpressions.RegexOptions.Singleline);
-                string commentType = "C#";
 
                 // 如果没有匹配到C#格式，尝试Python格式
                 if (!match.Success)
                 {
                     string pythonPattern = @"# GH_COMPONENT_IO_START\s*# INPUT_PARAMS: (.*?)\s*# OUTPUT_PARAMS: (.*?)\s*# GH_COMPONENT_IO_END";
                     match = System.Text.RegularExpressions.Regex.Match(code, pythonPattern, System.Text.RegularExpressions.RegexOptions.Singleline);
-                    commentType = "Python";
                 }
 
-                Dictionary<string, object> data;
                 if (match.Success)
                 {
-                    string inputParams = match.Groups[1].Value.Trim();
-                    string outputParams = match.Groups[2].Value.Trim();
-
-                    data = new Dictionary<string, object>
-                    {
-                        { "InputParams", inputParams},
-                        { "OutputParams", outputParams},
-                        { "Source", $"从{commentType}代码注释中提取" }
-                    };
-                    return new Ljson("GetParametersFromScript", "从脚本提取参数", JsonSerializer.SerializeToElement(data));
+                    List<JsonElement> inputParams = JsonSerializer.Deserialize<List<JsonElement>>(match.Groups[1].Value.Trim());
+                    List<JsonElement> outputParams = JsonSerializer.Deserialize<List<JsonElement>>(match.Groups[2].Value.Trim());
+                    return (inputParams, outputParams);
                 }
-                return null;
+                return (null, null);
             }
             catch (Exception)
             {
-                return null;
+                return (null, null);
             }
         }
         /// <summary>
@@ -300,6 +290,7 @@ namespace GrasshopperSever.Commands
             IsInput = isInput;
             Optional = optional;
         }
+
         public ScriptParamConfig(JsonElement data, bool isInput = false)
         {
             Name = GetParameterString(data, "Name");
@@ -318,14 +309,16 @@ namespace GrasshopperSever.Commands
             if (Enum.TryParse(GetParameterString(data, "Mapping"), true, out GH_DataMapping map))
                 DataMapping = map;
         }
+
         private static string GetParameterString(JsonElement data, string paramName)
         {
             if (data.TryGetProperty(paramName, out var valueElement))
             {
-                return JsonSerializer.Serialize(valueElement);
+                return valueElement.ToString(); 
             }
             return "";
         }
+
         public ScriptVariableParam CreateParam()
         {
             // 创建新的 ScriptVariableParam
@@ -384,12 +377,11 @@ namespace GrasshopperSever.Commands
             config.EnsureComponentParameter(component);
         }
 
-        public static List<ScriptVariableParam> CreatParams(string json, bool isInput)
+        public static List<ScriptVariableParam> CreatParams(List<JsonElement> json, bool isInput)
         {
-            var jlists = JsonSerializer.Deserialize<List<JsonElement>>(json);
             var pas = new List<ScriptVariableParam>();
             // 将每个Ljson转换为IGH_Param
-            foreach (var jlist in jlists)
+            foreach (var jlist in json)
             {
                 pas.Add(new ScriptParamConfig(jlist, isInput).CreateParam());
             }
@@ -403,42 +395,48 @@ namespace GrasshopperSever.Commands
         /// 假设这里[]表示无参数，"null"表示未设置。只要获取成功，说明已经设置了。
         /// 功能：按照参数定义匹配参数，缺少的添加，多余的删除（少加多补）
         /// </summary>
-        public static Ljson UpdateParameters(BaseLanguageComponent component, Ljson data)
+        public static string UpdateParameters(BaseLanguageComponent component, List<JsonElement> inputParams, List<JsonElement> outputParams)
         {
+            string log = "UpdateParameters" + Environment.NewLine;
             try
             {
                 if (component == null)
-                    return Ljson.CreateErrorLjson("目标组件无效");
-
-                if (data == null)
-                    return Ljson.CreateErrorLjson("参数数据为空");
-
-                // 假设这里[]表示无参数，"null"表示未设置。
-                // 1. 从Ljson中获取参数定义JSON
-                string inputParamsJson = data.GetParameterString("InputParams");
-                string outputParamsJson = data.GetParameterString("OutputParams");
-                if (string.IsNullOrEmpty(inputParamsJson) || string.IsNullOrEmpty(outputParamsJson))
                 {
-                    return Ljson.CreateErrorLjson("代码不存在有效端口信息");
+                    log += "目标组件无效" + Environment.NewLine;
+                    return log;
                 }
-                // 2. 解析参数定义
-                //var targetInputParams = ParamExchange.DeserializeParamDefinitions(new Ljson("IList<IGH_Param>", "", JsonSerializer.Deserialize<JsonElement>(inputParamsJson)));
-                //var targetOutputParams = ParamExchange.DeserializeParamDefinitions(new Ljson("IList<IGH_Param>", "", JsonSerializer.Deserialize<JsonElement>(outputParamsJson)));
-                // 3. 记录修改前的参数信息
-                var oldInputParamsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input).Value;
-                var oldOutputParamsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output).Value;
 
-                // 4. 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
+                if (inputParams == null && outputParams == null)
+                {
+                    log += "参数数据为空" + Environment.NewLine;
+                    return log;
+                }
+
+                // 记录修改前的参数信息
+                var oldInputParams = ParamExchange.SerializeParamDefinitions(component.Params.Input).Value;
+                var oldOutputParams = ParamExchange.SerializeParamDefinitions(component.Params.Output).Value;
+
+                log += "oldInputParams==" + oldInputParams + Environment.NewLine;
+                log += "oldOutputParams==" + oldOutputParams + Environment.NewLine;
+                log += "inputParams==" + JsonSerializer.Serialize(inputParams) + Environment.NewLine;
+                log += "outputParams==" + JsonSerializer.Serialize(outputParams) + Environment.NewLine;
+
+                // 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
                 var doc = Grasshopper.Instances.ActiveCanvas?.Document;
                 if (doc == null)
-                    return Ljson.CreateErrorLjson("无法获取Grasshopper文档");
+                {
+                    log += "无法获取Grasshopper文档" + Environment.NewLine;
+                    return log;
+                }
 
                 doc.ScheduleSolution(5, (d) =>
                 {
-                    //// 处理输入端：少加多补
-                    SyncParameters(component, component.Params.Input, CreatParams(inputParamsJson, true), true);
-                    //// 处理输出端：少加多补
-                    SyncParameters(component, component.Params.Output, CreatParams(outputParamsJson, false), false);
+                    // 处理输入端：少加多补
+                    if(inputParams != null)
+                        SyncParameters(component, component.Params.Input, CreatParams(inputParams, true), true);
+                    // 处理输出端：少加多补
+                    if (outputParams != null)
+                        SyncParameters(component, component.Params.Output, CreatParams(outputParams, false), false);
                     // 5. 刷新组件外观和布局
                     component.Params.OnParametersChanged();
                     component.OnAttributesChanged();
@@ -449,10 +447,10 @@ namespace GrasshopperSever.Commands
                     {
                         var modifyData = new Dictionary<string, object>
                         {
-                            { "OldInputParams", JsonSerializer.Serialize(oldInputParamsJson) },
-                            { "OldOutputParams", JsonSerializer.Serialize(oldOutputParamsJson) },
-                            { "NewInputParams", inputParamsJson },
-                            { "NewOutputParams", outputParamsJson },
+                            { "OldInputParams", JsonSerializer.Serialize(oldInputParams) },
+                            { "OldOutputParams", JsonSerializer.Serialize(oldOutputParams) },
+                            { "NewInputParams", JsonSerializer.Serialize(inputParams) },
+                            { "NewOutputParams", JsonSerializer.Serialize(outputParams) },
                             { "ComponentType", GHScript.GetComponentTypeName(component) }
                         };
 
@@ -467,20 +465,16 @@ namespace GrasshopperSever.Commands
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"记录参数修改历史失败: {ex.Message}");
+                        log += "记录参数修改历史失败" + ex.Message + Environment.NewLine;
                     }
                 });
-
-                var responseData = new Dictionary<string, object>
-                {
-                    { "Status", "参数同步指令已发送至调度器" }
-                };
-
-                return new Ljson("UpdateParameters", "更新组件参数", JsonSerializer.SerializeToElement(responseData));
+                log += "参数同步指令已发送至调度器" + Environment.NewLine;
+                return log;
             }
             catch (Exception ex)
             {
-                return Ljson.CreateErrorLjson($"修改组件参数失败: {ex.Message}");
+                log += "修改组件参数失败" + ex.Message + Environment.NewLine;
+                return log;
             }
         }
         /// <summary>

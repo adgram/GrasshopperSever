@@ -2,31 +2,12 @@
 
 本教程指导AI客户端如何通过TCP协议连接到GrasshopperSever插件，实现与Grasshopper的双向通信。
 
-## ⚠️ 重要更新说明（2026-03-26）
-
-根据实际测试结果，本教程已进行以下重要修正：
-
-1. **数据格式**: 必须使用单个LJSON对象格式，**不要使用批量格式（Items数组）**
-2. **命令格式**: 发送命令时，Name字段应为命令类型（COMPONENT/DOCUMENT/RHINO等），Value.Command为具体命令名称
-3. **响应处理**: 服务器可能返回多条消息，需要正确处理UTF-8 BOM标记
-4. **解码方式**: 接收数据时使用 `utf-8-sig` 编码以处理BOM
-
-**正确的数据格式**:
-```json
-{
-  "Name": "DOCUMENT",      // 命令类型
-  "Info": "获取数据库路径",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "DATABASEPATH"  // 具体命令
-  }
-}
-```
-
 ## 目录
 
 - [服务概述](#服务概述)
 - [通信协议](#通信协议)
+- [命令列表](#命令列表)
+- [数据库说明](#数据库说明)
 - [快速开始](#快速开始)
 - [Python客户端示例](#python客户端示例)
 - [高级功能](#高级功能)
@@ -70,6 +51,21 @@ GrasshopperSever提供TCP服务，允许外部客户端（如AI程序）与Grass
 - 发送命令时，Name字段应为命令类型（COMPONENT/DOCUMENT/RHINO等）
 - Value.Command字段存放具体命令名称
 
+**OUTPUT 特殊键**：
+- 当 Value 字段中包含 `OUTPUT` 键时，其值会在 GHServer 的 Output 端口输出
+- 这是用于向 GHServer 的输出端口发送数据的特殊机制
+- 示例：
+```json
+{
+  "Name": "TestMessage",
+  "Info": "测试消息",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "OUTPUT": "要在输出端口显示的数据"
+  }
+}
+```
+
 ### 通信流程
 
 #### 推送模式（GHReceiver + GHSender）
@@ -97,6 +93,441 @@ AI客户端                    Grasshopper
     |<----- 返回结果Ljson ------|  返回执行结果
     |                            |
 ```
+
+## 命令列表
+
+GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rhino。
+
+### 命令格式
+
+所有命令使用统一的LJSON格式：
+
+```json
+{
+  "Name": "命令类型",
+  "Info": "命令描述",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "具体命令名称",
+    "参数名": "参数值"
+  }
+}
+```
+
+**Name字段（命令类型）**：
+- `COMPONENT` - 组件相关命令
+- `DOCUMENT` - 文档相关命令
+- `RHINO` - Rhino相关命令
+- `SCRIPT` - 脚本相关命令
+- `DESIGN` - 设计相关命令
+
+### Component命令（5个）
+
+#### GETALLCOMPONENTS
+获取所有组件信息
+
+**请求**：
+```json
+{
+  "Name": "COMPONENT",
+  "Info": "获取所有组件",
+  "Value": {
+    "Command": "GETALLCOMPONENTS"
+  }
+}
+```
+
+#### FINDCOMPONENTBYGUID
+通过GUID查找组件
+
+**请求**：
+```json
+{
+  "Name": "COMPONENT",
+  "Info": "通过GUID查找组件",
+  "Value": {
+    "Command": "FINDCOMPONENTBYGUID",
+    "Guid": "组件的GUID字符串"
+  }
+}
+```
+
+#### FINDCOMPONENTBYNAME
+通过名称查找组件
+
+**请求**：
+```json
+{
+  "Name": "COMPONENT",
+  "Info": "通过名称查找组件",
+  "Value": {
+    "Command": "FINDCOMPONENTBYNAME",
+    "Name": "组件名称"
+  }
+}
+```
+
+#### FINDCOMPONENTBYCATEGORY
+通过分类查找组件
+
+**请求**：
+```json
+{
+  "Name": "COMPONENT",
+  "Info": "通过分类查找组件",
+  "Value": {
+    "Command": "FINDCOMPONENTBYCATEGORY",
+    "Category": "主分类（可选）",
+    "SubCategory": "子分类（可选）",
+    "Name": "组件名称（可选）"
+  }
+}
+```
+
+**说明**：至少需要提供Category、SubCategory或Name中的一个参数
+
+#### SEARCHCOMPONENTSBYNAME
+通过名称搜索组件（模糊搜索）
+
+**请求**：
+```json
+{
+  "Name": "COMPONENT",
+  "Info": "搜索组件",
+  "Value": {
+    "Command": "SEARCHCOMPONENTSBYNAME",
+    "Name": "搜索关键词"
+  }
+}
+```
+
+### Document命令（3个）
+
+#### SAVEDOCUMENT
+保存当前文档
+
+**请求**：
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "保存文档",
+  "Value": {
+    "Command": "SAVEDOCUMENT",
+    "FilePath": "文件路径（可选）"
+  }
+}
+```
+
+**注意**：如果文档未保存过，必须提供FilePath参数
+
+#### LOADDOCUMENT
+加载文档
+
+**请求**：
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "加载文档",
+  "Value": {
+    "Command": "LOADDOCUMENT",
+    "FilePath": "文件路径（必需）"
+  }
+}
+```
+
+#### DATABASEPATH
+获取数据库路径
+
+**请求**：
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "获取数据库路径",
+  "Value": {
+    "Command": "DATABASEPATH"
+  }
+}
+```
+
+**响应示例**：
+```json
+{
+  "Name": "DatabasePath",
+  "Info": "获取数据库路径",
+  "Value": {
+    "DatabasePath": "C:\\Users\\[用户名]\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\GrasshopperSever.db"
+  }
+}
+```
+
+### Rhino命令（4个）
+
+#### RUNSCRIPT
+运行Rhino脚本
+
+**请求**：
+```json
+{
+  "Name": "RHINO",
+  "Info": "执行Rhino脚本",
+  "Value": {
+    "Command": "RUNSCRIPT",
+    "Script": "_-Line 0,0,0 10,10,0"
+  }
+}
+```
+
+**响应示例**：
+```json
+{
+  "Name": "RunScript",
+  "Info": "执行Rhino脚本成功",
+  "Value": {
+    "Result": "True",
+    "Script": "_-Line 0,0,0 10,10,0"
+  }
+}
+```
+
+#### GETLASTCREATEDOBJECTS
+获取最后创建的对象
+
+**请求**：
+```json
+{
+  "Name": "RHINO",
+  "Info": "获取最后创建的对象",
+  "Value": {
+    "Command": "GETLASTCREATEDOBJECTS"
+  }
+}
+```
+
+**响应示例**：
+```json
+{
+  "Name": "GetLastCreatedObjects",
+  "Info": "获取最后创建的对象",
+  "Value": {
+    "Object_0": {
+      "Id": "{guid}",
+      "Guid": "{guid}",
+      "Type": "Curve",
+      "Layer": "Default",
+      "Name": "",
+      "DatabaseRecordId": "1"
+    },
+    "Count": "1"
+  }
+}
+```
+
+#### SELECTOBJECTS
+选择对象
+
+**请求**：
+```json
+{
+  "Name": "RHINO",
+  "Info": "选择对象",
+  "Value": {
+    "Command": "SELECTOBJECTS",
+    "Objects": "guid1,guid2,guid3"
+  }
+}
+```
+
+**参数说明**：Objects字段支持逗号、分号或空格分隔的多个对象ID
+
+**响应示例**：
+```json
+{
+  "Name": "SelectObjects",
+  "Info": "选择对象",
+  "Value": {
+    "TotalRequested": "3",
+    "TotalSelected": "2",
+    "InvalidIdCount": "0",
+    "NotFoundCount": "1",
+    "Message": "部分对象选择成功（成功: 2, 无效ID: 0, 未找到: 1）"
+  }
+}
+```
+
+#### GETANDSELECTLASTOBJECTS
+获取并选择最后创建的对象（复合命令）
+
+**请求**：
+```json
+{
+  "Name": "RHINO",
+  "Info": "获取并选择最后创建的对象",
+  "Value": {
+    "Command": "GETANDSELECTLASTOBJECTS"
+  }
+}
+```
+
+**响应示例**：
+```json
+{
+  "Name": "GetAndSelectLastObjects",
+  "Info": "获取并选择最后创建的对象",
+  "Value": {
+    "Objects": {
+      "Object_0": {
+        "Id": "{guid}",
+        "Guid": "{guid}",
+        "Type": "Curve",
+        "Layer": "Default",
+        "Name": "",
+        "DatabaseRecordId": "1"
+      },
+      "Count": "1"
+    },
+    "Selection": {
+      "TotalRequested": "1",
+      "TotalSelected": "1",
+      "InvalidIdCount": "0",
+      "NotFoundCount": "0"
+    }
+  }
+}
+```
+
+## 数据库说明
+
+GrasshopperSever使用SQLite数据库存储组件信息和对象信息。
+
+### 数据库位置
+
+**路径**：`C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
+
+**获取方式**：使用`DATABASEPATH`命令获取具体路径
+
+### 数据库表结构
+
+#### 1. MetaInfo表（元信息表）
+
+用于跟踪数据库表的更新时间和描述信息。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| TableName | TEXT | NOT NULL UNIQUE | 表名 |
+| LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
+| Description | TEXT | - | 表描述 |
+
+**示例查询**：
+```sql
+-- 查看所有表及其最后更新时间
+SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
+```
+
+#### 2. AllComponents表（组件信息表）
+
+存储所有Grasshopper组件的详细信息。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| ComponentGuid | TEXT | NOT NULL UNIQUE | 组件的GUID（唯一标识） |
+| ComponentName | TEXT | NOT NULL | 组件名称 |
+| NickName | TEXT | - | 组件昵称 |
+| Description | TEXT | - | 组件描述 |
+| Category | TEXT | NOT NULL | 主分类 |
+| SubCategory | TEXT | NOT NULL | 子分类 |
+| Inputs | TEXT | DEFAULT '' | 输入参数定义（JSON格式） |
+| Outputs | TEXT | DEFAULT '' | 输出参数定义（JSON格式） |
+
+**示例查询**：
+```sql
+-- 查询所有组件
+SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM AllComponents;
+
+-- 按分类查询组件
+SELECT ComponentName, NickName, Description FROM AllComponents WHERE Category = 'Curve';
+
+-- 模糊搜索组件
+SELECT ComponentName, NickName, Description FROM AllComponents WHERE ComponentName LIKE '%Circle%';
+
+-- 统计组件数量
+SELECT Category, COUNT(*) as Count FROM AllComponents GROUP BY Category;
+```
+
+#### 3. RhinoObjects表（Rhino对象信息表）
+
+存储Rhino中创建的对象信息。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| ObjectId | TEXT | NOT NULL | 对象ID（GUID字符串） |
+| ObjectType | TEXT | - | 对象类型（如：Curve, Surface, Mesh等） |
+| LayerName | TEXT | - | 图层名称 |
+| ObjectName | TEXT | - | 对象名称 |
+| CreateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| DocumentSerialNumber | TEXT | - | 文档序列号 |
+| Description | TEXT | - | 描述信息 |
+
+**示例查询**：
+```sql
+-- 查询所有对象
+SELECT ObjectId, ObjectType, LayerName, ObjectName, CreateTime FROM RhinoObjects;
+
+-- 按类型查询对象
+SELECT ObjectId, LayerName FROM RhinoObjects WHERE ObjectType = 'Curve';
+
+-- 查询最近创建的对象
+SELECT * FROM RhinoObjects ORDER BY CreateTime DESC LIMIT 10;
+
+-- 按图层统计对象数量
+SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
+```
+
+#### 4. GHScriptModifyHistory表（GHScript组件修改历史表）
+
+存储GHScript组件的修改历史记录。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| InstanceGuid | TEXT | NOT NULL | 组件实例GUID |
+| ComponentGuid | TEXT | NOT NULL | 组件类型GUID |
+| ComponentName | TEXT | - | 组件名称 |
+| ModifyType | TEXT | NOT NULL | 修改类型（CODE_CHANGE或PARAM_CHANGE） |
+| ModifyContent | TEXT | - | 修改内容（JSON格式） |
+| Description | TEXT | - | 描述信息 |
+| ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 修改时间 |
+
+**示例查询**：
+```sql
+-- 查询所有修改历史
+SELECT * FROM GHScriptModifyHistory ORDER BY ModifyTime DESC;
+
+-- 查询特定实例的修改历史
+SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER BY ModifyTime DESC;
+
+-- 查询代码修改历史
+SELECT * FROM GHScriptModifyHistory WHERE ModifyType = 'CODE_CHANGE' ORDER BY ModifyTime DESC;
+```
+
+### 数据库使用建议
+
+**只读操作**：
+- ✅ 可以安全地读取数据库中的数据
+- ✅ 可以使用SQL查询组件信息和对象信息
+- ✅ 可以统计数据用于分析
+
+**写操作**：
+- ⚠️ 不建议手动写入数据
+- ⚠️ 数据库会在插件运行时自动更新
+- ⚠️ 手动修改可能影响插件功能
+
+**注意事项**：
+- 数据库是暂存文件，不会和Grasshopper文件同步
+- RhinoObjects表在第一次调用`GETLASTCREATEDOBJECTS`命令时自动创建
+- GHScriptModifyHistory表在第一次修改GHScript组件时自动创建
 
 ## 快速开始
 

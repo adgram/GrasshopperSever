@@ -30,7 +30,7 @@ namespace GrasshopperSever.Commands
 
             if (result)
             {
-                return new Ljson("RunScript", "执行Rhino脚本成功", JsonSerializer.SerializeToElement(responseData));
+                return new Ljson("RhinoCommand", "执行Rhino脚本成功", JsonSerializer.SerializeToElement(responseData));
             }
             else
             {

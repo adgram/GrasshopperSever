@@ -33,7 +33,7 @@ namespace GrasshopperSever.Components
         {
             pManager.AddTextParameter("Name", "N", "Ljson 的名称", GH_ParamAccess.item);
             pManager.AddTextParameter("Info", "I", "Ljson 的说明", GH_ParamAccess.item);
-            pManager.AddGenericParameter("Data Tree", "DT", "Data Tree 数据。每个 branch 只能包含 1 个或 2 个元素：1 个元素转为 list，2 个元素转为 dict (key-value)。基本类型直接存储，非基本类型转为字符串", GH_ParamAccess.tree);
+            pManager.AddGenericParameter("Data Tree", "DT", "Data Tree 数据。", GH_ParamAccess.tree);
         }
 
         /// <summary>

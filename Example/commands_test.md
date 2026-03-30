@@ -542,7 +542,7 @@ SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER
 
 ```json
 {
-  "Name": "RunScript",
+  "Name": "RhinoCommand",
   "Info": "执行Rhino脚本成功",
   "Value": {
     "Result": "True",

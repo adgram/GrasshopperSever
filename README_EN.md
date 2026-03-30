@@ -41,6 +41,95 @@ A unified data structure used to represent a single data item, containing name, 
 - `SerializeLjsonArray`: Serialize Ljson array to JSON string
 - `ParseLjsonArray`: Deserialize JSON string to Ljson array
 
+## TCP Communication Commands
+
+GrasshopperSever supports sending various commands via TCP protocol to control Grasshopper and Rhino.
+
+### Command Format
+
+All commands use unified LJSON format:
+
+```json
+{
+  "Name": "Command Type",
+  "Info": "Command Description",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "Specific Command Name",
+    "Parameter Name": "Parameter Value"
+  }
+}
+```
+
+**Name Field (Command Types)**:
+- `COMPONENT` - Component-related commands
+- `DOCUMENT` - Document-related commands
+- `RHINO` - Rhino-related commands
+
+### Component Commands
+
+#### GETALLCOMPONENTS
+Get all component information
+
+#### FINDCOMPONENTBYGUID
+Find component by GUID
+
+#### FINDCOMPONENTBYNAME
+Find component by name
+
+#### FINDCOMPONENTBYCATEGORY
+Find component by category
+
+#### SEARCHCOMPONENTSBYNAME
+Search components by name (fuzzy search)
+
+### Document Commands
+
+#### SAVEDOCUMENT
+Save current document
+
+#### LOADDOCUMENT
+Load document
+
+#### DATABASEPATH
+Get database path
+
+### Rhino Commands
+
+#### RUNSCRIPT
+Run Rhino script (e.g., `_-Line 0,0,0 10,10,0`)
+
+#### GETLASTCREATEDOBJECTS
+Get last created objects
+
+#### SELECTOBJECTS
+Select objects
+
+#### GETANDSELECTLASTOBJECTS
+Get and select last created objects (composite command)
+
+### OUTPUT Special Key
+
+When the Value field contains the `OUTPUT` key, its value will be output on the GHServer's Output port:
+
+```json
+{
+  "Name": "TestMessage",
+  "Info": "Test Message",
+  "Value": {
+    "OUTPUT": "Data to display on output port"
+  }
+}
+```
+
+### Data Communication Features
+
+- **TCP Long Connection Support**: Send multiple messages continuously
+- **Automatic Data Echo**: Server echoes received data
+- **UTF-8 BOM Marker**: Response contains UTF-8 BOM, decode with `utf-8-sig`
+- **Complete JSON Support**: Supports all JSON data types and nested structures
+- **Unicode Support**: Full support for Chinese and special characters
+
 ## Components Description
 
 ### Data Communication Components
@@ -56,6 +145,7 @@ Creates a TCP connection based on port and receives data. Each port accepts only
 **Output Parameters**:
 - `Client` (TcpClientParam): Client connection object
 - `Ljson` (LjsonParam): Incoming data
+- `Status` (String): Status
 
 **Features**:
 - Receives data in background thread
@@ -71,7 +161,7 @@ Sends data using TCP connection, supports batch sending.
 - `Ljson` (LjsonParam): Data to send, sent in order
 
 **Output Parameters**:
-- `Result` (String): Execution result, used for displaying errors or reports
+- `Status` (String): Sending status
 
 **Features**:
 - Only triggers sending when Ljson.time is updated
@@ -86,7 +176,8 @@ Creates a TCP server based on port and receives data, executes internally and re
 - `Port` (Integer): Listening port, default is 6879
 
 **Output Parameters**:
-- `Result` (String): Execution result, used for displaying errors or reports
+- `Status` (String): Response status
+- `OutPut` (Generic): Display output data
 
 ### Data Conversion Components
 
@@ -110,20 +201,29 @@ Converts Ljson to JSON format.
 **Output Parameters**:
 - `String` (String): JSON format string
 
-#### StringTreeLjson
+#### DataTreeLjson
 
-Converts String Tree to Ljson.
+Constructs Ljson from Name, Info, and Data Tree. Each branch can only contain 1 or 2 elements: 1 element converts to list, 2 elements convert to dict.
 
 **Input Parameters**:
-- `String Tree` (GH_Structure<string>): String Tree structure
+- `Name` (String): Ljson name
+- `Info` (String): Ljson description
+- `Data Tree` (Data Tree): Data Tree data
 
 **Output Parameters**:
 - `Ljson` (LjsonParam): Generated Ljson object
 
-**Features**:
-- Takes only the first three items from each branch
-- Converts non-string formats to string
-- Fills missing items with empty values
+#### FindJdata
+
+Finds Jdata value by name.
+
+**Input Parameters**:
+- `Ljson` (LjsonParam): Ljson object to search
+- `Name` (String): Key value to find
+
+**Output Parameters**:
+- `Data` (Generic): Found value (primitive type or string)
+- `DataList` (List): Found value list (primitive type or string)
 
 ### Information Query Components
 
@@ -208,13 +308,23 @@ Searches components by name, supports fuzzy matching.
 Retrieves information about the connected component via its input port.
 
 **Input Parameters**:
-- `Refresh` (bool): Refresh output
-- Input: Connect a component
+- `Input` (Generic): Connect a component
 
 **Output Parameters**:
-- `Name` (string): Component name
-- `GUID` (string): Component GUID
-- `Instance` (string): Component instance GUID
+- `Name` (String): Component name
+- `GUID` (String): Component GUID
+- `InsGUID` (String): Component object GUID
+- `Instance` (Generic): Component object
+
+#### SearchDataBase
+
+Queries database.
+
+**Input Parameters**:
+- `SQL` (String): Complete SQL query statement
+
+**Output Parameters**:
+- `Result` (String): Query result, returned in JSON format
 
 ### Execution Components
 
@@ -226,22 +336,60 @@ Executes input data.
 - `Ljson` (LjsonParam): Data to execute
 
 **Output Parameters**:
-- `Result` (String): Execution result, used for displaying errors or reports
+- `Status` (String): Execution result
+- `Result` (LjsonParam): Processed Ljson result
+- `OutPut` (Generic): Display output data
 
 #### ScriptEditor
 
 Modifies a Script component via input code, supports C# and Python.
 
 **Input Parameters**:
-- `ScriptComponent`: Connect a script component
-- `Code` (String): Code to be added to the script
+- `ScriptComponent` (Generic): Rhino8 Grasshopper script component, supports only one component
+- `Code` (String): Script code
+- `IntputParams` (String): Input parameter definitions
+- `OutputParams` (String): Output parameter definitions
 
 **Output Parameters**:
-- `Result` (String): Execution result, used for displaying errors or reports
+- `Result` (String): Display runtime information
+- `ComponentType` (String): Display component information
+- `IsSDKMode` (Boolean): Whether code is SDK mode
+- `SourceCode` (String): Code
+- `InputParams` (String): Current input parameter information
+- `OutputParams` (String): Current output parameter information
+
+![scripteditor_test](Example/scripteditor_test.png)
+
+![scripteditor_test](Example/scripteditor_test2.png)
+
+#### RunScript
+
+Runs C# script internally. This component is reserved for AI to execute scripts directly.
+
+**Input Parameters**:
+- `Code` (String): Script
+
+**Output Parameters**:
+- `Ljson` (LjsonParam): Data output
+- `Out` (String): Debug output
+
+#### CommandRhino
+
+Executes Rhino script.
+
+**Input Parameters**:
+- `Ljson` (LjsonParam): Rhino command Ljson data to execute, must contain Command field
+
+**Output Parameters**:
+- `Result` (LjsonParam): Ljson result after execution
 
 ## Database Features
 
 The plugin uses SQLite database to store metadata. The database file is located in the plugin directory (`GrasshopperSever.db`).
+
+**Database Path**: `C:\Users\[Username]\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
+
+**Get Path**: Use `DATABASEPATH` command to get specific path
 
 ### DatabaseManager
 
@@ -257,10 +405,63 @@ Provides the following features:
 
 Used to track table update times, contains the following fields:
 
-- `Id`: Primary key
-- `TableName`: Table name
-- `LastUpdateTime`: Last update time
-- `Description`: Table description
+| Field Name | Data Type | Constraint | Description |
+|------------|-----------|------------|-------------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
+| TableName | TEXT | NOT NULL UNIQUE | Table name |
+| LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Last update time |
+| Description | TEXT | - | Table description |
+
+### AllComponents Table
+
+Stores detailed information for all Grasshopper components.
+
+| Field Name | Data Type | Constraint | Description |
+|------------|-----------|------------|-------------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
+| ComponentGuid | TEXT | NOT NULL UNIQUE | Component GUID (unique identifier) |
+| ComponentName | TEXT | NOT NULL | Component name |
+| NickName | TEXT | - | Component nickname |
+| Description | TEXT | - | Component description |
+| Category | TEXT | NOT NULL | Main category |
+| SubCategory | TEXT | NOT NULL | Sub-category |
+| Inputs | TEXT | DEFAULT '' | Input parameter definitions (JSON format) |
+| Outputs | TEXT | DEFAULT '' | Output parameter definitions (JSON format) |
+
+### RhinoObjects Table
+
+Stores information about objects created in Rhino.
+
+| Field Name | Data Type | Constraint | Description |
+|------------|-----------|------------|-------------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
+| ObjectId | TEXT | NOT NULL | Object ID (GUID string) |
+| ObjectType | TEXT | - | Object type (e.g., Curve, Surface, Mesh, etc.) |
+| LayerName | TEXT | - | Layer name |
+| ObjectName | TEXT | - | Object name |
+| CreateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Creation time |
+| DocumentSerialNumber | TEXT | - | Document serial number |
+| Description | TEXT | - | Description |
+
+### GHScriptModifyHistory Table
+
+Stores modification history records for GHScript components.
+
+| Field Name | Data Type | Constraint | Description |
+|------------|-----------|------------|-------------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
+| InstanceGuid | TEXT | NOT NULL | Component instance GUID |
+| ComponentGuid | TEXT | NOT NULL | Component type GUID |
+| ComponentName | TEXT | - | Component name |
+| ModifyType | TEXT | NOT NULL | Modification type (CODE_CHANGE or PARAM_CHANGE) |
+| ModifyContent | TEXT | - | Modification content (JSON format) |
+| Description | TEXT | - | Description |
+| ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Modification time |
+
+**Notes**:
+- Database is a temporary file, does not sync with Grasshopper files
+- Read-only operations are recommended, manual write operations are not advised
+- Can use SQL queries for component information and object information
 
 ## Parameter Types
 

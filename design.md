@@ -1,4 +1,4 @@
-### 算法
+### 组件开发列表
 
 ##### Ljson
 
@@ -15,11 +15,70 @@ public Ljson(string name, string info, JsonElement value)
 ```
 
 **特性**:
+
 - 支持JSON序列化和反序列化
 - 支持深度克隆
 - 实现IDisposable接口
 - 支持参数的获取、搜索和设置（支持对象和数组格式）
 - 提供静态方法创建常用类型的Ljson（错误、成功、组件信息等）
+
+```c#
+
+/// <summary>
+/// 创建组件信息Ljson
+/// </summary>
+public static Ljson ComponentLjson(string componentGuid, string instanceGuid,
+                                   string name, string nickName, string description,
+                                   string category, string subCategory, string position,
+                                   string state, string inputs, string outputs)
+{
+    var data = new Dictionary<string, JsonElement>
+    {
+        { "ComponentGuid", JsonSerializer.SerializeToElement(componentGuid) },
+        { "InstanceGuid", JsonSerializer.SerializeToElement(instanceGuid) },
+        { "ComponentName", JsonSerializer.SerializeToElement(name) },
+        { "NickName", JsonSerializer.SerializeToElement(nickName) },
+        { "Description", JsonSerializer.SerializeToElement(description) },
+        { "Category", JsonSerializer.SerializeToElement(category) },
+        { "SubCategory", JsonSerializer.SerializeToElement(subCategory) },
+        { "Position", JsonSerializer.SerializeToElement(position) },
+        { "State", JsonSerializer.SerializeToElement(state) },
+        { "Inputs", JsonSerializer.SerializeToElement(inputs) },
+        { "Outputs", JsonSerializer.SerializeToElement(outputs) }
+    };
+
+    return new Ljson("Component", "组件信息", JsonSerializer.SerializeToElement(data));
+}
+
+/// <summary>
+/// 创建组件Param信息Ljson
+/// </summary>
+public static Ljson ParamLjson(string paramGuid, string instanceGuid,
+                               string name, string nickName, string description,
+                               string typeName, bool optional, GH_ParamAccess access,
+                               GH_DataMapping mapping, bool reverse, bool simplify,
+                               string inputs, string outputs)
+{
+    var data = new Dictionary<string, object>
+    {
+        { "ParamGuid", paramGuid },
+        { "InstanceGuid", instanceGuid },
+        { "Name", name },
+        { "NickName", nickName },
+        { "Description", description },
+        { "TypeName", typeName },
+        { "Optional", optional },
+        { "Access", access.ToString() },
+        { "Mapping", mapping.ToString() },
+        { "Reverse", reverse },
+        { "Simplify", simplify },
+        { "Inputs", inputs },
+        { "Outputs", outputs }
+    };
+
+    return new Ljson("Param", "参数信息", JsonSerializer.SerializeToElement(data));
+}
+```
 
 ##### LjsonHelper
 
@@ -32,12 +91,6 @@ public static string SerializeLjsonArray(List<Ljson> ljsons)
 // 从JSON字符串反序列化为Ljson数组
 public static List<Ljson> ParseLjsonArray(string json)
 ```
-
-##### ComponentLjson
-
-表示组件的基本信息
-
-
 
 ### 基本数据与通信
 
@@ -63,12 +116,13 @@ pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "生成的Ljson", GH_Para
 
 ##### DataTreeLjson
 
-将string tree转换为Ljson。
+将 Name, Info 和 Data Tree 构造为 Ljson。每个 branch 只能包含 1 个或 2 个元素：1 个元素转为 list，2 个元素转为 dict。
 
 ```c#
 //输入
-pManager.AddGParameter("Data Tree", "ST", "将string tree转换为Ljson", GH_ParamAccess.tree);
-// string tree每个branch只取前三项，非string格式转为string，项目不足则使用空值补齐。
+pManager.AddTextParameter("Name", "N", "Ljson 的名称", GH_ParamAccess.item);
+pManager.AddTextParameter("Info", "I", "Ljson 的说明", GH_ParamAccess.item);
+pManager.AddGenericParameter("Data Tree", "DT", "Data Tree 数据。", GH_ParamAccess.tree);
 ```
 
 ```c#
@@ -90,6 +144,22 @@ pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "需要转换的Ljson", G
 pManager.AddTextParameter("String", "S", "Json格式", GH_ParamAccess.item);
 ```
 
+##### FindJdata
+
+通过名称查找Jdata的值。
+
+```c#
+//输入
+pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "需要转换的Ljson", GH_ParamAccess.item);
+pManager.AddTextParameter("Name", "N", "需要查找的键值", GH_ParamAccess.item);
+```
+
+```c#
+// 输出
+pManager.AddGenericParameter("Data", "D", "找到的值（基本类型或字符串）", GH_ParamAccess.item);
+pManager.AddGenericParameter("DataList", "DL", "找到的值列表（基本类型或字符串）", GH_ParamAccess.list);
+```
+
 ##### TcpClientParam
 
 一个`System.Net.Sockets.TcpClient`连接，用于接收和传输数据。该对象由GHReceiver根据端口唯一创建。
@@ -103,13 +173,14 @@ pManager.AddTextParameter("String", "S", "Json格式", GH_ParamAccess.item);
 ```c#
 // 输入
 pManager.AddBooleanParameter("Enabled", "E", "是否启用服务器", GH_ParamAccess.item, false);
-pManager.AddIntegerParameter("Port", "P", "监听的端口", GH_ParamAccess.item, 6879);
+pManager.AddIntegerParameter("Port", "P", "监听的端口（1024-49151）", GH_ParamAccess.item, 6879);
 ```
 
 ```c#
 // 输出
 pManager.AddParameter(new TcpClientParam(), "Client", "CL", "Client连接", GH_ParamAccess.item);
 pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "传入的数据", GH_ParamAccess.item);
+pManager.AddTextParameter("Status", "ST", "状态", GH_ParamAccess.item);
 ```
 
 ##### GHSender
@@ -124,7 +195,7 @@ pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "发送数据，按顺序
 
 ```c#
 // 输出
-pManager.AddTextParameter("Result", "RS", "执行结果，用于显示报错或者报告", GH_ParamAccess.item);
+pManager.AddTextParameter("Status", "ST", "发送状态", GH_ParamAccess.item);
 ```
 
 ##### GHServer
@@ -134,12 +205,13 @@ pManager.AddTextParameter("Result", "RS", "执行结果，用于显示报错或�
 ```c#
 // 输入
 pManager.AddBooleanParameter("Enabled", "E", "是否启用服务器", GH_ParamAccess.item, false);
-pManager.AddIntegerParameter("Port", "P", "监听的端口", GH_ParamAccess.item, 6879);
+pManager.AddIntegerParameter("Port", "P", "监听的端口（1024-49151）", GH_ParamAccess.item, 6879);
 ```
 
 ```c#
 // 输出
-pManager.AddTextParameter("Result", "RS", "执行结果，用于显示报错或者报告", GH_ParamAccess.item);
+pManager.AddTextParameter("Status", "ST", "回复状态", GH_ParamAccess.item);
+pManager.AddGenericParameter("OutPut", "O", "显示输出数据", GH_ParamAccess.item);
 ```
 
 ##### GHActuator
@@ -153,7 +225,9 @@ pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "需要执行的数据", 
 
 ```c#
 // 输出
-pManager.AddTextParameter("Result", "RS", "执行结果，用于显示报错或者报告", GH_ParamAccess.item);
+pManager.AddTextParameter("Status", "ST", "执行结果", GH_ParamAccess.item);
+pManager.AddParameter(new LjsonParam(), "Result", "R", "处理后的Ljson结果", GH_ParamAccess.item);
+pManager.AddGenericParameter("OutPut", "O", "显示输出数据", GH_ParamAccess.item);
 ```
 
 ##### ScriptEditor
@@ -162,13 +236,49 @@ pManager.AddTextParameter("Result", "RS", "执行结果，用于显示报错或�
 
 ```c#
 // 输入
-// ScriptComponent: 连接一个脚本组件
-pManager.AddTextParameter("Code", "C", "需要添加到脚本的代码", GH_ParamAccess.item);
+pManager.AddGenericParameter("ScriptComponent", "SC", "Rhino8 Grasshopper 的脚本组件，仅支持操作一个组件", GH_ParamAccess.tree);
+pManager.AddTextParameter("Code", "C", "脚本代码", GH_ParamAccess.item, "");
+pManager.AddTextParameter("IntputParams", "IP", "输入端参数定义", GH_ParamAccess.item);
+pManager.AddTextParameter("OutputParams", "OP", "输出端参数定义", GH_ParamAccess.item);
 ```
 
 ```c#
 // 输出
-pManager.AddTextParameter("Result", "RS", "执行结果，用于显示报错或者报告", GH_ParamAccess.item);
+pManager.AddTextParameter("Result", "R", "显示运行信息", GH_ParamAccess.item);
+pManager.AddTextParameter("ComponentType", "T", "显示组件信息", GH_ParamAccess.item);
+pManager.AddBooleanParameter("IsSDKMode", "SDK", "代码是否是SDK模式", GH_ParamAccess.item);
+pManager.AddTextParameter("SourceCode", "SC", "代码code", GH_ParamAccess.item);
+pManager.AddTextParameter("InputParams", "IP", "当前输入端参数信息", GH_ParamAccess.item);
+pManager.AddTextParameter("OutputParams", "OP", "当前输出端参数信息", GH_ParamAccess.item);
+```
+
+##### RunScript
+
+在内部运行c#脚本。本组件预留给ai直接执行脚本。
+
+```c#
+// 输入
+pManager.AddTextParameter("Code", "C", "脚本", GH_ParamAccess.item, "");
+```
+
+```c#
+// 输出
+pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "数据输出", GH_ParamAccess.item);
+pManager.AddTextParameter("Out", "O", "调试输出", GH_ParamAccess.item);
+```
+
+##### CommandRhino
+
+执行rhino脚本。
+
+```c#
+// 输入
+pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "要执行的Rhino命令Ljson数据，必须包含Command字段", GH_ParamAccess.item);
+```
+
+```c#
+// 输出
+pManager.AddParameter(new LjsonParam(), "Result", "R", "执行后的Ljson结果", GH_ParamAccess.item);
 ```
 
 ### 信息查询
@@ -243,19 +353,33 @@ pManager.AddParameter(new LjsonParam(), "ComponentInfo", "C", "组件信息", GH
 
 ```c#
 // 输入
-// Input: 连接一个组件
+pManager.AddGenericParameter("Input", "I", "连接一个组件", GH_ParamAccess.tree);
 ```
 
 ```c#
 // 输出
-pManager.AddTextParameter("Name", "N", "名称", GH_ParamAccess.item);
-pManager.AddTextParameter("GUID", "G", "组件的GUID", GH_ParamAccess.item);
-pManager.AddTextParameter("Instance", "I", "组件实例的GUID", GH_ParamAccess.item);
+pManager.AddTextParameter("Name", "N", "组件名字", GH_ParamAccess.list);
+pManager.AddTextParameter("GUID", "ID", "组件的GUID", GH_ParamAccess.list);
+pManager.AddTextParameter("InsGUID", "TS", "组件对象的GUID", GH_ParamAccess.list);
+pManager.AddGenericParameter("Instance", "IT", "组件对象", GH_ParamAccess.list);
+```
+
+##### SearchDataBase
+
+查询数据库。
+
+```c#
+// 输入
+pManager.AddTextParameter("SQL", "SQL", "完整的SQL查询语句", GH_ParamAccess.item);
+```
+
+```c#
+// 输出
+pManager.AddTextParameter("Result", "R", "查询结果，以JSON格式返回", GH_ParamAccess.item);
 ```
 
 ### 计划
 
 - 增加help
 
-- 再次尝试静默运行脚本。
 - 序列化xml

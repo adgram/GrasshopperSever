@@ -19,11 +19,14 @@ namespace GrasshopperSever.Components
         /// 上次设置的代码，用于检测是否需要更新
         /// </summary>
         private string _lastAppliedCode = "";
+        private string _lastAppliedParams = "";
 
         /// <summary>
         /// 上次更新的目标组件GUID
         /// </summary>
         private Guid _lastTargetGuid = Guid.Empty;
+
+        private string _log = "";
 
         /// <summary>
         /// Initializes a new instance of the ScriptEditor class.
@@ -36,6 +39,11 @@ namespace GrasshopperSever.Components
         }
 
         public override GH_Exposure Exposure => GH_Exposure.primary;
+
+        private void AddLog(string message)
+        {
+            _log += message + Environment.NewLine;
+        }
 
         /// <summary>
         /// Registers all the input parameters for this component.
@@ -85,8 +93,7 @@ namespace GrasshopperSever.Components
             var targetComponent = GetLanguageComponent();
             if (targetComponent == null)
             {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error,
-                    "目标组件不是支持的脚本组件");
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "目标组件不是支持的脚本组件");
                 DA.SetData(0, "输入的组件无效");
                 return;
             }
@@ -95,6 +102,8 @@ namespace GrasshopperSever.Components
             if (_lastTargetGuid != targetComponent.InstanceGuid)
             {
                 _lastAppliedCode = "";
+                _lastAppliedParams = "";
+                _log = "";
                 _lastTargetGuid = targetComponent.InstanceGuid;
             }
 
@@ -103,23 +112,19 @@ namespace GrasshopperSever.Components
             DA.GetData(1, ref newCode);
 
             // 获取可选的输入/输出参数定义
-            string inputParamsGoo = null;
-            string outputParamsGoo = null;
-            DA.GetData(2, ref inputParamsGoo);
-            DA.GetData(3, ref outputParamsGoo);
+            string inputParams = null;
+            string outputParams = null;
+            DA.GetData(2, ref inputParams);
+            DA.GetData(3, ref outputParams);
 
-            bool hasParamUpdate = (inputParamsGoo != null) || (outputParamsGoo != null);
-            bool hasCodeUpdate = !string.IsNullOrEmpty(newCode) && !_lastAppliedCode.Equals(newCode, StringComparison.Ordinal);
-
-            // 检查代码中是否包含IO注释标记
-            bool hasIOComment = !string.IsNullOrEmpty(newCode) &&
-                (newCode.Contains("// GH_COMPONENT_IO_START") || newCode.Contains("# GH_COMPONENT_IO_START"));
-
+            bool hasParamUpdate = !_lastAppliedParams.Equals(inputParams + outputParams, StringComparison.Ordinal);
+            bool hasCodeUpdate = !_lastAppliedCode.Equals(newCode, StringComparison.Ordinal);
             // 没有任何需要更新的内容，只同步注释并输出信息
             if (!hasCodeUpdate && !hasParamUpdate)
             {
                 GetComponentInfo(targetComponent, DA);
-                DA.SetData(0, "无更新");
+                AddLog("无更新");
+                DA.SetData(0, _log);
                 return;
             }
 
@@ -130,56 +135,60 @@ namespace GrasshopperSever.Components
                 // 处理参数更新
                 if (hasParamUpdate)
                 {
-                    var paramData = new Dictionary<string, object>();
+                    List<JsonElement> ipas = null, opas = null;
+                    if (!string.IsNullOrEmpty(inputParams))
+                        ipas = JsonSerializer.Deserialize<List<JsonElement>>(inputParams);
 
-                    if (!string.IsNullOrEmpty(inputParamsGoo))
-                        paramData["InputParams"] = inputParamsGoo;
+                    if (!string.IsNullOrEmpty(outputParams))
+                        opas = JsonSerializer.Deserialize<List<JsonElement>>(outputParams);
 
-                    if (!string.IsNullOrEmpty(outputParamsGoo))
-                        paramData["OutputParams"] = outputParamsGoo;
-
-                    if (paramData.Count > 0)
+                    if (ipas != null || opas != null)
                     {
-                        var paramLjson = new Ljson("UpdateParams", "更新参数", JsonSerializer.SerializeToElement(paramData));
-                        ScriptParamConfig.UpdateParameters(targetComponent, paramLjson);
+                        var l = ScriptParamConfig.UpdateParameters(targetComponent, ipas, opas);
+                        _lastAppliedParams = inputParams + outputParams;
+                        AddLog(l);
                     }
                 }
 
                 // 处理代码更新
-                if (hasCodeUpdate)
+                if (!hasCodeUpdate)
                 {
-                    GHScript.SetCode(targetComponent, newCode);
-                    _lastAppliedCode = newCode;
-
-                    // 只有当代码中有IO注释标记时才根据代码更新参数
-                    // 否则保留现有参数，避免意外删除所有输入输出端
-                    if (hasIOComment)
-                    {
-                        GHScript.SetParametersFromScript(targetComponent);
-                    }
+                    // 同步参数注释到代码
+                    if (hasParamUpdate) GHScript.SetParametersToScript(targetComponent);
+                    DA.SetData(0, _log);
+                    return;
                 }
+                GHScript.SetCode(targetComponent, newCode);
+                AddLog("修改了代码");
+                _lastAppliedCode = newCode;
 
-                // 同步参数注释到代码
-                GHScript.SetParametersToScript(targetComponent);
-
-                // 在当前 solution 结束后，仅让目标组件重算
-                var doc = OnPingDocument();
-                doc?.ScheduleSolution(5, d =>
+                // 只有当代码中有IO注释标记时才根据代码更新参数
+                var _l = GHScript.SetParametersFromScript(targetComponent, newCode);
+                if (_l == null)
                 {
-                    targetComponent.ExpireSolution(false);
-                });
-
-                DA.SetData(0, hasCodeUpdate ? "代码更新成功" : "参数更新成功");
+                    // 在当前 solution 结束后，仅让目标组件重算
+                    var doc = OnPingDocument();
+                    doc?.ScheduleSolution(5, d =>
+                    {
+                        targetComponent.ExpireSolution(false);
+                    });
+                }
+                else
+                {
+                    AddLog(_l);
+                }
+                AddLog(hasCodeUpdate ? "代码更新成功" : "参数更新成功");
             }
             catch (Exception ex)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"更新失败: {ex.Message}");
-                DA.SetData(0, $"Error: {ex.Message}");
+                AddLog($"Error: {ex.Message}");
             }
             finally
             {
                 _isUpdatingCode = false;
                 GetComponentInfo(targetComponent, DA);
+                DA.SetData(0, _log);
             }
         }
 

@@ -140,45 +140,45 @@ namespace GrasshopperSever.Utils
                 throw new ArgumentException("JSON字符串不能为空", nameof(json));
             }
 
-            using (var doc = JsonDocument.Parse(json))
+            try
             {
-                var root = doc.RootElement;
-
-                // 检查 Name 和 Value 的存在性
-                bool hasName = root.TryGetProperty("Name", out var nameElement);
-                bool hasValue = root.TryGetProperty("Value", out var valueElement);
-
-                // 情况1: Name 和 Value 都存在
-                if (hasName && hasValue)
+                // 尝试解析为JSON
+                using (var doc = JsonDocument.Parse(json))
                 {
-                    Name = nameElement.GetString();
-                    Info = root.TryGetProperty("Info", out var infoElement) ? infoElement.GetString() : null;
+                    var root = doc.RootElement;
 
-                    // 读取 Time
-                    if (root.TryGetProperty("Time", out var timeElement))
+                    bool hasName = root.TryGetProperty("Name", out var nameElement);
+                    bool hasValue = root.TryGetProperty("Value", out var valueElement);
+
+                    if (hasName && hasValue)
                     {
-                        Time = timeElement.GetDateTime();
+                        // 情况1: 完整Ljson格式
+                        Name = nameElement.GetString();
+                        Info = root.TryGetProperty("Info", out var infoElement) ? infoElement.GetString() : null;
+                        Time = root.TryGetProperty("Time", out var timeElement) ? timeElement.GetDateTime() : DateTime.Now;
+                        Value = valueElement.Clone();
+                    }
+                    else if (!hasName && !hasValue)
+                    {
+                        // 情况2: 纯JSON值格式
+                        Name = null;
+                        Info = null;
+                        Time = DateTime.Now;
+                        Value = root.Clone();
                     }
                     else
                     {
-                        Time = DateTime.Now;
+                        throw new ArgumentException("JSON格式错误：Name 和 Value 必须同时存在或同时不存在", nameof(json));
                     }
-
-                    Value = valueElement.Clone();
                 }
-                // 情况2: Name 和 Value 都不存在 - 整体作为 JsonElement 赋值给 value
-                else if (!hasName && !hasValue)
-                {
-                    Name = null;
-                    Info = null;
-                    Time = DateTime.Now;
-                    Value = root.Clone();
-                }
-                // 情况3: Name 和 Value 中只有一个存在 - 报错
-                else
-                {
-                    throw new ArgumentException("JSON格式错误：Name 和 Value 必须同时存在或同时不存在", nameof(json));
-                }
+            }
+            catch (JsonException)
+            {
+                // 情况3: 普通文本，包装为JSON字符串
+                Name = null;
+                Info = null;
+                Time = DateTime.Now;
+                Value = JsonSerializer.SerializeToElement(json);
             }
         }
 
@@ -474,12 +474,11 @@ namespace GrasshopperSever.Utils
                 { "Outputs", JsonSerializer.SerializeToElement(outputs) }
             };
 
-            return new Ljson("Component", "组件信息",
-                JsonSerializer.SerializeToElement(data));
+            return new Ljson("Component", "组件信息", JsonSerializer.SerializeToElement(data));
         }
 
         /// <summary>
-        /// 创建参数信息Ljson
+        /// 创建组件Param信息Ljson
         /// </summary>
         public static Ljson ParamLjson(string paramGuid, string instanceGuid,
             string name, string nickName, string description,
@@ -504,8 +503,7 @@ namespace GrasshopperSever.Utils
                 { "Outputs", outputs }
             };
 
-            return new Ljson("Param", "参数信息",
-                JsonSerializer.SerializeToElement(data));
+            return new Ljson("Param", "参数信息", JsonSerializer.SerializeToElement(data));
         }
     }
 

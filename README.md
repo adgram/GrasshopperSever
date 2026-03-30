@@ -41,6 +41,95 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `SerializeLjsonArray`: 序列化Ljson数组为JSON字符串
 - `ParseLjsonArray`: 从JSON字符串反序列化为Ljson数组
 
+## TCP通信命令
+
+GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rhino。
+
+### 命令格式
+
+所有命令使用统一的LJSON格式：
+
+```json
+{
+  "Name": "命令类型",
+  "Info": "命令描述",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "具体命令名称",
+    "参数名": "参数值"
+  }
+}
+```
+
+**Name字段（命令类型）**：
+- `COMPONENT` - 组件相关命令
+- `DOCUMENT` - 文档相关命令
+- `RHINO` - Rhino相关命令
+
+### Component命令
+
+#### GETALLCOMPONENTS
+获取所有组件信息
+
+#### FINDCOMPONENTBYGUID
+通过GUID查找组件
+
+#### FINDCOMPONENTBYNAME
+通过名称查找组件
+
+#### FINDCOMPONENTBYCATEGORY
+通过分类查找组件
+
+#### SEARCHCOMPONENTSBYNAME
+通过名称搜索组件（模糊搜索）
+
+### Document命令
+
+#### SAVEDOCUMENT
+保存当前文档
+
+#### LOADDOCUMENT
+加载文档
+
+#### DATABASEPATH
+获取数据库路径
+
+### Rhino命令
+
+#### RUNSCRIPT
+运行Rhino脚本（如：`_-Line 0,0,0 10,10,0`）
+
+#### GETLASTCREATEDOBJECTS
+获取最后创建的对象
+
+#### SELECTOBJECTS
+选择对象
+
+#### GETANDSELECTLASTOBJECTS
+获取并选择最后创建的对象（复合命令）
+
+### OUTPUT 特殊键
+
+当 Value 字段中包含 `OUTPUT` 键时，其值会在 GHServer 的 Output 端口输出：
+
+```json
+{
+  "Name": "TestMessage",
+  "Info": "测试消息",
+  "Value": {
+    "OUTPUT": "要在输出端口显示的数据"
+  }
+}
+```
+
+### 数据通信特性
+
+- **支持TCP长连接**：可连续发送多条消息
+- **自动回送数据**：服务器会回送接收到的数据
+- **UTF-8 BOM标记**：响应包含UTF-8 BOM，解码时需使用 `utf-8-sig`
+- **完整JSON支持**：支持所有JSON数据类型和嵌套结构
+- **Unicode支持**：完全支持中文和特殊字符
+
 ## 组件说明
 
 ### 数据通信组件
@@ -56,6 +145,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 **输出参数**:
 - `Client` (TcpClientParam): Client连接对象
 - `Ljson` (LjsonParam): 传入的数据
+- `Status` (String): 状态
 
 **特性**:
 - 在后台线程接收数据
@@ -71,7 +161,7 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Ljson` (LjsonParam): 发送数据，按顺序发送
 
 **输出参数**:
-- `Result` (String): 执行结果，用于显示报错或报告
+- `Status` (String): 发送状态
 
 **特性**:
 - 只有Ljson.time更新时才会触发发送
@@ -86,7 +176,8 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Port` (Integer): 监听的端口，默认为 6879
 
 **输出参数**:
-- `Result` (String): 执行结果，用于显示报错或报告
+- `Status` (String): 回复状态
+- `OutPut` (Generic): 显示输出数据
 
 ### 数据转换组件
 
@@ -112,19 +203,37 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 #### DataTreeLjson
 
-将Data Tree转换为Ljson。
+将 Name, Info 和 Data Tree 构造为 Ljson。每个 branch 只能包含 1 个或 2 个元素：1 个元素转为 list，2 个元素转为 dict。
 
 **输入参数**:
-
-- `String Tree` (GH_Structure\<string\>): String Tree结构
+- `Name` (String): Ljson 的名称
+- `Info` (String): Ljson 的说明
+- `Data Tree` (Data Tree): Data Tree 数据
 
 **输出参数**:
 - `Ljson` (LjsonParam): 生成的Ljson对象
 
-**特性**:
-- 每个branch只取前三项
-- 非string格式转为string
-- 项目不足则使用空值补齐
+#### FindJdata
+
+通过名称查找Jdata的值。
+
+**输入参数**:
+- `Ljson` (LjsonParam): 需要查找的Ljson对象
+- `Name` (String): 需要查找的键值
+
+**输出参数**:
+- `Data` (Generic): 找到的值（基本类型或字符串）
+- `DataList` (List): 找到的值列表（基本类型或字符串）
+
+将 Name, Info 和 Data Tree 构造为 Ljson。每个 branch 只能包含 1 个或 2 个元素：1 个元素转为 list，2 个元素转为 dict。
+
+**输入参数**:
+- `Name` (String): Ljson 的名称
+- `Info` (String): Ljson 的说明
+- `Data Tree` (Data Tree): Data Tree 数据
+
+**输出参数**:
+- `Ljson` (LjsonParam): 生成的Ljson对象
 
 ### 信息查询组件
 
@@ -209,14 +318,23 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 通过连接输入端，获取连接的组件的信息。
 
 **输入参数**:
-
-- Input: 连接一个组件
+- `Input` (Generic): 连接一个组件
 
 **输出参数**:
+- `Name` (String): 组件名字
+- `GUID` (String): 组件的GUID
+- `InsGUID` (String): 组件对象的GUID
+- `Instance` (Generic): 组件对象
 
-- `Name` (string): 名称
-- `GUID` (string): 组件的GUID
-- `Instance` (string): 组件实例的GUID
+#### SearchDataBase
+
+查询数据库。
+
+**输入参数**:
+- `SQL` (String): 完整的SQL查询语句
+
+**输出参数**:
+- `Result` (String): 查询结果，以JSON格式返回
 
 ### 执行组件
 
@@ -228,24 +346,60 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 - `Ljson` (LjsonParam): 需要执行的数据
 
 **输出参数**:
-- `Result` (String): 执行结果，用于显示报错或报告
+- `Status` (String): 执行结果
+- `Result` (LjsonParam): 处理后的Ljson结果
+- `OutPut` (Generic): 显示输出数据
 
 #### ScriptEditor
 
 通过输入的代码修改Script组件，支持c#、python。
 
 **输入参数**:
-
-- `ScriptComponent` : 连接一个脚本组件
-- `Code` (String): 需要添加到脚本
+- `ScriptComponent` (Generic): Rhino8 Grasshopper 的脚本组件，仅支持操作一个组件
+- `Code` (String): 脚本代码
+- `IntputParams` (String): 输入端参数定义
+- `OutputParams` (String): 输出端参数定义
 
 **输出参数**:
+- `Result` (String): 显示运行信息
+- `ComponentType` (String): 显示组件信息
+- `IsSDKMode` (Boolean): 代码是否是SDK模式
+- `SourceCode` (String): 代码code
+- `InputParams` (String): 当前输入端参数信息
+- `OutputParams` (String): 当前输出端参数信息
 
-- `Result` (String): 执行结果，用于显示报错或报告
+![scripteditor_test](Example/scripteditor_test.png)
+
+![scripteditor_test](Example/scripteditor_test2.png)
+
+#### RunScript
+
+在内部运行c#脚本。本组件预留给ai直接执行脚本。
+
+**输入参数**:
+- `Code` (String): 脚本
+
+**输出参数**:
+- `Ljson` (LjsonParam): 数据输出
+- `Out` (String): 调试输出
+
+#### CommandRhino
+
+执行rhino脚本。
+
+**输入参数**:
+- `Ljson` (LjsonParam): 要执行的Rhino命令Ljson数据，必须包含Command字段
+
+**输出参数**:
+- `Result` (LjsonParam): 执行后的Ljson结果
 
 ## 数据库功能
 
 插件使用SQLite数据库存储元数据，数据库文件位于插件目录下（`GrasshopperSever.db`）。
+
+**数据库路径**：`C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
+
+**获取方式**：使用`DATABASEPATH`命令获取具体路径
 
 ### DatabaseManager
 
@@ -261,10 +415,63 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 用于跟踪表的更新时间，包含以下字段：
 
-- `Id`: 主键
-- `TableName`: 表名
-- `LastUpdateTime`: 最后更新时间
-- `Description`: 表描述
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| TableName | TEXT | NOT NULL UNIQUE | 表名 |
+| LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
+| Description | TEXT | - | 表描述 |
+
+### AllComponents表
+
+存储所有Grasshopper组件的详细信息。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| ComponentGuid | TEXT | NOT NULL UNIQUE | 组件的GUID（唯一标识） |
+| ComponentName | TEXT | NOT NULL | 组件名称 |
+| NickName | TEXT | - | 组件昵称 |
+| Description | TEXT | - | 组件描述 |
+| Category | TEXT | NOT NULL | 主分类 |
+| SubCategory | TEXT | NOT NULL | 子分类 |
+| Inputs | TEXT | DEFAULT '' | 输入参数定义（JSON格式） |
+| Outputs | TEXT | DEFAULT '' | 输出参数定义（JSON格式） |
+
+### RhinoObjects表
+
+存储Rhino中创建的对象信息。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| ObjectId | TEXT | NOT NULL | 对象ID（GUID字符串） |
+| ObjectType | TEXT | - | 对象类型（如：Curve, Surface, Mesh等） |
+| LayerName | TEXT | - | 图层名称 |
+| ObjectName | TEXT | - | 对象名称 |
+| CreateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| DocumentSerialNumber | TEXT | - | 文档序列号 |
+| Description | TEXT | - | 描述信息 |
+
+### GHScriptModifyHistory表
+
+存储GHScript组件的修改历史记录。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| InstanceGuid | TEXT | NOT NULL | 组件实例GUID |
+| ComponentGuid | TEXT | NOT NULL | 组件类型GUID |
+| ComponentName | TEXT | - | 组件名称 |
+| ModifyType | TEXT | NOT NULL | 修改类型（CODE_CHANGE或PARAM_CHANGE） |
+| ModifyContent | TEXT | - | 修改内容（JSON格式） |
+| Description | TEXT | - | 描述信息 |
+| ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 修改时间 |
+
+**注意事项**：
+- 数据库是暂存文件，不会和Grasshopper文件同步
+- 建议只读操作，不建议手动写入数据
+- 可以使用SQL查询组件信息和对象信息
 
 ## 参数类型
 
@@ -348,4 +555,4 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 - [English Documentation](README_EN.md) - 英文版文档
 - [AI客户端教程](AI_CLIENT_TUTORIAL.md) - AI客户端连接和交互指南
-- [插件开发文档](插件开发.md) - 插件开发技术文档
+- [插件开发文档](design.md) - 插件开发技术文档

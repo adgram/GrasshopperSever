@@ -29,6 +29,10 @@ namespace GrasshopperSever.Params
             this.Value = obj;
         }
 
+        public LjsonGoo(string obj)
+        {
+            this.Value = new Ljson(obj);
+        }
         public LjsonGoo(GH_String obj)
         {
             this.Value = new Ljson(obj.Value);
