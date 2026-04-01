@@ -112,10 +112,7 @@ namespace GrasshopperSever.Components
                 }
                 string _code = "#r \"" + System.Reflection.Assembly.GetExecutingAssembly().Location + "\"\r\n" + _cachedCode;
                 _cachedComponent.SetSource(_code);
-
-                // 使用 SetParametersFromScript 自动解析脚本参数
-                //_cachedComponent.SetParametersFromScript();
-                ScriptParamConfig.EnsureParameter(_cachedComponent, "ljson", GH_ParamAccess.item, false, false);
+                ScriptParamSerializer.EnsureSimplyParameter(_cachedComponent, "ljson", GH_ParamAccess.item, false, false);
 
                 // 2. 强制内部组件进行计算！
                 _cachedComponent.ClearData();

@@ -1,9 +1,9 @@
 ﻿using Grasshopper.Kernel;
 using GrasshopperSever.Commands;
-using GrasshopperSever.Utils;
+using RhinoCodePlatform.GH;
 using RhinoCodePluginGH.Components;
 using System;
-using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text.Json;
 
 namespace GrasshopperSever.Components
@@ -90,8 +90,8 @@ namespace GrasshopperSever.Components
             }
 
             // 通过 Sources 获取连接的脚本组件
-            var targetComponent = GetLanguageComponent();
-            if (targetComponent == null)
+            var component = GetLanguageComponent();
+            if (component == null)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "目标组件不是支持的脚本组件");
                 DA.SetData(0, "输入的组件无效");
@@ -99,12 +99,12 @@ namespace GrasshopperSever.Components
             }
 
             // 检测目标组件是否切换了，如果切换了需要重置状态
-            if (_lastTargetGuid != targetComponent.InstanceGuid)
+            if (_lastTargetGuid != component.InstanceGuid)
             {
                 _lastAppliedCode = "";
                 _lastAppliedParams = "";
                 _log = "";
-                _lastTargetGuid = targetComponent.InstanceGuid;
+                _lastTargetGuid = component.InstanceGuid;
             }
 
             // 获取代码输入
@@ -122,55 +122,42 @@ namespace GrasshopperSever.Components
             // 没有任何需要更新的内容，只同步注释并输出信息
             if (!hasCodeUpdate && !hasParamUpdate)
             {
-                GetComponentInfo(targetComponent, DA);
+                GetComponentInfo(component, DA);
                 AddLog("无更新");
                 DA.SetData(0, _log);
                 return;
             }
+            if (!hasCodeUpdate)
+            {
+                newCode = GHScript.GetCode(component);
+                AddLog($"获取组件代码，长度: {newCode?.Length ?? 0}");
+            }
+
+            _lastAppliedCode = newCode;
+            _lastAppliedParams = inputParams + outputParams;
+
+            AddLog($"调用 UpdateScript 前，代码长度: {newCode?.Length ?? 0}");
+            AddLog($"inputParams: {inputParams}");
+            AddLog($"outputParams: {outputParams}");
+            GHScript.UpdateScript(component, ref newCode, inputParams, outputParams);
+            AddLog($"调用 UpdateScript 后，代码长度: {newCode?.Length ?? 0}");
 
             try
             {
                 _isUpdatingCode = true;
 
-                // 处理参数更新
-                if (hasParamUpdate)
-                {
-                    List<JsonElement> ipas = null, opas = null;
-                    if (!string.IsNullOrEmpty(inputParams))
-                        ipas = JsonSerializer.Deserialize<List<JsonElement>>(inputParams);
-
-                    if (!string.IsNullOrEmpty(outputParams))
-                        opas = JsonSerializer.Deserialize<List<JsonElement>>(outputParams);
-
-                    if (ipas != null || opas != null)
-                    {
-                        var l = ScriptParamConfig.UpdateParameters(targetComponent, ipas, opas);
-                        _lastAppliedParams = inputParams + outputParams;
-                        AddLog(l);
-                    }
-                }
-
-                // 处理代码更新
-                if (!hasCodeUpdate)
-                {
-                    // 同步参数注释到代码
-                    if (hasParamUpdate) GHScript.SetParametersToScript(targetComponent);
-                    DA.SetData(0, _log);
-                    return;
-                }
-                GHScript.SetCode(targetComponent, newCode);
+                GHScript.SetCode(component, newCode);
                 AddLog("修改了代码");
-                _lastAppliedCode = newCode;
 
                 // 只有当代码中有IO注释标记时才根据代码更新参数
-                var _l = GHScript.SetParametersFromScript(targetComponent, newCode);
+                var _l = GHScript.SetParametersFromScript(component, newCode);
                 if (_l == null)
                 {
                     // 在当前 solution 结束后，仅让目标组件重算
                     var doc = OnPingDocument();
                     doc?.ScheduleSolution(5, d =>
                     {
-                        targetComponent.ExpireSolution(false);
+                        component.ExpireSolution(false);
                     });
                 }
                 else
@@ -187,7 +174,7 @@ namespace GrasshopperSever.Components
             finally
             {
                 _isUpdatingCode = false;
-                GetComponentInfo(targetComponent, DA);
+                GetComponentInfo(component, DA);
                 DA.SetData(0, _log);
             }
         }
@@ -260,12 +247,12 @@ namespace GrasshopperSever.Components
             string source = GHScript.GetCode(component);
             DA.SetData(3, source);
 
-            // Input Params - 使用 ParamExchange 获取详细参数信息
-            string inputsJson = JsonSerializer.Serialize(ParamExchange.SerializeParamDefinitions(component.Params.Input).Value);
+            // Input Params
+            string inputsJson = ScriptParamSerializer.SerializeParamDefinitions(((IScriptComponent)component).Inputs);
             DA.SetData(4, inputsJson);
 
-            // Output Params - 使用 ParamExchange 获取详细参数信息
-            string outputsJson = JsonSerializer.Serialize(ParamExchange.SerializeParamDefinitions(component.Params.Output));
+            // Output Params
+            string outputsJson = ScriptParamSerializer.SerializeParamDefinitions(((IScriptComponent)component).Outputs);
             DA.SetData(5, outputsJson);
         }
 

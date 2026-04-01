@@ -50,6 +50,9 @@
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="GH_IO">
+      <HintPath>rhino_dll\GH_IO.dll</HintPath>
+    </Reference>
     <Reference Include="Rhino.Runtime.Code" Private="False">
       <HintPath>rhino_dll\Rhino.Runtime.Code.dll</HintPath>
     </Reference>

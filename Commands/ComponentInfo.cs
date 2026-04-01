@@ -10,6 +10,7 @@ using System.Diagnostics;
 
 namespace GrasshopperSever.Commands
 {
+
     // 文档信息
     public static class ComponentInfo
     {
@@ -136,17 +137,11 @@ namespace GrasshopperSever.Commands
             }
 
             // 3. outdata 结构进行封装
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-
             var data = new Dictionary<string, object>
             {
-                { "AllCategorys", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options) },
+                { "AllCategorys", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), LjsonHelper.JSerializerOptions) },
                 { "Count", totalCount },
-                { "AllComponents", JsonSerializer.Serialize(componentsDict, options) }
+                { "AllComponents", JsonSerializer.Serialize(componentsDict, LjsonHelper.JSerializerOptions) }
             };
 
             return new Ljson("AllComponentsInfo", "所有注册的组件信息", JsonSerializer.SerializeToElement(data));
@@ -211,17 +206,11 @@ namespace GrasshopperSever.Commands
             }
 
             // 封装结果
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-
             var data = new Dictionary<string, object>
             {
-                { "AllCategorys", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), options) },
+                { "AllCategorys", JsonSerializer.Serialize(categorySet.OrderBy(x => x).ToList(), LjsonHelper.JSerializerOptions) },
                 { "Count", totalCount },
-                { "AllComponents", JsonSerializer.Serialize(componentsDict, options) },
+                { "AllComponents", JsonSerializer.Serialize(componentsDict, LjsonHelper.JSerializerOptions) },
                 { "UpdateTime", ComponentsDB.GetLastUpdateTime()?.ToString("yyyy-MM-dd HH:mm:ss") ?? "未知" }
             };
 
@@ -253,7 +242,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return Ljson.ComponentLjson(
+                            return ComponentExchange.ComponentLjson(
                                 componentGuid: reader["ComponentGuid"].ToString(),
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -302,7 +291,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return Ljson.ComponentLjson(
+                            return ComponentExchange.ComponentLjson(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -385,7 +374,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            return Ljson.ComponentLjson(
+                            return ComponentExchange.ComponentLjson(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -436,7 +425,7 @@ namespace GrasshopperSever.Commands
                             // 检查并更新输入输出信息（如果为空）
                             CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
 
-                            result.Add(Ljson.ComponentLjson(
+                            result.Add(ComponentExchange.ComponentLjson(
                                 componentGuid: guid,
                                 instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
@@ -556,167 +545,4 @@ namespace GrasshopperSever.Commands
 
     }
 
-    public static class ParamExchange
-    {
-        /// <summary>
-        /// 核心工厂方法：根据 ParamGuid 创建一个空的 IGH_Param 实例
-        /// </summary>
-        public static IGH_Param CreateParamFromGuid(string paramGuidStr)
-        {
-            if (!Guid.TryParse(paramGuidStr, out Guid id)) return null;
-
-            // 在 Grasshopper 对象库中查找对应的代理对象
-            var proxy = Instances.ComponentServer.EmitObjectProxy(id);
-            if (proxy == null) return null;
-
-            // 实例化对象
-            IGH_Param param = proxy.CreateInstance() as IGH_Param;
-            return param;
-        }
-
-        /// <summary>
-        /// 反序列化：将 Ljson 中的字符串数据还原到 IGH_Param 实例中
-        /// </summary>
-        public static void FillParamFromLjson(Ljson data, IGH_Param targetParam)
-        {
-            if (targetParam == null) return;
-            // 1. 名称
-            targetParam.Name = data.GetParameterString("Name");
-            targetParam.NickName = data.GetParameterString("NickName");
-            targetParam.Description = data.GetParameterString("Description");
-
-            // 2. 布尔属性 (从字符串还原)
-            if (bool.TryParse(data.GetParameterString("Optional"), out bool opt))
-                targetParam.Optional = opt;
-
-            if (bool.TryParse(data.GetParameterString("Reverse"), out bool rev))
-                targetParam.Reverse = rev;
-
-            if (bool.TryParse(data.GetParameterString("Simplify"), out bool sim))
-                targetParam.Simplify = sim;
-
-            // 3. 枚举属性 (使用 Enum.TryParse 忽略大小写还原)
-            if (Enum.TryParse(data.GetParameterString("Access"), true, out GH_ParamAccess acc))
-                targetParam.Access = acc;
-
-            if (Enum.TryParse(data.GetParameterString("Mapping"), true, out GH_DataMapping map))
-                targetParam.DataMapping = map;
-        }
-
-        public static Ljson ParamToLjson(IGH_Param param)
-        {
-            return Ljson.ParamLjson(
-                param.ComponentGuid.ToString(),   // 电池类型识别码
-                param.InstanceGuid.ToString(),    // 画布实例识别码
-                param.Name,
-                param.NickName,
-                param.Description,
-                param.TypeName,
-                param.Optional,                   // 直接传递 bool 值
-                param.Access,                     // 直接传递枚举值 (item, list, tree)
-                param.DataMapping,                // 直接传递枚举值 (none, flatten, graft)
-                param.Reverse,                    // 直接传递 bool 值
-                param.Simplify,                   // 直接传递 bool 值
-                JsonSerializer.Serialize(param.Sources.Select(s => s.InstanceGuid.ToString())),
-                JsonSerializer.Serialize(param.Recipients.Select(s => s.InstanceGuid.ToString()))
-            );
-        }
-
-        /// <summary>
-        /// 从Ljson创建IGH_Param实例
-        /// </summary>
-        private static IGH_Param ParamFromLjson(Ljson data)
-        {
-            if (data == null)
-                return null;
-            try
-            {
-                // 从Ljson中提取ParamGuid创建参数
-                string paramGuid = data.GetParameterString("ParamGuid");
-                IGH_Param param = null;
-
-                if (!string.IsNullOrWhiteSpace(paramGuid))
-                {
-                    param = CreateParamFromGuid(paramGuid);
-                }
-
-                if (param == null)
-                {
-                    param = new Grasshopper.Kernel.Parameters.Param_GenericObject();
-                }
-
-                // 填充参数属性
-                param.Name = data.GetParameterString("Name") ?? "";
-                param.NickName = data.GetParameterString("NickName") ?? "";
-                param.Description = data.GetParameterString("Description") ?? "";
-
-                // 布尔属性
-                if (bool.TryParse(data.GetParameterString("Optional"), out bool opt))
-                    param.Optional = opt;
-                if (bool.TryParse(data.GetParameterString("Reverse"), out bool rev))
-                    param.Reverse = rev;
-                if (bool.TryParse(data.GetParameterString("Simplify"), out bool sim))
-                    param.Simplify = sim;
-
-                // 枚举属性
-                if (Enum.TryParse(data.GetParameterString("Access"), true, out GH_ParamAccess acc))
-                    param.Access = acc;
-                if (Enum.TryParse(data.GetParameterString("Mapping"), true, out GH_DataMapping map))
-                    param.DataMapping = map;
-
-                return param;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"从Ljson创建参数失败: {ex.Message}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 获取参数定义信息（不包含连线，用于组件定义）
-        /// </summary>
-        /// <param name="parameters">参数列表</param>
-        /// <returns>参数定义信息JSON字符串</returns>
-        public static Ljson SerializeParamDefinitions(IList<IGH_Param> parameters)
-        {
-            var paramLjsons = new List<JsonElement>();
-            for (int i = 0; i < parameters.Count; i++)
-            {
-                paramLjsons.Add(ParamToLjson(parameters[i]).Value);
-            }
-            return new Ljson("IList<IGH_Param>", "将IList<IGH_Param>转换为Ljson", JsonSerializer.SerializeToElement(paramLjsons));
-        }
-
-        /// <summary>
-        /// 解析参数定义JSON字符串为IGH_Param列表
-        /// 与SerializeParamDefinitions成对使用，解析LjsonHelper.SerializeLjsonArray的输出
-        /// </summary>
-        public static List<IGH_Param> DeserializeParamDefinitions(Ljson json)
-        {
-            var result = new List<IGH_Param>();
-
-            if (json == null || json.Name != "IList<IGH_Param>")
-                return result;
-            try
-            {
-                var jlists = json.Value.EnumerateArray().ToList();
-
-                // 将每个Ljson转换为IGH_Param
-                foreach (var jlist in jlists)
-                {
-                    var param = ParamFromLjson(new Ljson("", "", jlist));
-                    if (param != null)
-                        result.Add(param);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"解析参数定义失败: {ex.Message}");
-            }
-
-            return result;
-        }
-    }
-    
 }

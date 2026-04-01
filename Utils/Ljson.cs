@@ -1,11 +1,9 @@
-using Grasshopper.Kernel;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-
 
 namespace GrasshopperSever.Utils
 {
@@ -100,11 +98,7 @@ namespace GrasshopperSever.Utils
         {
             using (var ms = new MemoryStream())
             {
-                using (var writer = new Utf8JsonWriter(ms, new JsonWriterOptions
-                {
-                    Indented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                }))
+                using (var writer = new Utf8JsonWriter(ms, LjsonHelper.JWriterOptions))
                 {
                     writer.WriteStartObject();
 
@@ -451,60 +445,6 @@ namespace GrasshopperSever.Utils
                 JsonSerializer.SerializeToElement(message));
         }
 
-        /// <summary>
-        /// 创建组件信息Ljson
-        /// </summary>
-        public static Ljson ComponentLjson(string componentGuid, string instanceGuid,
-            string name, string nickName, string description,
-            string category, string subCategory, string position,
-            string state, string inputs, string outputs)
-        {
-            var data = new Dictionary<string, JsonElement>
-            {
-                { "ComponentGuid", JsonSerializer.SerializeToElement(componentGuid) },
-                { "InstanceGuid", JsonSerializer.SerializeToElement(instanceGuid) },
-                { "ComponentName", JsonSerializer.SerializeToElement(name) },
-                { "NickName", JsonSerializer.SerializeToElement(nickName) },
-                { "Description", JsonSerializer.SerializeToElement(description) },
-                { "Category", JsonSerializer.SerializeToElement(category) },
-                { "SubCategory", JsonSerializer.SerializeToElement(subCategory) },
-                { "Position", JsonSerializer.SerializeToElement(position) },
-                { "State", JsonSerializer.SerializeToElement(state) },
-                { "Inputs", JsonSerializer.SerializeToElement(inputs) },
-                { "Outputs", JsonSerializer.SerializeToElement(outputs) }
-            };
-
-            return new Ljson("Component", "组件信息", JsonSerializer.SerializeToElement(data));
-        }
-
-        /// <summary>
-        /// 创建组件Param信息Ljson
-        /// </summary>
-        public static Ljson ParamLjson(string paramGuid, string instanceGuid,
-            string name, string nickName, string description,
-            string typeName, bool optional, GH_ParamAccess access,
-            GH_DataMapping mapping, bool reverse, bool simplify,
-            string inputs, string outputs)
-        {
-            var data = new Dictionary<string, object>
-            {
-                { "ParamGuid", paramGuid },
-                { "InstanceGuid", instanceGuid },
-                { "Name", name },
-                { "NickName", nickName },
-                { "Description", description },
-                { "TypeName", typeName },
-                { "Optional", optional },
-                { "Access", access.ToString() },
-                { "Mapping", mapping.ToString() },
-                { "Reverse", reverse },
-                { "Simplify", simplify },
-                { "Inputs", inputs },
-                { "Outputs", outputs }
-            };
-
-            return new Ljson("Param", "参数信息", JsonSerializer.SerializeToElement(data));
-        }
     }
 
     /// <summary>
@@ -512,6 +452,18 @@ namespace GrasshopperSever.Utils
     /// </summary>
     public static class LjsonHelper
     {
+        public static JsonWriterOptions JWriterOptions  => new JsonWriterOptions
+        {
+            Indented = false,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        public static JsonSerializerOptions JSerializerOptions => new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
         /// <summary>
         /// 序列化Ljson数组为JSON字符串（避免多重转义）
         /// </summary>
@@ -519,11 +471,7 @@ namespace GrasshopperSever.Utils
         {
             using (var ms = new MemoryStream())
             {
-                using (var writer = new Utf8JsonWriter(ms, new JsonWriterOptions
-                {
-                    Indented = false,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                }))
+                using (var writer = new Utf8JsonWriter(ms, LjsonHelper.JWriterOptions))
                 {
                     writer.WriteStartObject();
 
