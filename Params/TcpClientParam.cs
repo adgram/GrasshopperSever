@@ -14,20 +14,10 @@ namespace GrasshopperSever.Params
             "Maths", "Sever", GH_ParamAccess.item)
         {
         }
-        public override GH_Exposure Exposure
-        {
-            get
-            {
-                return GH_Exposure.last;
-            }
-        }
-        public override Guid ComponentGuid
-        {
-            get
-            {
-                return new Guid("37F9476B-5FCD-42E2-8927-F9883B1B688D");
-            }
-        }
+        public override GH_Exposure Exposure => GH_Exposure.hidden;
+
+        public override Guid ComponentGuid => new Guid("37F9476B-5FCD-42E2-8927-F9883B1B688D");
+
         protected override System.Drawing.Bitmap Icon => Properties.Resources.P02_TcpClientParam;
     }
 }

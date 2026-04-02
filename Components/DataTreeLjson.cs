@@ -24,7 +24,7 @@ namespace GrasshopperSever.Components
               "Maths", "Sever")
         {
         }
-        public override GH_Exposure Exposure => GH_Exposure.last;
+        public override GH_Exposure Exposure => GH_Exposure.last | GH_Exposure.obscure;
 
         /// <summary>
         /// Registers all the input parameters for this component.

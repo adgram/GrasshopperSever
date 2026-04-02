@@ -18,11 +18,11 @@ namespace GrasshopperSever.Components
         {
         }
 
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.primary | GH_Exposure.obscure;
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
-        protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
+        protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "要执行的Rhino命令Ljson数据，必须包含Command字段", GH_ParamAccess.item);
         }
@@ -30,7 +30,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Registers all the output parameters for this component.
         /// </summary>
-        protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
+        protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
             pManager.AddParameter(new LjsonParam(), "Result", "R", "执行后的Ljson结果", GH_ParamAccess.item);
         }

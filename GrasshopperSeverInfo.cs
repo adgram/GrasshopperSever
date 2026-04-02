@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Drawing;
-using Grasshopper;
 using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
 
@@ -20,15 +19,15 @@ namespace GrasshopperSever
         public override string Name => "GrasshopperSever";
 
         //Return a 24x24 pixel bitmap to represent this GHA library.
-        public override Bitmap Icon => null;
+        public override Bitmap Icon => Properties.Resources.P08_GHServer;
 
         //Return a short string describing the purpose of this GHA library.
-        public override string Description => "";
+        public override string Description => "GrasshopperSever提供TCP服务，允许外部客户端（如AI程序）与Grasshopper进行双向通信";
 
         public override Guid Id => new Guid("0171a275-7e22-4b2a-9f82-b80f07a08b08");
 
         //Return a string identifying you or your company.
-        public override string AuthorName => "";
+        public override string AuthorName => "archigram";
 
         //Return a string representing your preferred contact details.
         public override string AuthorContact => "";

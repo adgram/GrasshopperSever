@@ -68,6 +68,8 @@ namespace GrasshopperSever.Components
             _cachedComponent ??= RunScript.CreateCSharpComponent();
         }
 
+        public override GH_Exposure Exposure => GH_Exposure.primary | GH_Exposure.obscure;
+
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>

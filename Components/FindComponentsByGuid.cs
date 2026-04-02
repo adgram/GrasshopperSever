@@ -21,7 +21,7 @@ namespace GrasshopperSever.Components
         {
             get
             {
-                return GH_Exposure.secondary;
+                return GH_Exposure.secondary | GH_Exposure.obscure;
             }
         }
 

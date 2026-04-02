@@ -1,5 +1,6 @@
 ﻿using Grasshopper.Kernel;
 using System;
+using System.Collections.Generic;
 
 namespace GrasshopperSever.Params
 {
@@ -14,21 +15,10 @@ namespace GrasshopperSever.Params
             "Maths", "Sever", GH_ParamAccess.item)
         {
         }
-        public override GH_Exposure Exposure
-        {
-            get
-            {
-                return GH_Exposure.last;
-            }
-        }
+        public override GH_Exposure Exposure => GH_Exposure.last | GH_Exposure.obscure;
 
-        public override Guid ComponentGuid
-        {
-            get
-            {
-                return new Guid("74F00FF0-9A60-4516-910C-5466A609D874");
-            }
-        }
+        public override Guid ComponentGuid => new Guid("74F00FF0-9A60-4516-910C-5466A609D874");
+
         protected override System.Drawing.Bitmap Icon => Properties.Resources.P01_LjsonParam;
     }
 }

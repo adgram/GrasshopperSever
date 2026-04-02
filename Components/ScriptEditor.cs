@@ -3,8 +3,6 @@ using GrasshopperSever.Commands;
 using RhinoCodePlatform.GH;
 using RhinoCodePluginGH.Components;
 using System;
-using System.ComponentModel;
-using System.Text.Json;
 
 namespace GrasshopperSever.Components
 {
@@ -25,7 +23,7 @@ namespace GrasshopperSever.Components
         /// 上次更新的目标组件GUID
         /// </summary>
         private Guid _lastTargetGuid = Guid.Empty;
-
+        
         private string _log = "";
 
         /// <summary>
@@ -38,7 +36,7 @@ namespace GrasshopperSever.Components
         {
         }
 
-        public override GH_Exposure Exposure => GH_Exposure.primary;
+        public override GH_Exposure Exposure => GH_Exposure.primary | GH_Exposure.obscure;
 
         private void AddLog(string message)
         {

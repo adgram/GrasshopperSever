@@ -23,7 +23,7 @@ namespace GrasshopperSever.Components
         {
             get
             {
-                return GH_Exposure.last;
+                return GH_Exposure.last | GH_Exposure.obscure;
             }
         }
 
