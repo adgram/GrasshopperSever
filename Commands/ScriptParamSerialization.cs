@@ -305,10 +305,10 @@ namespace GrasshopperSever.Commands
                 var oldInputParams = SerializeParamDefinitions(((IScriptComponent)component).Inputs);
                 var oldOutputParams = SerializeParamDefinitions(((IScriptComponent)component).Outputs);
 
-                log += "oldInputParams==" + oldInputParams + Environment.NewLine;
-                log += "oldOutputParams==" + oldOutputParams + Environment.NewLine;
-                log += "inputParams==" + inputParams + Environment.NewLine;
-                log += "outputParams==" + outputParams + Environment.NewLine;
+                //log += "oldInputParams==" + oldInputParams + Environment.NewLine;
+                //log += "oldOutputParams==" + oldOutputParams + Environment.NewLine;
+                //log += "inputParams==" + inputParams + Environment.NewLine;
+                //log += "outputParams==" + outputParams + Environment.NewLine;
 
                 // 异步调度修改任务（非常重要：不能在计算过程中直接修改结构）
                 var doc = Grasshopper.Instances.ActiveCanvas?.Document;

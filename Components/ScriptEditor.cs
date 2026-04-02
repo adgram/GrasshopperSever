@@ -134,11 +134,7 @@ namespace GrasshopperSever.Components
             _lastAppliedCode = newCode;
             _lastAppliedParams = inputParams + outputParams;
 
-            AddLog($"调用 UpdateScript 前，代码长度: {newCode?.Length ?? 0}");
-            AddLog($"inputParams: {inputParams}");
-            AddLog($"outputParams: {outputParams}");
             GHScript.UpdateScript(component, ref newCode, inputParams, outputParams);
-            AddLog($"调用 UpdateScript 后，代码长度: {newCode?.Length ?? 0}");
 
             try
             {

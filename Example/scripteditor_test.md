@@ -338,85 +338,70 @@ a = line
 
 ```python
 # GH_COMPONENT_IO_START
-# INPUT_PARAMS: {JSON对象}
-# OUTPUT_PARAMS: {JSON对象}
+# INPUT_PARAMS: [{JSON对象}]
+# OUTPUT_PARAMS: [{JSON对象}]
 # GH_COMPONENT_IO_END
 ```
 
-### INPUT_PARAMS（输入参数）
+### **JSON结构**：
 
-**JSON结构**：
-```json
+```c#
+public class ScriptVariableParamData
 {
-  "Time": "时间戳",
-  "Items": [
-    {
-      "Name": "Param",
-      "Info": "参数信息",
-      "Time": "时间戳",
-      "Value": {
-        "ParamGuid": "参数GUID",
-        "InstanceGuid": "实例GUID",
-        "Name": "x",
-        "NickName": "x",
-        "Description": "rhinoscriptsyntax geometry",
-        "TypeName": "Generic Data",
-        "Optional": true,
-        "Access": "item",
-        "Mapping": "None",
-        "Reverse": false,
-        "Simplify": false,
-        "Inputs": "[]",
-        "Outputs": "[]"
-      }
-    }
-  ]
+    [JsonPropertyName("typeHintID")]
+    public Guid TypeHintID { get; set; }
+
+    [JsonPropertyName("typeHintName")]
+    public string TypeHintName { get; set; }
+
+    [JsonPropertyName("showTypeHints")]
+    public bool ShowTypeHints { get; set; }
+
+    [JsonPropertyName("allowTreeAccess")]
+    public bool AllowTreeAccess { get; set; }
+
+    [JsonPropertyName("toolTip")]
+    public string ToolTip { get; set; }
+
+    [JsonPropertyName("scriptParamAccess")]
+    public int ScriptParamAccess { get; set; }
+
+    [JsonPropertyName("variableName")]
+    public string VariableName { get; set; }
+
+    [JsonPropertyName("prettyName")]
+    public string PrettyName { get; set; }
+
+    [JsonPropertyName("optional")]
+    public bool Optional { get; set; }
+
+    [JsonPropertyName("hidden")]
+    public bool Hidden { get; set; }
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; }
+
+    [JsonPropertyName("castTargetType")]
+    public string CastTargetType { get; set; }
 }
 ```
 
-**关键字段**：
-- `Name`: 参数名称（如"x"、"y"）
-- `NickName`: 显示名称
-- `Description`: 参数描述
-- `TypeName`: 数据类型（如"Generic Data"、"Text"）
-- `Optional`: 是否可选
-- `Access`: 访问方式（"item"列表项）
-
-### OUTPUT_PARAMS（输出参数）
-
-**JSON结构**：
 ```json
-{
-  "Time": "时间戳",
-  "Items": [
-    {
-      "Name": "Param",
-      "Info": "参数信息",
-      "Time": "时间戳",
-      "Value": {
-        "ParamGuid": "参数GUID",
-        "InstanceGuid": "实例GUID",
-        "Name": "out",
-        "NickName": "out",
-        "Description": "Standard output and error contents collected during script run",
-        "TypeName": "Text",
-        "Optional": false,
-        "Access": "item",
-        "Mapping": "None",
-        "Reverse": false,
-        "Simplify": false,
-        "Inputs": "[]",
-        "Outputs": "[\"guid\"]"
-      }
-    }
-  ]
-}
+[{
+  "typeHintID": "9e93878a-f9c5-4f0a-8a70-584bf09f24bb",
+  "typeHintName": "string",
+  "showTypeHints": true,
+  "allowTreeAccess": true,
+  "toolTip": "",
+  "scriptParamAccess": 0,
+  "variableName": "y",
+  "prettyName": "y",
+  "optional": true,
+  "hidden": false,
+  "description": "Converts to collection of text fragments",
+  "castTargetType": null
+}]
 ```
-
-**关键字段**：
-- `Name`: 输出变量名（如"out"、"a"）
-- `TypeName`: 输出类型
-- `Optional`: 输出参数通常不可选
 
 ### 特点
 
@@ -436,5 +421,5 @@ a = line
 - 获取参数的GUID和其他元数据
 
 ## 测试文件
-- `test_script_editor.py` - Python测试脚本
-- `test_csharp_script.py` - C#测试脚本
+- `scripteditor_test.gh`
+- `scripteditor_test2.gh`
