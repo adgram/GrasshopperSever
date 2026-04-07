@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Data.SQLite;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace GrasshopperSever.Commands
 {
@@ -29,7 +30,7 @@ namespace GrasshopperSever.Commands
                 {
                     if (_componentProxyCache == null)
                     {
-                        var server = Grasshopper.Instances.ComponentServer;
+                        var server = Instances.ComponentServer;
                         _componentProxyCache = new Dictionary<string, IGH_ObjectProxy>();
                         foreach (var proxy in server.ObjectProxies)
                         {
@@ -49,7 +50,7 @@ namespace GrasshopperSever.Commands
         /// <returns>文件信息</returns>
         public static Ljson GetAllComponentsNested()
         {
-            var server = Grasshopper.Instances.ComponentServer;
+            var server = Instances.ComponentServer;
             var proxies = server.ObjectProxies;
 
             // 预构建组件代理字典缓存，加速后续查询
@@ -250,7 +251,7 @@ namespace GrasshopperSever.Commands
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: "",
+                                position: new PointF(-99, -99),
                                 state: "",
                                 inputs: inputs,
                                 outputs: outputs
@@ -299,7 +300,7 @@ namespace GrasshopperSever.Commands
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: "",
+                                position: new PointF(-99, -99),
                                 state: "",
                                 inputs: inputs,
                                 outputs: outputs
@@ -382,7 +383,7 @@ namespace GrasshopperSever.Commands
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: "",
+                                position: new PointF(-99, -99),
                                 state: "",
                                 inputs: inputs,
                                 outputs: outputs
@@ -433,7 +434,7 @@ namespace GrasshopperSever.Commands
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: "",
+                                position: new PointF(-99, -99),
                                 state: "",
                                 inputs: inputs,
                                 outputs: outputs
@@ -541,8 +542,6 @@ namespace GrasshopperSever.Commands
                 }
             }
         }
-
-
     }
 
 }
