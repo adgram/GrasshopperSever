@@ -65,6 +65,7 @@ All commands use unified LJSON format:
 - `COMPONENT` - Component-related commands
 - `DOCUMENT` - Document-related commands
 - `RHINO` - Rhino-related commands
+- `DESIGN` - Design layout commands (component addition, connection, etc.)
 
 ### Component Commands
 
@@ -96,7 +97,7 @@ Get database path
 
 ### Rhino Commands
 
-#### RUNSCRIPT
+#### RHINOSCRIPT
 Run Rhino script (e.g., `_-Line 0,0,0 10,10,0`)
 
 #### GETLASTCREATEDOBJECTS
@@ -107,6 +108,141 @@ Select objects
 
 #### GETANDSELECTLASTOBJECTS
 Get and select last created objects (composite command)
+
+### Design Commands
+
+Design commands are used to control component layout operations such as adding, removing, connecting, and setting values.
+
+#### ADDCOMPONENT
+Add component to document via Ljson
+
+**Parameters**:
+- `ComponentGuid` - Component GUID
+- `X` - X coordinate (number)
+- `Y` - Y coordinate (number)
+
+**Example**:
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponent",
+  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### ADDCOMPONENTBYGUID
+Add component via GUID
+
+**Parameters**:
+- `ComponentGuid` - Component GUID
+- `X` - X coordinate (number)
+- `Y` - Y coordinate (number)
+
+**Example**:
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponentByGuid",
+  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### ADDCOMPONENTBYNAME
+Add component via name
+
+**Parameters**:
+- `ComponentName` - Component name
+- `X` - X coordinate (number)
+- `Y` - Y coordinate (number)
+
+**Example**:
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponentByName",
+  "ComponentName": "Addition",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### REMOVECOMPONENT
+Remove component
+
+**Parameters**:
+- `InstanceGuid` - Component instance GUID
+
+**Example**:
+```json
+{
+  "Name": "Design",
+  "Command": "RemoveComponent",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx"
+}
+```
+
+#### SETCOMPONENTVALUE
+Set component value
+
+**Parameters**:
+- `InstanceGuid` - Component instance GUID
+- `Value` - Value to set
+
+**Example**:
+```json
+{
+  "Name": "Design",
+  "Command": "SetComponentValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Value": "42"
+}
+```
+
+#### CONNECTCOMPONENTS
+Connect two component parameters
+
+**Parameters**:
+- `FromGuid` - Source component instance GUID
+- `FromParameter` - Source component output parameter name
+- `ToGuid` - Target component instance GUID
+- `ToParameter` - Target component input parameter name
+
+**Example**:
+```json
+{
+  "Name": "Design",
+  "Command": "ConnectComponents",
+  "FromGuid": "instance-guid-1",
+  "FromParameter": "Result",
+  "ToGuid": "instance-guid-2",
+  "ToParameter": "A"
+}
+```
+
+#### DISCONNECTCOMPONENTS
+Disconnect connection between two component parameters
+
+**Parameters**:
+- `FromGuid` - Source component instance GUID
+- `FromParameter` - Source component output parameter name
+- `ToGuid` - Target component instance GUID
+- `ToParameter` - Target component input parameter name
+
+**Example**:
+```json
+{
+  "Name": "Design",
+  "Command": "DisconnectComponents",
+  "FromGuid": "instance-guid-1",
+  "FromParameter": "Result",
+  "ToGuid": "instance-guid-2",
+  "ToParameter": "A"
+}
+```
 
 ### OUTPUT Special Key
 
@@ -260,16 +396,12 @@ Queries component information by GUID.
 ```json
 {
   "ComponentGuid": "Component GUID",
-  "InstanceGuid": "Instance GUID",
   "ComponentName": "Component name",
   "NickName": "Component nickname",
   "Description": "Component description",
   "Category": "Main category",
   "SubCategory": "Sub-category",
-  "Position": "Position information",
-  "State": "State information",
-  "Inputs": "Input parameters information",
-  "Outputs": "Output parameters information"
+  "Prototype": "funtion info"
 }
 ```
 
@@ -412,7 +544,7 @@ Used to track table update times, contains the following fields:
 | LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Last update time |
 | Description | TEXT | - | Table description |
 
-### AllComponents Table
+### ALLCOMPS Table
 
 Stores detailed information for all Grasshopper components.
 
@@ -425,8 +557,7 @@ Stores detailed information for all Grasshopper components.
 | Description | TEXT | - | Component description |
 | Category | TEXT | NOT NULL | Main category |
 | SubCategory | TEXT | NOT NULL | Sub-category |
-| Inputs | TEXT | DEFAULT '' | Input parameter definitions (JSON format) |
-| Outputs | TEXT | DEFAULT '' | Output parameter definitions (JSON format) |
+| Prototype | TEXT | DEFAULT '' | Function signature containing input and output parameters (JSON format) |
 
 ### RhinoObjects Table
 

@@ -13,7 +13,7 @@ namespace GrasshopperSever.Utils
         public static void InitializeAllComponentsTable()
         {
             string createTableSql = @"
-                CREATE TABLE IF NOT EXISTS AllComponents (
+                CREATE TABLE IF NOT EXISTS ALLCOMPS (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     ComponentGuid TEXT NOT NULL UNIQUE,
                     ComponentName TEXT NOT NULL,
@@ -21,12 +21,11 @@ namespace GrasshopperSever.Utils
                     Description TEXT,
                     Category TEXT NOT NULL,
                     SubCategory TEXT NOT NULL,
-                    Inputs TEXT DEFAULT '',
-                    Outputs TEXT DEFAULT ''
+                    Prototype TEXT DEFAULT ''
                 )";
 
             DatabaseManager.CreateTable(
-                tableName: "AllComponents",
+                tableName: "ALLCOMPS",
                 createTableSql: createTableSql,
                 description: "存储组件详细信息"
             );
@@ -42,13 +41,12 @@ namespace GrasshopperSever.Utils
             string description = null,
             string category = null,
             string subCategory = null,
-            string inputs = null,
-            string outputs = null)
+            string prototype = null)
         {
             string sql = @"
-                INSERT OR REPLACE INTO AllComponents 
-                (ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Inputs, Outputs)
-                VALUES (@guid, @name, @nickName, @description, @category, @subCategory, @inputs, @outputs)";
+                INSERT OR REPLACE INTO ALLCOMPS 
+                (ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype)
+                VALUES (@guid, @name, @nickName, @description, @category, @subCategory, @prototype)";
 
             var parameters = new Dictionary<string, object>
             {
@@ -58,21 +56,20 @@ namespace GrasshopperSever.Utils
                 { "@description", description ?? string.Empty },
                 { "@category", category ?? string.Empty },
                 { "@subCategory", subCategory ?? string.Empty },
-                { "@inputs", inputs ?? string.Empty },
-                { "@outputs", outputs ?? string.Empty }
+                { "@prototype", prototype ?? string.Empty }
             };
 
-            return DatabaseManager.ExecuteCommandWithTimestamp("AllComponents", sql, parameters) >= 0;
+            return DatabaseManager.ExecuteCommandWithTimestamp("ALLCOMPS", sql, parameters) >= 0;
         }
 
         /// <summary>
         /// 根据GUID获取组件信息
         /// </summary>
-        public static (string name, string nickName, string description, string category, string subCategory, string inputs, string outputs) GetComponentByGuid(string componentGuid)
+        public static (string name, string nickName, string description, string category, string subCategory, string prototype) GetComponentByGuid(string componentGuid)
         {
             string sql = @"
-                SELECT ComponentName, NickName, Description, Category, SubCategory, Inputs, Outputs 
-                FROM AllComponents 
+                SELECT ComponentName, NickName, Description, Category, SubCategory, Prototype 
+                FROM ALLCOMPS 
                 WHERE ComponentGuid = @guid";
 
             using (var connection = DatabaseManager.GetConnection())
@@ -91,15 +88,14 @@ namespace GrasshopperSever.Utils
                                 reader["Description"].ToString(),
                                 reader["Category"].ToString(),
                                 reader["SubCategory"].ToString(),
-                                reader["Inputs"].ToString(),
-                                reader["Outputs"].ToString()
+                                reader["Prototype"].ToString()
                             );
                         }
                     }
                 }
             }
 
-            return (null, null, null, null, null, null, null);
+            return (null, null, null, null, null, null);
         }
 
         /// <summary>
@@ -110,7 +106,7 @@ namespace GrasshopperSever.Utils
             var components = new List<(string, string, string)>();
             string sql = @"
                 SELECT ComponentGuid, ComponentName, NickName 
-                FROM AllComponents 
+                FROM ALLCOMPS 
                 WHERE ComponentName LIKE @searchTerm OR NickName LIKE @searchTerm
                 ORDER BY ComponentName";
 
@@ -149,7 +145,7 @@ namespace GrasshopperSever.Utils
             {
                 sql = @"
                     SELECT ComponentGuid, ComponentName, NickName 
-                    FROM AllComponents 
+                    FROM ALLCOMPS 
                     WHERE Category = @category
                     ORDER BY ComponentName";
             }
@@ -157,7 +153,7 @@ namespace GrasshopperSever.Utils
             {
                 sql = @"
                     SELECT ComponentGuid, ComponentName, NickName 
-                    FROM AllComponents 
+                    FROM ALLCOMPS 
                     WHERE Category = @category AND SubCategory = @subCategory
                     ORDER BY ComponentName";
             }
@@ -193,31 +189,19 @@ namespace GrasshopperSever.Utils
         /// <summary>
         /// 更新组件的输入输出信息
         /// </summary>
-        public static bool UpdateComponentIO(string componentGuid, string inputs = null, string outputs = null)
+        public static bool UpdateComponentPrototype(string componentGuid, string prototype = null)
         {
-            if (inputs == null && outputs == null)
+            if (prototype == null)
                 return false;
 
-            string sql = "UPDATE AllComponents SET ";
-            var parameters = new Dictionary<string, object>();
-
-            if (inputs != null)
+            string sql = "UPDATE ALLCOMPS SET Prototype = @prototype WHERE ComponentGuid = @guid";
+            var parameters = new Dictionary<string, object>
             {
-                sql += "Inputs = @inputs";
-                parameters["@inputs"] = inputs;
-            }
+                { "@prototype", prototype },
+                { "@guid", componentGuid }
+            };
 
-            if (outputs != null)
-            {
-                if (inputs != null) sql += ", ";
-                sql += "Outputs = @outputs";
-                parameters["@outputs"] = outputs;
-            }
-
-            sql += " WHERE ComponentGuid = @guid";
-            parameters["@guid"] = componentGuid;
-
-            return DatabaseManager.ExecuteCommandWithTimestamp("AllComponents", sql, parameters) >= 0;
+            return DatabaseManager.ExecuteCommandWithTimestamp("ALLCOMPS", sql, parameters) >= 0;
         }
 
         /// <summary>
@@ -225,8 +209,8 @@ namespace GrasshopperSever.Utils
         /// </summary>
         public static bool ClearAllComponents()
         {
-            string sql = "DELETE FROM AllComponents";
-            return DatabaseManager.ExecuteCommandWithTimestamp("AllComponents", sql) >= 0;
+            string sql = "DELETE FROM ALLCOMPS";
+            return DatabaseManager.ExecuteCommandWithTimestamp("ALLCOMPS", sql) >= 0;
         }
 
         /// <summary>
@@ -235,7 +219,7 @@ namespace GrasshopperSever.Utils
         /// <param name="components">组件信息列表</param>
         /// <returns>成功插入/更新的组件数量</returns>
         public static int BulkUpsertComponents(List<(string componentGuid, string componentName, string nickName,
-            string description, string category, string subCategory, string inputs, string outputs)> components)
+            string description, string category, string subCategory, string prototype)> components)
         {
             if (components == null || components.Count == 0)
                 return 0;
@@ -252,9 +236,9 @@ namespace GrasshopperSever.Utils
                     try
                     {
                         string sql = @"
-                            INSERT OR REPLACE INTO AllComponents
-                            (ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Inputs, Outputs)
-                            VALUES (@guid, @name, @nickName, @description, @category, @subCategory, @inputs, @outputs)";
+                            INSERT OR REPLACE INTO ALLCOMPS
+                            (ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype)
+                            VALUES (@guid, @name, @nickName, @description, @category, @subCategory, @prototype)";
 
                         using (var command = new SQLiteCommand(sql, connection, transaction))
                         {
@@ -263,11 +247,9 @@ namespace GrasshopperSever.Utils
                             command.Parameters.Add(new SQLiteParameter("@name"));
                             command.Parameters.Add(new SQLiteParameter("@nickName"));
                             command.Parameters.Add(new SQLiteParameter("@description"));
-                            command.Parameters.Add(new SQLiteParameter("@description"));
                             command.Parameters.Add(new SQLiteParameter("@category"));
                             command.Parameters.Add(new SQLiteParameter("@subCategory"));
-                            command.Parameters.Add(new SQLiteParameter("@inputs"));
-                            command.Parameters.Add(new SQLiteParameter("@outputs"));
+                            command.Parameters.Add(new SQLiteParameter("@prototype"));
 
                             foreach (var comp in components)
                             {
@@ -277,8 +259,7 @@ namespace GrasshopperSever.Utils
                                 command.Parameters["@description"].Value = comp.description ?? string.Empty;
                                 command.Parameters["@category"].Value = comp.category ?? string.Empty;
                                 command.Parameters["@subCategory"].Value = comp.subCategory ?? string.Empty;
-                                command.Parameters["@inputs"].Value = comp.inputs ?? string.Empty;
-                                command.Parameters["@outputs"].Value = comp.outputs ?? string.Empty;
+                                command.Parameters["@prototype"].Value = comp.prototype ?? string.Empty;
 
                                 successCount += command.ExecuteNonQuery();
                             }
@@ -298,7 +279,7 @@ namespace GrasshopperSever.Utils
             }
 
             // 在连接关闭后，再更新表时间戳（避免锁冲突）
-            DatabaseManager.UpdateTableTimestamp("AllComponents");
+            DatabaseManager.UpdateTableTimestamp("ALLCOMPS");
 
             return successCount;
         }
@@ -308,7 +289,7 @@ namespace GrasshopperSever.Utils
         /// </summary>
         public static DateTime? GetLastUpdateTime()
         {
-            return DatabaseManager.GetTableTimestamp("AllComponents");
+            return DatabaseManager.GetTableTimestamp("ALLCOMPS");
         }
 
         /// <summary>
@@ -316,7 +297,7 @@ namespace GrasshopperSever.Utils
         /// </summary>
         public static int GetComponentCount()
         {
-            string sql = "SELECT COUNT(*) FROM AllComponents";
+            string sql = "SELECT COUNT(*) FROM ALLCOMPS";
 
             using (var connection = DatabaseManager.GetConnection())
             {

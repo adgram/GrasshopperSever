@@ -262,7 +262,7 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 
 ### Rhino命令（4个）
 
-#### RUNSCRIPT
+#### RHINOSCRIPT
 运行Rhino脚本
 
 **请求**：
@@ -271,7 +271,7 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
   "Name": "RHINO",
   "Info": "执行Rhino脚本",
   "Value": {
-    "Command": "RUNSCRIPT",
+    "Command": "RHINOSCRIPT",
     "Script": "_-Line 0,0,0 10,10,0"
   }
 }
@@ -424,7 +424,7 @@ GrasshopperSever使用SQLite数据库存储组件信息和对象信息。
 SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
 ```
 
-#### 2. AllComponents表（组件信息表）
+#### 2. ALLCOMPS表（组件信息表）
 
 存储所有Grasshopper组件的详细信息。
 
@@ -437,22 +437,21 @@ SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
 | Description | TEXT | - | 组件描述 |
 | Category | TEXT | NOT NULL | 主分类 |
 | SubCategory | TEXT | NOT NULL | 子分类 |
-| Inputs | TEXT | DEFAULT '' | 输入参数定义（JSON格式） |
-| Outputs | TEXT | DEFAULT '' | 输出参数定义（JSON格式） |
+| Prototype | TEXT | DEFAULT '' | 包含输入输出的函数签名（JSON格式） |
 
 **示例查询**：
 ```sql
 -- 查询所有组件
-SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM AllComponents;
+SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM ALLCOMPS;
 
 -- 按分类查询组件
-SELECT ComponentName, NickName, Description FROM AllComponents WHERE Category = 'Curve';
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE Category = 'Curve';
 
 -- 模糊搜索组件
-SELECT ComponentName, NickName, Description FROM AllComponents WHERE ComponentName LIKE '%Circle%';
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%';
 
 -- 统计组件数量
-SELECT Category, COUNT(*) as Count FROM AllComponents GROUP BY Category;
+SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category;
 ```
 
 #### 3. RhinoObjects表（Rhino对象信息表）

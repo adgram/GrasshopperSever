@@ -199,5 +199,102 @@ namespace GrasshopperSever.Commands
 
             return result;
         }
+
+
+        /// <summary>
+        /// 获取组件的输入输出信息（通过创建组件实例）
+        /// </summary>
+        /// <param name="componentGuid">组件 GUID</param>
+        /// <returns>包含 inputs 和 outputs JSON 字符串的元组</returns>
+        public static (Ljson inputs, Ljson outputs) GetComponentIOInfo(string componentGuid)
+        {
+            try
+            {
+                // 方法1：尝试使用 EmitObjectProxy 直接获取代理（更快）
+                var proxy = Instances.ComponentServer.EmitObjectProxy(new Guid(componentGuid));
+                if (proxy != null)
+                {
+                    var type = proxy.Type;
+                    if (type != null)
+                    {
+                        IGH_Component component = null;
+                        try
+                        {
+                            // 使用反射创建实例，可能比 CreateInstance 更轻量
+                            component = Activator.CreateInstance(type) as IGH_Component;
+                            if (component != null)
+                            {
+                                var inputsJson = SerializeParamDefinitions(component.Params.Input);
+                                var outputsJson = SerializeParamDefinitions(component.Params.Output);
+
+                                return (inputsJson, outputsJson);
+                            }
+                        }
+                        finally
+                        {
+                            // 手动释放资源
+                            if (component is IDisposable d)
+                                d.Dispose();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"EmitObjectProxy 方法失败 ({componentGuid}): {ex.Message}，回退到字典缓存方案");
+            }
+
+            // 方法2：回退到字典缓存方案（兼容性更好）
+            try
+            {
+                var cache = ComponentInfo.GetComponentProxyCache();
+                if (cache.TryGetValue(componentGuid, out var proxy))
+                {
+                    var component = proxy.CreateInstance() as IGH_Component;
+                    if (component != null)
+                    {
+                        var inputsJson = SerializeParamDefinitions(component.Params.Input);
+                        var outputsJson = SerializeParamDefinitions(component.Params.Output);
+
+                        return (inputsJson, outputsJson);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"获取组件 IO 信息失败 ({componentGuid}): {ex.Message}");
+            }
+
+            return (null, null);
+        }
+
+
+        public static string ParamsToPrototype(IList<IGH_Param> parameters)
+        {
+            if (parameters == null || parameters.Count == 0)
+                return "";
+
+            var signatures = new List<string>();
+
+            for (int i = 0; i < parameters.Count; i++)
+            {
+                var param = parameters[i];
+                string access = param.Access.ToString().ToLower();
+
+                // 格式：Name: TypeName [Access] (optional?)
+                string signature = $"{param.Name}: {param.TypeName} [{access}]";
+
+                // 如果是可选参数，添加标记
+                if (param.Optional)
+                {
+                    signature += " (optional)";
+                }
+
+                signatures.Add(signature);
+            }
+
+            // 用逗号和空格拼接多个参数签名，适合函数签名
+            return string.Join(", ", signatures);
+        }
     }
 }

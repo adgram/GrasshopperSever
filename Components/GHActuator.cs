@@ -118,7 +118,7 @@ namespace GrasshopperSever.Components
                     return ActuatorHandle.DoRhinoCommand(lst);
 
                 case LjsonType.Design:
-                    break;
+                    return ActuatorHandle.DoDesignCommand(lst);
 
                 default:
                     break;

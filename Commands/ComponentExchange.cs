@@ -15,24 +15,19 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 创建组件信息Ljson
         /// </summary>
-        public static Ljson ComponentLjson(string componentGuid, string instanceGuid,
-            string name, string nickName, string description,
-            string category, string subCategory, PointF position,
-            string state, string inputs, string outputs)
+        public static Ljson InstanceLjson(string componentGuid,
+            string instanceGuid, string name, PointF position,
+            string state, string input, string output)
         {
             var data = new Dictionary<string, JsonElement>
             {
                 { "ComponentGuid", JsonSerializer.SerializeToElement(componentGuid) },
                 { "InstanceGuid", JsonSerializer.SerializeToElement(instanceGuid) },
                 { "ComponentName", JsonSerializer.SerializeToElement(name) },
-                { "NickName", JsonSerializer.SerializeToElement(nickName) },
-                { "Description", JsonSerializer.SerializeToElement(description) },
-                { "Category", JsonSerializer.SerializeToElement(category) },
-                { "SubCategory", JsonSerializer.SerializeToElement(subCategory) },
                 { "Position", JsonSerializer.SerializeToElement(position) },
                 { "State", JsonSerializer.SerializeToElement(state) },
-                { "Inputs", JsonSerializer.SerializeToElement(inputs) },
-                { "Outputs", JsonSerializer.SerializeToElement(outputs) }
+                { "Input", JsonSerializer.SerializeToElement(input) },
+                { "Output", JsonSerializer.SerializeToElement(output) }
             };
 
             return new Ljson("Component", "组件信息", JsonSerializer.SerializeToElement(data));
@@ -44,16 +39,17 @@ namespace GrasshopperSever.Commands
         public static Ljson AddComponent(Ljson ljson, PointF point)
         {
             var componentGuid = ljson.GetParameterString("ComponentGuid");
-            Ljson result = ljson.DeepClone();
+            var componentName = ljson.GetParameterString("ComponentName");
             Exception caughtException = null;
+            IGH_DocumentObject dobj = null;
 
             RhinoApp.InvokeOnUiThread(new Action(() =>
             {
                 try
                 {
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
-                    IGH_DocumentObject dobj = Instances.ComponentServer.EmitObject(new Guid(componentGuid));
-                    
+                    dobj = Instances.ComponentServer.EmitObject(new Guid(componentGuid));
+
                     if (dobj != null)
                     {
                         // 确保有属性
@@ -66,10 +62,6 @@ namespace GrasshopperSever.Commands
                         dobj.Attributes.Pivot = point;
                         doc.AddObject(dobj, false);
                         doc.NewSolution(false);
-
-                        // 创建返回的 Ljson
-                        result.SetParameter("InstanceGuid", JsonSerializer.SerializeToElement(dobj.InstanceGuid.ToString()));
-                        result.SetParameter("Position", JsonSerializer.SerializeToElement(point));
                     }
                     else
                     {
@@ -87,7 +79,19 @@ namespace GrasshopperSever.Commands
                 throw caughtException;
             }
 
-            return result;
+            // 获取组件的输入输出信息
+            var (newInputs, newOutputs) = ParamExchange.GetComponentIOInfo(componentGuid);
+
+            // 返回 InstanceLjson
+            return InstanceLjson(
+                componentGuid: componentGuid,
+                instanceGuid: dobj?.InstanceGuid.ToString() ?? "",
+                name: componentName,
+                position: point,
+                state: "",
+                input: newInputs?.ToString() ?? "",
+                output: newOutputs?.ToString() ?? ""
+            );
         }
 
         /// <summary>

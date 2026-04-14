@@ -60,12 +60,12 @@ CREATE TABLE IF NOT EXISTS MetaInfo (
 SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
 
 -- 查看某个表的最后更新时间
-SELECT LastUpdateTime FROM MetaInfo WHERE TableName = 'AllComponents';
+SELECT LastUpdateTime FROM MetaInfo WHERE TableName = 'ALLCOMPS';
 ```
 
 ---
 
-### 2. AllComponents 表（组件信息表）
+### 2. ALLCOMPS 表（组件信息表）
 
 存储所有 Grasshopper 组件的详细信息。
 
@@ -78,12 +78,11 @@ SELECT LastUpdateTime FROM MetaInfo WHERE TableName = 'AllComponents';
 | Description | TEXT | - | 组件描述 |
 | Category | TEXT | NOT NULL | 主分类 |
 | SubCategory | TEXT | NOT NULL | 子分类 |
-| Inputs | TEXT | DEFAULT '' | 输入参数定义（JSON格式） |
-| Outputs | TEXT | DEFAULT '' | 输出参数定义（JSON格式） |
+| Prototype | TEXT | DEFAULT '' | 包含输入输出的函数签名（JSON格式） |
 
 **SQL 创建语句**：
 ```sql
-CREATE TABLE IF NOT EXISTS AllComponents (
+CREATE TABLE IF NOT EXISTS ALLCOMPS (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     ComponentGuid TEXT NOT NULL UNIQUE,
     ComponentName TEXT NOT NULL,
@@ -91,24 +90,23 @@ CREATE TABLE IF NOT EXISTS AllComponents (
     Description TEXT,
     Category TEXT NOT NULL,
     SubCategory TEXT NOT NULL,
-    Inputs TEXT DEFAULT '',
-    Outputs TEXT DEFAULT ''
+    Prototype TEXT DEFAULT ''
 )
 ```
 
 **示例查询**：
 ```sql
 -- 查询所有组件
-SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM AllComponents;
+SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM ALLCOMPS;
 
 -- 按分类查询组件
-SELECT ComponentName, NickName, Description FROM AllComponents WHERE Category = 'Curve';
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE Category = 'Curve';
 
 -- 模糊搜索组件
-SELECT ComponentName, NickName, Description FROM AllComponents WHERE ComponentName LIKE '%Circle%';
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%';
 
 -- 统计组件数量
-SELECT Category, COUNT(*) as Count FROM AllComponents GROUP BY Category;
+SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category;
 ```
 
 **注意事项**：
@@ -481,13 +479,13 @@ SELECT ComponentName, ModifyType, Description, ModifyTime FROM GHScriptModifyHis
 SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
 
 -- 2. 查询所有组件（常用）
-SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM AllComponents;
+SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM ALLCOMPS;
 
 -- 3. 按分类查询组件
-SELECT ComponentName, NickName, Description FROM AllComponents WHERE Category = 'Curve';
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE Category = 'Curve';
 
 -- 4. 模糊搜索组件
-SELECT ComponentName, NickName, Description FROM AllComponents WHERE ComponentName LIKE '%Circle%';
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%';
 
 -- 5. 查询所有 Rhino 对象
 SELECT ObjectId, ObjectType, LayerName, ObjectName, CreateTime FROM RhinoObjects;
@@ -499,7 +497,7 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 SELECT * FROM RhinoObjects ORDER BY CreateTime DESC LIMIT 10;
 
 -- 8. 统计组件数量
-SELECT Category, COUNT(*) as Count FROM AllComponents GROUP BY Category ORDER BY Count DESC;
+SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category ORDER BY Count DESC;
 
 -- 9. 查询所有 GHScript 修改历史
 SELECT ComponentName, ModifyType, Description, ModifyTime FROM GHScriptModifyHistory ORDER BY ModifyTime DESC;
@@ -512,7 +510,7 @@ SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER
 
 ## Rhino命令测试记录
 
-### RUNSCRIPT - 运行Rhino命令
+### RHINOSCRIPT - 运行Rhino命令
 
 **端口**: 6655
 
@@ -523,10 +521,10 @@ SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER
 ```json
 {
   "Name": "RHINO",
-  "Info": "执行RUNSCRIPT命令",
+  "Info": "执行RHINOSCRIPT命令",
   "Time": "2026-03-26T...",
   "Value": {
-    "Command": "RUNSCRIPT",
+    "Command": "RHINOSCRIPT",
     "Script": "_-Line 0,0,0 10,10,0"
   }
 }
@@ -553,11 +551,11 @@ SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER
 
 **说明**:
 
-- RUNSCRIPT命令执行成功时，会返回执行结果，包含 Result 和 Script 字段
+- RHINOSCRIPT命令执行成功时，会返回执行结果，包含 Result 和 Script 字段
 - 命令执行失败时，会返回错误信息
 - 需要在Rhino中验证命令是否实际执行成功
 
-**测试脚本**: `test_runscript_6655.py`
+**测试脚本**: `test_rhinoscript_6655.py`
 
 ---
 
@@ -781,7 +779,7 @@ select_result = send_command(6655, "RHINO", "SELECTOBJECTS", {
 |------|----------|----------|
 | Component | 5 | GETALLCOMPONENTS, FINDCOMPONENTBYGUID, FINDCOMPONENTBYNAME, FINDCOMPONENTBYCATEGORY, SEARCHCOMPONENTSBYNAME |
 | Document | 3 | SAVEDOCUMENT, LOADDOCUMENT, DATABASEPATH |
-| Rhino | 4 | RUNSCRIPT, GETLASTCREATEDOBJECTS, SELECTOBJECTS, GETANDSELECTLASTOBJECTS |
+| Rhino | 4 | RHINOSCRIPT, GETLASTCREATEDOBJECTS, SELECTOBJECTS, GETANDSELECTLASTOBJECTS |
 | **总计** | **12** | |
 
 ---
@@ -902,15 +900,15 @@ for result in results:
 
 ---
 
-### 2. RUNSCRIPT（已测试）
+### 2. RHINOSCRIPT（已测试）
 
 **请求**：
 ```json
 {
   "Name": "RHINO",
-  "Info": "执行RUNSCRIPT命令",
+  "Info": "执行RHINOSCRIPT命令",
   "Value": {
-    "Command": "RUNSCRIPT",
+    "Command": "RHINOSCRIPT",
     "Script": "_-Line 0,0,0 10,10,0"
   }
 }
@@ -935,7 +933,7 @@ for result in results:
 ### 3. GETLASTCREATEDOBJECTS（待测试）
 
 **测试步骤**：
-1. 执行 RUNSCRIPT 命令创建对象（例如：`_-Line 0,0,0 10,10,0`）
+1. 执行 RHINOSCRIPT 命令创建对象（例如：`_-Line 0,0,0 10,10,0`）
 2. 执行 GETLASTCREATEDOBJECTS 命令
 3. 验证返回的对象信息是否正确
 4. 检查数据库中是否已存储对象记录
@@ -966,7 +964,7 @@ for result in results:
 ### 4. SELECTOBJECTS（待测试）
 
 **测试步骤**：
-1. 执行 RUNSCRIPT 命令创建多个对象
+1. 执行 RHINOSCRIPT 命令创建多个对象
 2. 执行 GETLASTCREATEDOBJECTS 获取对象ID
 3. 执行 SELECTOBJECTS 命令选择对象
 4. 在Rhino中验证对象是否被选中
@@ -1004,7 +1002,7 @@ for result in results:
 ### 5. GETANDSELECTLASTOBJECTS（待测试）
 
 **测试步骤**：
-1. 执行 RUNSCRIPT 命令创建对象
+1. 执行 RHINOSCRIPT 命令创建对象
 2. 执行 GETANDSELECTLASTOBJECTS 命令
 3. 验证返回的对象信息和选择结果
 4. 在Rhino中验证对象是否被选中

@@ -130,8 +130,8 @@ namespace GrasshopperSever.Commands
             {
                 switch (commandType.ToUpperInvariant())
                 {
-                    case "RUNSCRIPT":
-                        return HandleRunScript(data);
+                    case "RHINOSCRIPT":
+                        return HandleRunRhinoScript(data);
 
                     case "GETLASTCREATEDOBJECTS":
                         return HandleGetLastCreatedObjects(data);
@@ -153,9 +153,308 @@ namespace GrasshopperSever.Commands
         }
 
         /// <summary>
+        /// 执行 Design 相关命令（组件布局和连接）
+        /// </summary>
+        /// <param name="data">输入的Ljson数据</param>
+        /// <returns>执行结果Ljson</returns>
+        public static Ljson DoDesignCommand(Ljson data)
+        {
+            if (data == null)
+            {
+                return Ljson.CreateErrorLjson("输入数据为空");
+            }
+
+            // 获取命令类型
+            var commandElement = data.GetParameter("Command");
+            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
+            {
+                return Ljson.CreateErrorLjson("未找到命令类型");
+            }
+
+            string commandType = commandElement.Value.GetString();
+
+            try
+            {
+                switch (commandType.ToUpperInvariant())
+                {
+                    case "ADDCOMPONENT":
+                        return HandleAddComponent(data);
+
+                    case "ADDCOMPONENTBYGUID":
+                        return HandleAddComponentByGuid(data);
+
+                    case "ADDCOMPONENTBYNAME":
+                        return HandleAddComponentByName(data);
+
+                    case "REMOVECOMPONENT":
+                        return HandleRemoveComponent(data);
+
+                    case "SETCOMPONENTVALUE":
+                        return HandleSetComponentValue(data);
+
+                    case "CONNECTCOMPONENTS":
+                        return HandleConnectComponents(data);
+
+                    case "DISCONNECTCOMPONENTS":
+                        return HandleDisconnectComponents(data);
+
+                    default:
+                        return Ljson.CreateErrorLjson($"未知的 Design 命令: {commandType}");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"执行 Design 命令时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理添加组件命令
+        /// </summary>
+        private static Ljson HandleAddComponent(Ljson data)
+        {
+            try
+            {
+                var componentGuid = data.GetParameterString("ComponentGuid");
+                var xElement = data.GetParameter("X");
+                var yElement = data.GetParameter("Y");
+
+                if (string.IsNullOrWhiteSpace(componentGuid))
+                {
+                    return Ljson.CreateErrorLjson("缺少 ComponentGuid 参数");
+                }
+
+                if (!xElement.HasValue || !yElement.HasValue)
+                {
+                    return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
+                }
+
+                var x = xElement.Value.GetDouble();
+                var y = yElement.Value.GetDouble();
+
+                var point = new System.Drawing.PointF((float)x, (float)y);
+                var result = ComponentExchange.AddComponent(data, point);
+
+                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"添加组件失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理通过 GUID 添加组件命令
+        /// </summary>
+        private static Ljson HandleAddComponentByGuid(Ljson data)
+        {
+            try
+            {
+                var componentGuid = data.GetParameterString("ComponentGuid");
+                var xElement = data.GetParameter("X");
+                var yElement = data.GetParameter("Y");
+
+                if (string.IsNullOrWhiteSpace(componentGuid))
+                {
+                    return Ljson.CreateErrorLjson("缺少 ComponentGuid 参数");
+                }
+
+                if (!xElement.HasValue || !yElement.HasValue)
+                {
+                    return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
+                }
+
+                var x = xElement.Value.GetDouble();
+                var y = yElement.Value.GetDouble();
+
+                var point = new System.Drawing.PointF((float)x, (float)y);
+                var result = ComponentExchange.AddComponentByGuid(componentGuid, point);
+
+                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"添加组件失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理通过名称添加组件命令
+        /// </summary>
+        private static Ljson HandleAddComponentByName(Ljson data)
+        {
+            try
+            {
+                var componentName = data.GetParameterString("ComponentName");
+                var xElement = data.GetParameter("X");
+                var yElement = data.GetParameter("Y");
+
+                if (string.IsNullOrWhiteSpace(componentName))
+                {
+                    return Ljson.CreateErrorLjson("缺少 ComponentName 参数");
+                }
+
+                if (!xElement.HasValue || !yElement.HasValue)
+                {
+                    return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
+                }
+
+                var x = xElement.Value.GetDouble();
+                var y = yElement.Value.GetDouble();
+
+                var point = new System.Drawing.PointF((float)x, (float)y);
+                var result = ComponentExchange.AddComponentByName(componentName, point);
+
+                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"添加组件失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理移除组件命令
+        /// </summary>
+        private static Ljson HandleRemoveComponent(Ljson data)
+        {
+            try
+            {
+                var instanceGuid = data.GetParameterString("InstanceGuid");
+
+                if (string.IsNullOrWhiteSpace(instanceGuid))
+                {
+                    return Ljson.CreateErrorLjson("缺少 InstanceGuid 参数");
+                }
+
+                var result = ComponentExchange.RemoveComponent(instanceGuid);
+
+                if (result)
+                {
+                    return Ljson.CreateOKLjson("组件移除成功");
+                }
+                else
+                {
+                    return Ljson.CreateErrorLjson("组件移除失败");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"移除组件失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理设置组件值命令
+        /// </summary>
+        private static Ljson HandleSetComponentValue(Ljson data)
+        {
+            try
+            {
+                var instanceGuid = data.GetParameterString("InstanceGuid");
+                var value = data.GetParameterString("Value");
+
+                if (string.IsNullOrWhiteSpace(instanceGuid))
+                {
+                    return Ljson.CreateErrorLjson("缺少 InstanceGuid 参数");
+                }
+
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return Ljson.CreateErrorLjson("缺少 Value 参数");
+                }
+
+                var result = ComponentExchange.SetComponentValue(instanceGuid, value);
+
+                if (result)
+                {
+                    return Ljson.CreateOKLjson("组件值设置成功");
+                }
+                else
+                {
+                    return Ljson.CreateErrorLjson("组件值设置失败");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"设置组件值失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理连接组件命令
+        /// </summary>
+        private static Ljson HandleConnectComponents(Ljson data)
+        {
+            try
+            {
+                var fromGuid = data.GetParameterString("FromGuid");
+                var fromParameter = data.GetParameterString("FromParameter");
+                var toGuid = data.GetParameterString("ToGuid");
+                var toParameter = data.GetParameterString("ToParameter");
+
+                if (string.IsNullOrWhiteSpace(fromGuid) || string.IsNullOrWhiteSpace(fromParameter) ||
+                    string.IsNullOrWhiteSpace(toGuid) || string.IsNullOrWhiteSpace(toParameter))
+                {
+                    return Ljson.CreateErrorLjson("缺少必要参数（FromGuid, FromParameter, ToGuid, ToParameter）");
+                }
+
+                var result = ComponentExchange.ConnectComponents(fromGuid, fromParameter, toGuid, toParameter);
+
+                if (result)
+                {
+                    return Ljson.CreateOKLjson("组件连接成功");
+                }
+                else
+                {
+                    return Ljson.CreateErrorLjson("组件连接失败");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"连接组件失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理断开组件连接命令
+        /// </summary>
+        private static Ljson HandleDisconnectComponents(Ljson data)
+        {
+            try
+            {
+                var fromGuid = data.GetParameterString("FromGuid");
+                var fromParameter = data.GetParameterString("FromParameter");
+                var toGuid = data.GetParameterString("ToGuid");
+                var toParameter = data.GetParameterString("ToParameter");
+
+                if (string.IsNullOrWhiteSpace(fromGuid) || string.IsNullOrWhiteSpace(fromParameter) ||
+                    string.IsNullOrWhiteSpace(toGuid) || string.IsNullOrWhiteSpace(toParameter))
+                {
+                    return Ljson.CreateErrorLjson("缺少必要参数（FromGuid, FromParameter, ToGuid, ToParameter）");
+                }
+
+                var result = ComponentExchange.DisconnectComponents(fromGuid, fromParameter, toGuid, toParameter);
+
+                if (result)
+                {
+                    return Ljson.CreateOKLjson("组件连接断开成功");
+                }
+                else
+                {
+                    return Ljson.CreateErrorLjson("组件连接断开失败");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"断开组件连接失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 处理运行Rhino脚本命令
         /// </summary>
-        private static Ljson HandleRunScript(Ljson data)
+        private static Ljson HandleRunRhinoScript(Ljson data)
         {
             try
             {

@@ -62,7 +62,7 @@ def test_simple_commands():
         print(f"\n测试命令: {script}")
         print("-" * 50)
 
-        results = send_command(9988, "RHINO", "RUNSCRIPT", {
+        results = send_command(9988, "RHINO", "RHINOSCRIPT", {
             "Script": script
         })
 

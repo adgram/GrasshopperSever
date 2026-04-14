@@ -19,10 +19,32 @@ namespace GrasshopperSever.Commands
         private static Dictionary<string, IGH_ObjectProxy> _componentProxyCache;
         private static readonly object _cacheLock = new object();
 
+
+        /// <summary>
+        /// 创建组件信息Ljson
+        /// </summary>
+        public static Ljson ComponentLjson(string componentGuid,
+            string name, string nickName, string description,
+            string category, string subCategory, string prototype)
+        {
+            var data = new Dictionary<string, JsonElement>
+            {
+                { "ComponentGuid", JsonSerializer.SerializeToElement(componentGuid) },
+                { "ComponentName", JsonSerializer.SerializeToElement(name) },
+                { "NickName", JsonSerializer.SerializeToElement(nickName) },
+                { "Description", JsonSerializer.SerializeToElement(description) },
+                { "Category", JsonSerializer.SerializeToElement(category) },
+                { "SubCategory", JsonSerializer.SerializeToElement(subCategory) },
+                { "Prototype", JsonSerializer.SerializeToElement(prototype) }
+            };
+
+            return new Ljson("Component", "组件信息", JsonSerializer.SerializeToElement(data));
+        }
+
         /// <summary>
         /// 获取组件代理字典缓存
         /// </summary>
-        private static Dictionary<string, IGH_ObjectProxy> GetComponentProxyCache()
+        public static Dictionary<string, IGH_ObjectProxy> GetComponentProxyCache()
         {
             if (_componentProxyCache == null)
             {
@@ -72,8 +94,7 @@ namespace GrasshopperSever.Commands
             ComponentsDB.ClearAllComponents();
 
             // 收集所有组件信息（批量插入优化）
-            var componentsToInsert = new List<(string componentGuid, string componentName, string nickName,
-                string description, string category, string subCategory, string inputs, string outputs)>();
+            var componentsToInsert = new List<(string componentGuid, string componentName, string nickName, string description, string category, string subCategory, string prototype)>();
 
             foreach (var proxy in proxies)
             {
@@ -124,8 +145,7 @@ namespace GrasshopperSever.Commands
                     description: proxy.Desc.Description,
                     category: cat,
                     subCategory: subCat,
-                    inputs: string.Empty,
-                    outputs: string.Empty
+                    prototype: string.Empty
                 ));
 
                 totalCount++;
@@ -163,7 +183,7 @@ namespace GrasshopperSever.Commands
             {
                 string sql = @"
                     SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory
-                    FROM AllComponents
+                    FROM ALLCOMPS
                     ORDER BY Category, SubCategory, ComponentName";
 
                 using (var command = new SQLiteCommand(sql, connection))
@@ -224,9 +244,8 @@ namespace GrasshopperSever.Commands
             // 从数据库查询组件信息
             using (var connection = DatabaseManager.GetConnection())
             {
-                string sql = @"
-                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Inputs, Outputs
-                    FROM AllComponents
+                string sql = @"                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
+                    FROM ALLCOMPS
                     WHERE ComponentGuid = @guid";
 
                 using (var command = new SQLiteCommand(sql, connection))
@@ -237,24 +256,19 @@ namespace GrasshopperSever.Commands
                     {
                         if (reader.Read())
                         {
-                            string inputs = reader["Inputs"].ToString();
-                            string outputs = reader["Outputs"].ToString();
+                            string prototype = reader["Prototype"].ToString();
 
                             // 检查并更新输入输出信息（如果为空）
-                            CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
+                            CheckAndUpdateComponentPrototype(guid, ref prototype);
 
-                            return ComponentExchange.ComponentLjson(
-                                componentGuid: reader["ComponentGuid"].ToString(),
-                                instanceGuid: "",
+                            return ComponentLjson(
+                                componentGuid: guid,
                                 name: reader["ComponentName"].ToString(),
                                 nickName: reader["NickName"].ToString(),
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: new PointF(-99, -99),
-                                state: "",
-                                inputs: inputs,
-                                outputs: outputs
+                                prototype: prototype
                             );
                         }
                     }
@@ -270,9 +284,8 @@ namespace GrasshopperSever.Commands
             // 从数据库查询第一个匹配的组件信息
             using (var connection = DatabaseManager.GetConnection())
             {
-                string sql = @"
-                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Inputs, Outputs
-                    FROM AllComponents
+                string sql = @"                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
+                    FROM ALLCOMPS
                     WHERE ComponentName = @name COLLATE NOCASE OR NickName = @name COLLATE NOCASE
                     ORDER BY ComponentName
                     LIMIT 1";
@@ -286,24 +299,19 @@ namespace GrasshopperSever.Commands
                         if (reader.Read())
                         {
                             string guid = reader["ComponentGuid"].ToString();
-                            string inputs = reader["Inputs"].ToString();
-                            string outputs = reader["Outputs"].ToString();
+                            string prototype = reader["Prototype"].ToString();
 
                             // 检查并更新输入输出信息（如果为空）
-                            CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
+                            CheckAndUpdateComponentPrototype(guid, ref prototype);
 
-                            return ComponentExchange.ComponentLjson(
+                            return ComponentLjson(
                                 componentGuid: guid,
-                                instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
                                 nickName: reader["NickName"].ToString(),
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: new PointF(-99, -99),
-                                state: "",
-                                inputs: inputs,
-                                outputs: outputs
+                                prototype: prototype
                             );
                         }
                     }
@@ -317,9 +325,8 @@ namespace GrasshopperSever.Commands
         public static Ljson FindComponentsByCategory(string category, string subCategory, string name)
         {
             // 构建 SQL 查询
-            string sql = @"
-                SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Inputs, Outputs
-                FROM AllComponents
+            string sql = @"SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
+                FROM ALLCOMPS
                 WHERE 1=1";
 
             var conditions = new List<string>();
@@ -369,24 +376,19 @@ namespace GrasshopperSever.Commands
                         if (reader.Read())
                         {
                             string guid = reader["ComponentGuid"].ToString();
-                            string inputs = reader["Inputs"].ToString();
-                            string outputs = reader["Outputs"].ToString();
+                            string prototype = reader["Prototype"].ToString();
 
                             // 检查并更新输入输出信息（如果为空）
-                            CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
+                            CheckAndUpdateComponentPrototype(guid, ref prototype);
 
-                            return ComponentExchange.ComponentLjson(
+                            return ComponentLjson(
                                 componentGuid: guid,
-                                instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
                                 nickName: reader["NickName"].ToString(),
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: new PointF(-99, -99),
-                                state: "",
-                                inputs: inputs,
-                                outputs: outputs
+                                prototype: prototype
                             );
                         }
                     }
@@ -405,9 +407,8 @@ namespace GrasshopperSever.Commands
             // 从数据库模糊查询组件信息
             using (var connection = DatabaseManager.GetConnection())
             {
-                string sql = @"
-                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Inputs, Outputs
-                    FROM AllComponents
+                string sql = @"                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
+                    FROM ALLCOMPS
                     WHERE ComponentName LIKE @name COLLATE NOCASE OR NickName LIKE @name COLLATE NOCASE OR Description LIKE @name COLLATE NOCASE
                     ORDER BY ComponentName";
 
@@ -420,24 +421,19 @@ namespace GrasshopperSever.Commands
                         while (reader.Read())
                         {
                             string guid = reader["ComponentGuid"].ToString();
-                            string inputs = reader["Inputs"].ToString();
-                            string outputs = reader["Outputs"].ToString();
+                            string prototype = reader["Prototype"].ToString();
 
                             // 检查并更新输入输出信息（如果为空）
-                            CheckAndUpdateComponentIO(guid, ref inputs, ref outputs);
+                            CheckAndUpdateComponentPrototype(guid, ref prototype);
 
-                            result.Add(ComponentExchange.ComponentLjson(
+                            result.Add(ComponentLjson(
                                 componentGuid: guid,
-                                instanceGuid: "",
                                 name: reader["ComponentName"].ToString(),
                                 nickName: reader["NickName"].ToString(),
                                 description: reader["Description"].ToString(),
                                 category: reader["Category"].ToString(),
                                 subCategory: reader["SubCategory"].ToString(),
-                                position: new PointF(-99, -99),
-                                state: "",
-                                inputs: inputs,
-                                outputs: outputs
+                                prototype: prototype
                             ));
                         }
                     }
@@ -448,11 +444,37 @@ namespace GrasshopperSever.Commands
         }
 
         /// <summary>
-        /// 获取组件的输入输出信息（通过创建组件实例）
+        /// 检查并更新组件的输入输出信息
         /// </summary>
         /// <param name="componentGuid">组件 GUID</param>
-        /// <returns>包含 inputs 和 outputs JSON 字符串的元组</returns>
-        private static (Ljson inputs, Ljson outputs) GetComponentIOInfo(string componentGuid)
+        /// <param name="prototype">函数签名（引用传递）</param>
+        private static void CheckAndUpdateComponentPrototype(string componentGuid, ref string prototype)
+        {
+            // 检查是否为空
+            bool needsUpdate = string.IsNullOrWhiteSpace(prototype);
+            if (needsUpdate)
+            {
+                // 获取组件的 prototype 信息
+                string newPrototype = GetComponentPrototype(componentGuid);
+
+                // 更新引用
+                if (!string.IsNullOrWhiteSpace(newPrototype))
+                {
+                    prototype = newPrototype;
+
+                    // 如果获取到了新信息，更新数据库
+                    ComponentsDB.UpdateComponentPrototype(componentGuid, prototype);
+
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 获取组件的函数签名（通过创建组件实例）
+        /// </summary>
+        /// <param name="componentGuid">组件 GUID</param>
+        /// <returns>Python 风格的函数签名字符串</returns>
+        private static string GetComponentPrototype(string componentGuid)
         {
             try
             {
@@ -466,14 +488,25 @@ namespace GrasshopperSever.Commands
                         IGH_Component component = null;
                         try
                         {
-                            // 使用反射创建实例，可能比 CreateInstance 更轻量
+                            // 使用反射创建实例
                             component = Activator.CreateInstance(type) as IGH_Component;
                             if (component != null)
                             {
-                                var inputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
-                                var outputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
+                                // 生成函数签名
+                                string functionName = FormatFunctionName(proxy.Desc.Category, proxy.Desc.Name);
+                                string inputs = ParamExchange.ParamsToPrototype(component.Params.Input);
+                                string outputs = ParamExchange.ParamsToPrototype(component.Params.Output);
 
-                                return (inputsJson, outputsJson);
+                                // 格式：Category_ComponentName(input1, input2) -> (output1, output2)
+                                string signature = $"{functionName}({inputs})";
+
+                                // 如果有输出，添加返回值部分
+                                if (!string.IsNullOrWhiteSpace(outputs))
+                                {
+                                    signature += $" -> ({outputs})";
+                                }
+
+                                return signature;
                             }
                         }
                         finally
@@ -499,49 +532,47 @@ namespace GrasshopperSever.Commands
                     var component = proxy.CreateInstance() as IGH_Component;
                     if (component != null)
                     {
-                        var inputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Input);
-                        var outputsJson = ParamExchange.SerializeParamDefinitions(component.Params.Output);
+                        // 生成函数签名
+                        string functionName = FormatFunctionName(proxy.Desc.Category, proxy.Desc.Name);
+                        string inputs = ParamExchange.ParamsToPrototype(component.Params.Input);
+                        string outputs = ParamExchange.ParamsToPrototype(component.Params.Output);
 
-                        return (inputsJson, outputsJson);
+                        // 格式：Category_ComponentName(input1, input2) -> (output1, output2)
+                        string signature = $"{functionName}({inputs})";
+
+                        // 如果有输出，添加返回值部分
+                        if (!string.IsNullOrWhiteSpace(outputs))
+                        {
+                            signature += $" -> ({outputs})";
+                        }
+
+                        return signature;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"获取组件 IO 信息失败 ({componentGuid}): {ex.Message}");
+                Debug.WriteLine($"获取组件函数签名失败 ({componentGuid}): {ex.Message}");
             }
 
-            return (null, null);
+            return null;
         }
 
         /// <summary>
-        /// 检查并更新组件的输入输出信息
+        /// 格式化函数名称：Category_ComponentName
         /// </summary>
-        /// <param name="componentGuid">组件 GUID</param>
-        /// <param name="inputs">输入信息（引用传递）</param>
-        /// <param name="outputs">输出信息（引用传递）</param>
-        private static void CheckAndUpdateComponentIO(string componentGuid, ref string inputs, ref string outputs)
+        /// <param name="category">组件分类</param>
+        /// <param name="componentName">组件名称</param>
+        /// <returns>格式化后的函数名</returns>
+        private static string FormatFunctionName(string category, string componentName)
         {
-            // 检查是否为空
-            bool needsUpdate = string.IsNullOrWhiteSpace(inputs) || string.IsNullOrWhiteSpace(outputs);
+            // 移除空格和特殊字符，使用下划线连接
+            string cleanCategory = string.Join("_", category.Split(new[] { ' ', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries));
+            string cleanName = string.Join("_", componentName.Split(new[] { ' ', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries));
 
-            if (needsUpdate)
-            {
-                var (newInputs, newOutputs) = GetComponentIOInfo(componentGuid);
-
-                // 更新引用
-                if (newInputs != null)
-                    inputs = newInputs.ToJson();
-                if (newOutputs != null)
-                    outputs = newOutputs.ToJson();
-
-                // 如果获取到了新信息，更新数据库
-                if (!string.IsNullOrWhiteSpace(inputs) || !string.IsNullOrWhiteSpace(outputs))
-                {
-                    ComponentsDB.UpdateComponentIO(componentGuid, inputs, outputs);
-                }
-            }
+            return $"{cleanCategory}_{cleanName}";
         }
+
     }
 
 }

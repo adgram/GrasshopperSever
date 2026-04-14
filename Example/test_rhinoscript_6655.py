@@ -44,14 +44,14 @@ def send_command(port, ljson_type, command_name, params):
         print(f"连接失败: {e}")
         return []
 
-# 测试RUNSCRIPT命令
-print("测试RUNSCRIPT命令（端口6655）")
+# 测试RHINOSCRIPT命令
+print("测试RHINOSCRIPT命令（端口6655）")
 print("=" * 50)
 
 script = "_-Line 0,0,0 10,10,0"
 print(f"执行脚本: {script}")
 
-results = send_command(6655, "RHINO", "RUNSCRIPT", {
+results = send_command(6655, "RHINO", "RHINOSCRIPT", {
     "Script": script
 })
 

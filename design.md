@@ -27,24 +27,19 @@ public Ljson(string name, string info, JsonElement value)
 /// <summary>
 /// 创建组件信息Ljson
 /// </summary>
-public static Ljson ComponentLjson(string componentGuid, string instanceGuid,
+public static Ljson ComponentLjson(string componentGuid,
                                    string name, string nickName, string description,
-                                   string category, string subCategory, string position,
-                                   string state, string inputs, string outputs)
+                                   string category, string subCategory, string prototype)
 {
     var data = new Dictionary<string, JsonElement>
     {
         { "ComponentGuid", JsonSerializer.SerializeToElement(componentGuid) },
-        { "InstanceGuid", JsonSerializer.SerializeToElement(instanceGuid) },
         { "ComponentName", JsonSerializer.SerializeToElement(name) },
         { "NickName", JsonSerializer.SerializeToElement(nickName) },
         { "Description", JsonSerializer.SerializeToElement(description) },
         { "Category", JsonSerializer.SerializeToElement(category) },
         { "SubCategory", JsonSerializer.SerializeToElement(subCategory) },
-        { "Position", JsonSerializer.SerializeToElement(position) },
-        { "State", JsonSerializer.SerializeToElement(state) },
-        { "Inputs", JsonSerializer.SerializeToElement(inputs) },
-        { "Outputs", JsonSerializer.SerializeToElement(outputs) }
+        { "Prototype", JsonSerializer.SerializeToElement(prototype) }
     };
 
     return new Ljson("Component", "组件信息", JsonSerializer.SerializeToElement(data));
@@ -322,16 +317,12 @@ pManager.AddParameter(new LjsonParam(), "ComponentInfo", "C", "组件信息", GH
 ```c#
 {
   "ComponentGuid": "组件 GUID",
-  "InstanceGuid": "实例 GUID",
   "ComponentName": "组件名称",
   "NickName": "组件昵称",
   "Description": "组件描述",
   "Category": "主分类",
   "SubCategory": "子分类",
-  "Position": "位置信息",
-  "State": "状态信息",
-  "Inputs": "输入端信息",
-  "Outputs": "输出端信息"
+  "Prototype": "函数签名"
 }
 ```
 

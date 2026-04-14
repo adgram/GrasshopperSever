@@ -65,6 +65,7 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 - `COMPONENT` - 组件相关命令
 - `DOCUMENT` - 文档相关命令
 - `RHINO` - Rhino相关命令
+- `DESIGN` - 设计布局命令（组件添加、连接等）
 
 ### Component命令
 
@@ -96,7 +97,7 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 
 ### Rhino命令
 
-#### RUNSCRIPT
+#### RHINOSCRIPT
 运行Rhino脚本（如：`_-Line 0,0,0 10,10,0`）
 
 #### GETLASTCREATEDOBJECTS
@@ -107,6 +108,141 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 
 #### GETANDSELECTLASTOBJECTS
 获取并选择最后创建的对象（复合命令）
+
+### Design命令
+
+Design 命令用于控制组件的添加、移除、连接和值设置等布局相关操作。
+
+#### ADDCOMPONENT
+通过 Ljson 添加组件到文档
+
+**参数**：
+- `ComponentGuid` - 组件 GUID
+- `X` - X 坐标（数字）
+- `Y` - Y 坐标（数字）
+
+**示例**：
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponent",
+  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### ADDCOMPONENTBYGUID
+通过 GUID 添加组件
+
+**参数**：
+- `ComponentGuid` - 组件 GUID
+- `X` - X 坐标（数字）
+- `Y` - Y 坐标（数字）
+
+**示例**：
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponentByGuid",
+  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### ADDCOMPONENTBYNAME
+通过名称添加组件
+
+**参数**：
+- `ComponentName` - 组件名称
+- `X` - X 坐标（数字）
+- `Y` - Y 坐标（数字）
+
+**示例**：
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponentByName",
+  "ComponentName": "Addition",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### REMOVECOMPONENT
+移除组件
+
+**参数**：
+- `InstanceGuid` - 组件实例 GUID
+
+**示例**：
+```json
+{
+  "Name": "Design",
+  "Command": "RemoveComponent",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx"
+}
+```
+
+#### SETCOMPONENTVALUE
+设置组件值
+
+**参数**：
+- `InstanceGuid` - 组件实例 GUID
+- `Value` - 要设置的值
+
+**示例**：
+```json
+{
+  "Name": "Design",
+  "Command": "SetComponentValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Value": "42"
+}
+```
+
+#### CONNECTCOMPONENTS
+连接两个组件的参数
+
+**参数**：
+- `FromGuid` - 源组件实例 GUID
+- `FromParameter` - 源组件输出参数名称
+- `ToGuid` - 目标组件实例 GUID
+- `ToParameter` - 目标组件输入参数名称
+
+**示例**：
+```json
+{
+  "Name": "Design",
+  "Command": "ConnectComponents",
+  "FromGuid": "instance-guid-1",
+  "FromParameter": "Result",
+  "ToGuid": "instance-guid-2",
+  "ToParameter": "A"
+}
+```
+
+#### DISCONNECTCOMPONENTS
+断开两个组件参数之间的连接
+
+**参数**：
+- `FromGuid` - 源组件实例 GUID
+- `FromParameter` - 源组件输出参数名称
+- `ToGuid` - 目标组件实例 GUID
+- `ToParameter` - 目标组件输入参数名称
+
+**示例**：
+```json
+{
+  "Name": "Design",
+  "Command": "DisconnectComponents",
+  "FromGuid": "instance-guid-1",
+  "FromParameter": "Result",
+  "ToGuid": "instance-guid-2",
+  "ToParameter": "A"
+}
+```
 
 ### OUTPUT 特殊键
 
@@ -270,16 +406,12 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 ```json
 {
   "ComponentGuid": "组件GUID",
-  "InstanceGuid": "实例GUID",
   "ComponentName": "组件名称",
   "NickName": "组件昵称",
   "Description": "组件描述",
   "Category": "主分类",
   "SubCategory": "子分类",
-  "Position": "位置信息",
-  "State": "状态信息",
-  "Inputs": "输入端信息",
-  "Outputs": "输出端信息"
+  "Prototype": "函数签名"
 }
 ```
 
@@ -422,7 +554,7 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 | LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
 | Description | TEXT | - | 表描述 |
 
-### AllComponents表
+### ALLCOMPS表
 
 存储所有Grasshopper组件的详细信息。
 
@@ -435,8 +567,7 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 | Description | TEXT | - | 组件描述 |
 | Category | TEXT | NOT NULL | 主分类 |
 | SubCategory | TEXT | NOT NULL | 子分类 |
-| Inputs | TEXT | DEFAULT '' | 输入参数定义（JSON格式） |
-| Outputs | TEXT | DEFAULT '' | 输出参数定义（JSON格式） |
+| Prototype | TEXT | DEFAULT '' | 包含输入输出的函数签名（JSON格式） |
 
 ### RhinoObjects表
 

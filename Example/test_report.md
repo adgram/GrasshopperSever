@@ -228,7 +228,7 @@ TcpTestSucceeded : True
 **SQL查询**:
 ```sql
 SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory
-FROM AllComponents
+FROM ALLCOMPS
 ```
 
 **查询结果**:
@@ -336,7 +336,7 @@ FROM AllComponents
 - DATABASEPATH
 
 **Rhino命令**（3个）:
-- RUNSCRIPT
+- RHINOSCRIPT
 - GETLASTCREATEDOBJECTS
 - SELECTOBJECTS
 

@@ -54,7 +54,7 @@ def test_run_script():
     script = "_-CommandEcho _None"
     print(f"执行脚本: {script}")
 
-    results = send_command(9988, "RHINO", "RUNSCRIPT", {
+    results = send_command(9988, "RHINO", "RHINOSCRIPT", {
         "Script": script
     })
 
@@ -116,7 +116,7 @@ def test_create_point():
     # 先创建一个点
     print("步骤1: 创建点")
     create_script = "_-Point 0,0,0"
-    results = send_command(9988, "RHINO", "RUNSCRIPT", {
+    results = send_command(9988, "RHINO", "RHINOSCRIPT", {
         "Script": create_script
     })
 
