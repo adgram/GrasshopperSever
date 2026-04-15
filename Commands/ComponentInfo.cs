@@ -286,7 +286,7 @@ namespace GrasshopperSever.Commands
             {
                 string sql = @"                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
                     FROM ALLCOMPS
-                    WHERE ComponentName = @name COLLATE NOCASE OR NickName = @name COLLATE NOCASE
+                    WHERE ComponentName = @name COLLATE NOCASE
                     ORDER BY ComponentName
                     LIMIT 1";
 

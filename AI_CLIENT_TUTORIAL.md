@@ -124,7 +124,10 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 ### Component命令（5个）
 
 #### GETALLCOMPONENTS
+
 获取所有组件信息
+
+警告：不要轻易获取所有组件信息，优先使用分组或名称查询、检索，或者调用数据库。
 
 **请求**：
 ```json
@@ -255,7 +258,7 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
   "Name": "DatabasePath",
   "Info": "获取数据库路径",
   "Value": {
-    "DatabasePath": "C:\\Users\\[用户名]\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\GrasshopperSever.db"
+    "DatabasePath": "C:\\Users\\[用户名]\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\ComponentsInfo.db"
   }
 }
 ```
@@ -395,21 +398,185 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 }
 ```
 
+### Design命令
+
+Design 命令用于控制组件的添加、移除、连接和值设置等布局相关操作。
+
+#### ADDCOMPONENTBYGUID
+
+通过 GUID 添加组件
+
+**参数**：
+
+- `ComponentGuid` - 组件 GUID
+- `X` - X 坐标（数字）
+- `Y` - Y 坐标（数字）
+
+**示例**：
+
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponentByGuid",
+  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### ADDCOMPONENTBYNAME
+
+通过名称添加组件
+
+**参数**：
+
+- `ComponentName` - 组件名称
+- `X` - X 坐标（数字）
+- `Y` - Y 坐标（数字）
+
+**示例**：
+
+```json
+{
+  "Name": "Design",
+  "Command": "AddComponentByName",
+  "ComponentName": "Addition",
+  "X": 100,
+  "Y": 100
+}
+```
+
+#### REMOVECOMPONENT
+
+移除组件
+
+**参数**：
+
+- `InstanceGuid` - 组件实例 GUID
+
+**示例**：
+
+```json
+{
+  "Name": "Design",
+  "Command": "RemoveComponent",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx"
+}
+```
+
+#### SETCOMPONENTVALUE
+
+设置组件值
+
+**参数**：
+
+- `InstanceGuid` - 组件实例 GUID
+- `Value` - 要设置的值
+
+**示例**：
+
+```json
+{
+  "Name": "Design",
+  "Command": "SetComponentValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Value": "42"
+}
+```
+
+#### CONNECTCOMPONENTS
+
+连接两个组件的参数
+
+**参数**：
+
+- `FromGuid` - 源组件实例 GUID
+- `FromParameter` - 源组件输出参数名称
+- `ToGuid` - 目标组件实例 GUID
+- `ToParameter` - 目标组件输入参数名称
+
+**示例**：
+
+```json
+{
+  "Name": "Design",
+  "Command": "ConnectComponents",
+  "FromGuid": "instance-guid-1",
+  "FromParameter": "Result",
+  "ToGuid": "instance-guid-2",
+  "ToParameter": "A"
+}
+```
+
+#### DISCONNECTCOMPONENTS
+
+断开两个组件参数之间的连接
+
+**参数**：
+
+- `FromGuid` - 源组件实例 GUID
+- `FromParameter` - 源组件输出参数名称
+- `ToGuid` - 目标组件实例 GUID
+- `ToParameter` - 目标组件输入参数名称
+
+**示例**：
+
+```json
+{
+  "Name": "Design",
+  "Command": "DisconnectComponents",
+  "FromGuid": "instance-guid-1",
+  "FromParameter": "Result",
+  "ToGuid": "instance-guid-2",
+  "ToParameter": "A"
+}
+```
+
 ## 数据库说明
 
-GrasshopperSever使用SQLite数据库存储组件信息和对象信息。
+GrasshopperSever使用SQLite数据库存储组件信息和对象信息，采用**双层架构**。
+
+### 数据库架构
+
+#### 1. 主数据库（ComponentsInfo.db）
+- **位置**：插件目录
+- **用途**：存储全局组件信息，所有Grasshopper文档共享
+- **数据表**：
+  - MetaInfo - 元信息表
+  - ALLCOMPS - 组件信息表
+
+#### 2. 文档数据库（{_ghdata.db）
+- **位置**：
+  - 如果文档已保存：与gh文件同目录，命名为 `{文档名}_ghdata.db`
+  - 如果文档未保存：插件目录，命名为 `TempDocument_{GUID}.db`
+- **用途**：存储文档特定的数据，与文档紧密关联
+- **数据表**：
+  - RhinoObjects - Rhino对象信息表
+  - GHScriptModifyHistory - GHScript修改历史表
+  - ComponentExchangeHistory - 组件交换操作历史表
+
+**优势**：
+- 全局组件信息共享，提高性能
+- 文档特定数据与文档绑定，便于分享和管理
+- 自动清理未保存文档的临时数据
 
 ### 数据库位置
 
-**路径**：`C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
+**主数据库路径**：`C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\ComponentsInfo.db`
 
-**获取方式**：使用`DATABASEPATH`命令获取具体路径
+**文档数据库路径**：
+- 已保存文档：`{文档路径目录}\{文档名}_ghdata.db`
+- 未保存文档：`{插件目录}\TempDocument_{GUID}.db`
+
+**获取方式**：使用`DATABASEPATH`命令获取主数据库路径
 
 ### 数据库表结构
 
-#### 1. MetaInfo表（元信息表）
+#### 主数据库表
 
-用于跟踪数据库表的更新时间和描述信息。
+##### 1. MetaInfo表（元信息表）
+
+用于跟踪主数据库中表的更新时间和描述信息。
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -424,9 +591,9 @@ GrasshopperSever使用SQLite数据库存储组件信息和对象信息。
 SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
 ```
 
-#### 2. ALLCOMPS表（组件信息表）
+##### 2. ALLCOMPS表（组件信息表）
 
-存储所有Grasshopper组件的详细信息。
+存储所有Grasshopper组件的详细信息（全局缓存）。
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -454,9 +621,11 @@ SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LI
 SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category;
 ```
 
-#### 3. RhinoObjects表（Rhino对象信息表）
+#### 文档数据库表
 
-存储Rhino中创建的对象信息。
+##### 3. RhinoObjects表（Rhino对象信息表）
+
+存储Rhino中创建的对象信息（文档特定）。
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -484,9 +653,9 @@ SELECT * FROM RhinoObjects ORDER BY CreateTime DESC LIMIT 10;
 SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 ```
 
-#### 4. GHScriptModifyHistory表（GHScript组件修改历史表）
+##### 4. GHScriptModifyHistory表（GHScript组件修改历史表）
 
-存储GHScript组件的修改历史记录。
+存储GHScript组件的修改历史记录（文档特定）。
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -511,6 +680,45 @@ SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER
 SELECT * FROM GHScriptModifyHistory WHERE ModifyType = 'CODE_CHANGE' ORDER BY ModifyTime DESC;
 ```
 
+##### 5. ComponentExchangeHistory表（组件交换操作历史表）
+
+存储组件交换操作的历史记录（文档特定），包括添加、删除、连接、断开等操作。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| OperationType | TEXT | NOT NULL | 操作类型（AddComponent, RemoveComponent, SetComponentValue, ConnectComponents, DisconnectComponents） |
+| ComponentGuid | TEXT | - | 组件GUID |
+| InstanceGuid | TEXT | - | 组件实例GUID |
+| ComponentName | TEXT | - | 组件名称 |
+| PositionX | REAL | - | X坐标（添加组件时） |
+| PositionY | REAL | - | Y坐标（添加组件时） |
+| Value | TEXT | - | 设置的值（设置组件值时） |
+| FromInstanceGuid | TEXT | - | 源组件实例GUID（连接/断开操作时） |
+| FromParameter | TEXT | - | 源参数名称（连接/断开操作时） |
+| ToInstanceGuid | TEXT | - | 目标组件实例GUID（连接/断开操作时） |
+| ToParameter | TEXT | - | 目标参数名称（连接/断开操作时） |
+| OperationTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 操作时间 |
+| Description | TEXT | - | 描述信息 |
+
+**示例查询**：
+```sql
+-- 查询所有操作历史
+SELECT * FROM ComponentExchangeHistory ORDER BY OperationTime DESC LIMIT 100;
+
+-- 查询特定组件的操作历史
+SELECT * FROM ComponentExchangeHistory WHERE InstanceGuid = '{instance_guid}' ORDER BY OperationTime DESC;
+
+-- 查询所有添加组件操作
+SELECT * FROM ComponentExchangeHistory WHERE OperationType = 'AddComponent' ORDER BY OperationTime DESC;
+
+-- 查询所有连接操作
+SELECT * FROM ComponentExchangeHistory WHERE OperationType IN ('ConnectComponents', 'DisconnectComponents') ORDER BY OperationTime DESC;
+
+-- 统计各类型操作数量
+SELECT OperationType, COUNT(*) as Count FROM ComponentExchangeHistory GROUP BY OperationType;
+```
+
 ### 数据库使用建议
 
 **只读操作**：
@@ -524,9 +732,12 @@ SELECT * FROM GHScriptModifyHistory WHERE ModifyType = 'CODE_CHANGE' ORDER BY Mo
 - ⚠️ 手动修改可能影响插件功能
 
 **注意事项**：
-- 数据库是暂存文件，不会和Grasshopper文件同步
+- **主数据库**：存储全局组件信息，可随时重建
+- **文档数据库**：与gh文件同目录，便于分享和版本控制
+- 未保存文档使用临时命名，避免冲突
 - RhinoObjects表在第一次调用`GETLASTCREATEDOBJECTS`命令时自动创建
 - GHScriptModifyHistory表在第一次修改GHScript组件时自动创建
+- ComponentExchangeHistory表在第一次执行组件交换操作时自动创建
 
 ## 快速开始
 

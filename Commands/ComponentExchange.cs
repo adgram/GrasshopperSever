@@ -79,6 +79,19 @@ namespace GrasshopperSever.Commands
                 throw caughtException;
             }
 
+            // 记录添加组件操作到数据库
+            if (dobj != null)
+            {
+                ComponentExchangeDB.RecordAddComponent(
+                    componentGuid: componentGuid,
+                    instanceGuid: dobj.InstanceGuid.ToString(),
+                    componentName: componentName,
+                    x: point.X,
+                    y: point.Y,
+                    description: $"添加组件 {componentName}"
+                );
+            }
+
             // 获取组件的输入输出信息
             var (newInputs, newOutputs) = ParamExchange.GetComponentIOInfo(componentGuid);
 
@@ -123,6 +136,7 @@ namespace GrasshopperSever.Commands
         {
             bool success = false;
             Exception caughtException = null;
+            string componentName = null;
 
             RhinoApp.InvokeOnUiThread(new Action(() =>
             {
@@ -132,9 +146,11 @@ namespace GrasshopperSever.Commands
 
                     // 查找组件
                     var component = doc.FindObject(new Guid(guid), false);
-                    
+
                     if (component != null)
                     {
+                        componentName = component.Name;
+
                         // 移除组件
                         doc.RemoveObject(component, false);
                         doc.NewSolution(false);
@@ -156,6 +172,16 @@ namespace GrasshopperSever.Commands
                 throw caughtException;
             }
 
+            // 记录删除组件操作到数据库
+            if (success && !string.IsNullOrEmpty(componentName))
+            {
+                ComponentExchangeDB.RecordRemoveComponent(
+                    instanceGuid: guid,
+                    componentName: componentName,
+                    description: $"删除组件 {componentName}"
+                );
+            }
+
             return success;
         }
 
@@ -166,6 +192,7 @@ namespace GrasshopperSever.Commands
         {
             bool success = false;
             Exception caughtException = null;
+            string componentName = null;
 
             RhinoApp.InvokeOnUiThread(new Action(() =>
             {
@@ -178,6 +205,8 @@ namespace GrasshopperSever.Commands
 
                     if (component != null)
                     {
+                        componentName = component.Name;
+
                         if (component is GH_Panel panel)
                         {
                             panel.UserText = value;
@@ -212,6 +241,17 @@ namespace GrasshopperSever.Commands
                 throw caughtException;
             }
 
+            // 记录设置组件值操作到数据库
+            if (success && !string.IsNullOrEmpty(componentName))
+            {
+                ComponentExchangeDB.RecordSetComponentValue(
+                    instanceGuid: guid,
+                    componentName: componentName,
+                    value: value,
+                    description: $"设置组件 {componentName} 的值为 {value}"
+                );
+            }
+
             return success;
         }
 
@@ -240,13 +280,13 @@ namespace GrasshopperSever.Commands
                 try
                 {
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
-                    
+
                     if (!Guid.TryParse(fromGuid, out Guid fromId) || !Guid.TryParse(toGuid, out Guid toId))
                     {
                         throw new ArgumentException("Invalid component ID format");
                     }
 
-                    if (doc.FindComponent(fromId) is not IGH_Component fromComponent || 
+                    if (doc.FindComponent(fromId) is not IGH_Component fromComponent ||
                         doc.FindComponent(toId) is not IGH_Component toComponent)
                     {
                         throw new ArgumentException("Source or target component not found");
@@ -293,6 +333,18 @@ namespace GrasshopperSever.Commands
                 throw exception;
             }
 
+            // 记录连接组件操作到数据库
+            if (result)
+            {
+                ComponentExchangeDB.RecordConnectComponents(
+                    fromInstanceGuid: fromGuid,
+                    fromParameter: fromParameter,
+                    toInstanceGuid: toGuid,
+                    toParameter: toParameter,
+                    description: $"连接组件 {fromGuid}.{fromParameter} 到 {toGuid}.{toParameter}"
+                );
+            }
+
             return result;
         }
 
@@ -320,13 +372,13 @@ namespace GrasshopperSever.Commands
                 try
                 {
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
-                    
+
                     if (!Guid.TryParse(fromGuid, out Guid fromId) || !Guid.TryParse(toGuid, out Guid toId))
                     {
                         throw new ArgumentException("Invalid component ID format");
                     }
 
-                    if (doc.FindComponent(fromId) is not IGH_Component fromComponent || 
+                    if (doc.FindComponent(fromId) is not IGH_Component fromComponent ||
                         doc.FindComponent(toId) is not IGH_Component toComponent)
                     {
                         throw new ArgumentException("Source or target component not found");
@@ -378,6 +430,18 @@ namespace GrasshopperSever.Commands
             if (exception != null)
             {
                 throw exception;
+            }
+
+            // 记录断开连接操作到数据库
+            if (result)
+            {
+                ComponentExchangeDB.RecordDisconnectComponents(
+                    fromInstanceGuid: fromGuid,
+                    fromParameter: fromParameter,
+                    toInstanceGuid: toGuid,
+                    toParameter: toParameter,
+                    description: $"断开组件 {fromGuid}.{fromParameter} 到 {toGuid}.{toParameter} 的连接"
+                );
             }
 
             return result;

@@ -372,5 +372,3 @@ pManager.AddTextParameter("Result", "R", "查询结果，以JSON格式返回", G
 ### 计划
 
 - 增加help
-
-- 序列化xml

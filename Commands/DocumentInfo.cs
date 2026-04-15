@@ -129,5 +129,92 @@ namespace GrasshopperSever.Commands
                 return Ljson.CreateErrorLjson($"打开文档时出错: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// 获取当前文档的所有对象
+        /// </summary>
+        /// <returns>包含所有对象信息的Ljson</returns>
+        public static Ljson GetAllObjects()
+        {
+            try
+            {
+                // 1. 获取当前活跃的文档
+                GH_Document doc = Instances.ActiveCanvas?.Document;
+                if (doc == null)
+                {
+                    return Ljson.CreateErrorLjson("当前没有活动的Grasshopper文档");
+                }
+
+                // 2. 收集所有对象信息
+                var objectsList = new System.Collections.Generic.List<object>();
+                int componentCount = 0;
+                int paramCount = 0;
+
+                foreach (IGH_DocumentObject obj in doc.Objects)
+                {
+                    var objInfo = new System.Collections.Generic.Dictionary<string, object>
+                    {
+                        { "InstanceGuid", obj.InstanceGuid.ToString() },
+                        { "Name", obj.Name },
+                        { "NickName", obj.NickName }
+                    };
+
+                    // 获取对象类型
+                    if (obj is IGH_Component component)
+                    {
+                        objInfo["Type"] = "Component";
+                        objInfo["ComponentGuid"] = component.ComponentGuid.ToString();
+                        objInfo["Category"] = component.Category;
+                        objInfo["SubCategory"] = component.SubCategory;
+                        componentCount++;
+                    }
+                    else if (obj is IGH_Param param)
+                    {
+                        objInfo["Type"] = "Param";
+                        objInfo["ParamType"] = param.TypeName;
+                        paramCount++;
+                    }
+                    else
+                    {
+                        objInfo["Type"] = obj.GetType().Name;
+                    }
+
+                    // 获取位置信息
+                    if (obj.Attributes != null)
+                    {
+                        objInfo["Position"] = new
+                        {
+                            X = obj.Attributes.Pivot.X,
+                            Y = obj.Attributes.Pivot.Y
+                        };
+                        objInfo["Bounds"] = new
+                        {
+                            X = obj.Attributes.Bounds.X,
+                            Y = obj.Attributes.Bounds.Y,
+                            Width = obj.Attributes.Bounds.Width,
+                            Height = obj.Attributes.Bounds.Height
+                        };
+                    }
+
+                    objectsList.Add(objInfo);
+                }
+
+                // 3. 封装结果
+                var data = new System.Collections.Generic.Dictionary<string, object>
+                {
+                    { "DocumentId", doc.DocumentID.ToString() },
+                    { "TotalCount", doc.ObjectCount },
+                    { "ComponentCount", componentCount },
+                    { "ParamCount", paramCount },
+                    { "Objects", objectsList }
+                };
+
+                return new Ljson("AllObjects", "当前文档所有对象", JsonSerializer.SerializeToElement(data));
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"获取文档对象时出错: {ex.Message}");
+            }
+        }
     }
 }

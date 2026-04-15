@@ -5,32 +5,52 @@ using System.Diagnostics;
 
 namespace GrasshopperSever.Utils
 {
+    /// <summary>
+    /// GHScript 数据库操作类（使用文档数据库）
+    /// 数据存储在 gh 文件同目录的 _ghdata.db 文件中
+    /// </summary>
     public class GHScriptDB
     {
         /// <summary>
-        /// 初始化 GHScript 修改记录表
+        /// 初始化 GHScript 修改记录表（在文档数据库中）
         /// </summary>
         private static void InitializeScriptModifyTable()
         {
             try
             {
-                if (!DatabaseManager.TableExists("GHScriptModifyHistory"))
+                using (var connection = DatabaseManager.GetDocumentConnection())
                 {
-                    string createTableSql = @"
-                        CREATE TABLE GHScriptModifyHistory (
-                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            InstanceGuid TEXT NOT NULL,
-                            ComponentGuid TEXT NOT NULL,
-                            ComponentName TEXT,
-                            ModifyType TEXT NOT NULL,
-                            ModifyContent TEXT,
-                            Description TEXT,
-                            ModifyTime DATETIME DEFAULT CURRENT_TIMESTAMP
-                        )";
+                    // 检查表是否存在
+                    string checkTable = @"
+                        SELECT name FROM sqlite_master
+                        WHERE type='table' AND name='GHScriptModifyHistory'";
 
-                    if (DatabaseManager.CreateTable("GHScriptModifyHistory", createTableSql, "存储GHScript组件修改历史"))
+                    using (var checkCmd = new SQLiteCommand(checkTable, connection))
                     {
-                        Debug.WriteLine("GHScript修改记录表创建成功");
+                        using (var reader = checkCmd.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                            {
+                                // 表不存在，创建它
+                                string createTableSql = @"
+                                    CREATE TABLE GHScriptModifyHistory (
+                                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        InstanceGuid TEXT NOT NULL,
+                                        ComponentGuid TEXT NOT NULL,
+                                        ComponentName TEXT,
+                                        ModifyType TEXT NOT NULL,
+                                        ModifyContent TEXT,
+                                        Description TEXT,
+                                        ModifyTime DATETIME DEFAULT CURRENT_TIMESTAMP
+                                    )";
+
+                                using (var createCmd = new SQLiteCommand(createTableSql, connection))
+                                {
+                                    createCmd.ExecuteNonQuery();
+                                    Debug.WriteLine("GHScript修改记录表创建成功");
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -41,7 +61,7 @@ namespace GrasshopperSever.Utils
         }
 
         /// <summary>
-        /// 记录组件修改历史
+        /// 记录组件修改历史（存储在文档数据库中）
         /// </summary>
         /// <param name="instanceGuid">实例GUID</param>
         /// <param name="componentGuid">组件GUID</param>
@@ -55,10 +75,10 @@ namespace GrasshopperSever.Utils
             {
                 InitializeScriptModifyTable();
 
-                using (var connection = DatabaseManager.GetConnection())
+                using (var connection = DatabaseManager.GetDocumentConnection())
                 {
                     string sql = @"
-                        INSERT INTO GHScriptModifyHistory 
+                        INSERT INTO GHScriptModifyHistory
                         (InstanceGuid, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description)
                         VALUES (@instanceGuid, @componentGuid, @componentName, @modifyType, @modifyContent, @description)";
 
@@ -74,9 +94,6 @@ namespace GrasshopperSever.Utils
                         command.ExecuteNonQuery();
                     }
                 }
-
-                // 更新表时间戳
-                DatabaseManager.UpdateTableTimestamp("GHScriptModifyHistory");
             }
             catch (Exception ex)
             {
@@ -85,7 +102,7 @@ namespace GrasshopperSever.Utils
         }
 
         /// <summary>
-        /// 获取组件的修改历史
+        /// 获取组件的修改历史（从文档数据库中）
         /// </summary>
         /// <param name="instanceGuid">实例GUID</param>
         /// <returns>修改历史列表</returns>
@@ -97,7 +114,7 @@ namespace GrasshopperSever.Utils
             {
                 InitializeScriptModifyTable();
 
-                using (var connection = DatabaseManager.GetConnection())
+                using (var connection = DatabaseManager.GetDocumentConnection())
                 {
                     string sql = @"
                         SELECT Id, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description, ModifyTime

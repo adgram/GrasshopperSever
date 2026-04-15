@@ -4,32 +4,52 @@ using System.Diagnostics;
 
 namespace GrasshopperSever.Utils
 {
+    /// <summary>
+    /// Rhino 对象数据库操作类（使用文档数据库）
+    /// 数据存储在 gh 文件同目录的 _ghdata.db 文件中
+    /// </summary>
     internal class RhinoObjectDB
     {
         /// <summary>
-        /// 初始化对象信息表
+        /// 初始化对象信息表（在文档数据库中）
         /// </summary>
         public static void InitializeObjectTable()
         {
             try
             {
-                if (!DatabaseManager.TableExists("RhinoObjects"))
+                using (var connection = DatabaseManager.GetDocumentConnection())
                 {
-                    string createTableSql = @"
-                        CREATE TABLE RhinoObjects (
-                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            ObjectId TEXT NOT NULL,
-                            ObjectType TEXT,
-                            LayerName TEXT,
-                            ObjectName TEXT,
-                            CreateTime DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            DocumentSerialNumber TEXT,
-                            Description TEXT
-                        )";
+                    // 检查表是否存在
+                    string checkTable = @"
+                        SELECT name FROM sqlite_master
+                        WHERE type='table' AND name='RhinoObjects'";
 
-                    if (DatabaseManager.CreateTable("RhinoObjects", createTableSql, "存储Rhino对象信息"))
+                    using (var checkCmd = new SQLiteCommand(checkTable, connection))
                     {
-                        Debug.WriteLine("对象表创建成功");
+                        using (var reader = checkCmd.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                            {
+                                // 表不存在，创建它
+                                string createTableSql = @"
+                                    CREATE TABLE RhinoObjects (
+                                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        ObjectId TEXT NOT NULL,
+                                        ObjectType TEXT,
+                                        LayerName TEXT,
+                                        ObjectName TEXT,
+                                        CreateTime DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                        DocumentSerialNumber TEXT,
+                                        Description TEXT
+                                    )";
+
+                                using (var createCmd = new SQLiteCommand(createTableSql, connection))
+                                {
+                                    createCmd.ExecuteNonQuery();
+                                    Debug.WriteLine("对象表创建成功");
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -40,7 +60,7 @@ namespace GrasshopperSever.Utils
         }
 
         /// <summary>
-        /// 插入对象记录
+        /// 插入对象记录（存储在文档数据库中）
         /// </summary>
         /// <param name="objectId">对象ID</param>
         /// <param name="objectType">对象类型</param>
@@ -53,7 +73,7 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = DatabaseManager.GetConnection())
+                using (var connection = DatabaseManager.GetDocumentConnection())
                 {
                     string sql = @"
                         INSERT INTO RhinoObjects (ObjectId, ObjectType, LayerName, ObjectName, DocumentSerialNumber, Description)
@@ -73,9 +93,6 @@ namespace GrasshopperSever.Utils
                         // 获取插入的记录ID
                         command.CommandText = "SELECT last_insert_rowid()";
                         long insertedId = (long)command.ExecuteScalar();
-
-                        // 更新表时间戳
-                        DatabaseManager.UpdateTableTimestamp("RhinoObjects");
 
                         return insertedId;
                     }

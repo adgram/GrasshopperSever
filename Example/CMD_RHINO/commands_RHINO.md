@@ -2,6 +2,8 @@
 
 本文档列出了GrasshopperSever插件支持的所有可用命令。
 
+警告：不要轻易获取所有组件信息，优先使用分组或名称查询、检索，或者调用数据库。
+
 ## 命令格式
 
 所有命令通过LJSON格式发送，必须包含以下结构：
@@ -29,94 +31,7 @@
 
 ## 数据库表结构
 
-GrasshopperSever 使用 SQLite 数据库存储组件信息和对象信息。数据库文件位于：
-- **路径**：`C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
-- **查询命令**：使用 DATABASEPATH 命令获取具体路径
-
-### 1. MetaInfo 表（元信息表）
-
-用于跟踪数据库表的更新时间和描述信息。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| TableName | TEXT | NOT NULL UNIQUE | 表名 |
-| LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
-| Description | TEXT | - | 表描述 |
-
-**SQL 创建语句**：
-```sql
-CREATE TABLE IF NOT EXISTS MetaInfo (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    TableName TEXT NOT NULL UNIQUE,
-    LastUpdateTime DATETIME DEFAULT CURRENT_TIMESTAMP,
-    Description TEXT
-)
-```
-
-**示例查询**：
-```sql
--- 查看所有表及其最后更新时间
-SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
-
--- 查看某个表的最后更新时间
-SELECT LastUpdateTime FROM MetaInfo WHERE TableName = 'ALLCOMPS';
-```
-
----
-
-### 2. ALLCOMPS 表（组件信息表）
-
-存储所有 Grasshopper 组件的详细信息。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| ComponentGuid | TEXT | NOT NULL UNIQUE | 组件的 GUID（唯一标识） |
-| ComponentName | TEXT | NOT NULL | 组件名称 |
-| NickName | TEXT | - | 组件昵称 |
-| Description | TEXT | - | 组件描述 |
-| Category | TEXT | NOT NULL | 主分类 |
-| SubCategory | TEXT | NOT NULL | 子分类 |
-| Prototype | TEXT | DEFAULT '' | 包含输入输出的函数签名（JSON格式） |
-
-**SQL 创建语句**：
-```sql
-CREATE TABLE IF NOT EXISTS ALLCOMPS (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ComponentGuid TEXT NOT NULL UNIQUE,
-    ComponentName TEXT NOT NULL,
-    NickName TEXT,
-    Description TEXT,
-    Category TEXT NOT NULL,
-    SubCategory TEXT NOT NULL,
-    Prototype TEXT DEFAULT ''
-)
-```
-
-**示例查询**：
-```sql
--- 查询所有组件
-SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM ALLCOMPS;
-
--- 按分类查询组件
-SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE Category = 'Curve';
-
--- 模糊搜索组件
-SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%';
-
--- 统计组件数量
-SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category;
-```
-
-**注意事项**：
-- `Inputs` 和 `Outputs` 字段存储的是参数定义的 JSON 字符串
-- 使用 `INSERT OR REPLACE` 语句进行插入或更新
-- 该表在插件初始化时自动填充，并在每次启动时更新
-
----
-
-### 3. RhinoObjects 表（Rhino对象信息表）
+### 1. RhinoObjects 表（Rhino对象信息表）
 
 存储 Rhino 中创建的对象信息。
 
@@ -164,347 +79,6 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 - 该表在第一次调用 `GETLASTCREATEDOBJECTS` 命令时自动创建
 - 每次调用 `GETLASTCREATEDOBJECTS` 命令时，新获取的对象会自动插入到表中
 - 该表是暂存文件，不会和 Grasshopper 文件同步
-
----
-
-### 4. GHScriptModifyHistory 表（GHScript组件修改历史表）
-
-存储 GHScript 组件（C# Script、Python Script 等）的修改历史记录。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| InstanceGuid | TEXT | NOT NULL | 组件实例 GUID（用于标识具体的组件实例） |
-| ComponentGuid | TEXT | NOT NULL | 组件类型 GUID（用于标识组件类型） |
-| ComponentName | TEXT | - | 组件名称 |
-| ModifyType | TEXT | NOT NULL | 修改类型（CODE_CHANGE：代码修改，PARAM_CHANGE：参数修改） |
-| ModifyContent | TEXT | - | 修改内容（JSON 格式） |
-| Description | TEXT | - | 描述信息 |
-| ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 修改时间 |
-
-**SQL 创建语句**：
-```sql
-CREATE TABLE IF NOT EXISTS GHScriptModifyHistory (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    InstanceGuid TEXT NOT NULL,
-    ComponentGuid TEXT NOT NULL,
-    ComponentName TEXT,
-    ModifyType TEXT NOT NULL,
-    ModifyContent TEXT,
-    Description TEXT,
-    ModifyTime DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-```
-
-**示例查询**：
-```sql
--- 查询所有修改历史
-SELECT * FROM GHScriptModifyHistory ORDER BY ModifyTime DESC;
-
--- 查询特定实例的修改历史
-SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER BY ModifyTime DESC;
-
--- 查询代码修改历史
-SELECT * FROM GHScriptModifyHistory WHERE ModifyType = 'CODE_CHANGE' ORDER BY ModifyTime DESC;
-
--- 查询参数修改历史
-SELECT * FROM GHScriptModifyHistory WHERE ModifyType = 'PARAM_CHANGE' ORDER BY ModifyTime DESC;
-
--- 按组件类型统计修改次数
-SELECT ComponentName, COUNT(*) as ModifyCount FROM GHScriptModifyHistory GROUP BY ComponentName;
-
--- 查询最近的修改
-SELECT ComponentName, ModifyType, Description, ModifyTime FROM GHScriptModifyHistory ORDER BY ModifyTime DESC LIMIT 20;
-```
-
-**ModifyContent 字段说明**：
-
-代码修改（CODE_CHANGE）：
-```json
-{
-  "OldCodeLength": 1234,
-  "NewCodeLength": 1500,
-  "CodeChanged": true,
-  "ComponentType": "C# Script"
-}
-```
-
-参数修改（PARAM_CHANGE）：
-```json
-{
-  "OldInputParams": "[...]",
-  "OldOutputParams": "[...]",
-  "NewInputParams": "[...]",
-  "NewOutputParams": "[...]",
-  "InputParamCount": 3,
-  "OutputParamCount": 2,
-  "ComponentType": "Python 3 Script"
-}
-```
-
-**注意事项**：
-- 该表在第一次修改 GHScript 组件时自动创建
-- 每次修改代码或参数时，会自动记录修改历史
-- 该表是暂存文件，不会和 Grasshopper 文件同步
-- InstanceGuid 用于区分不同的组件实例
-- ComponentGuid 用于标识组件类型（如：C# Script、Python 3 Script 等）
-
----
-
-### 数据库使用建议
-
-**只读操作**：
-- ✅ 可以安全地读取数据库中的数据
-- ✅ 可以使用 SQL 查询组件信息和对象信息
-- ✅ 可以统计数据用于分析
-
-**写操作**：
-- ⚠️ 不建议手动写入数据
-- ⚠️ 数据库会在插件运行时自动更新
-- ⚠️ 手动修改可能影响插件功能
-
-**性能优化**：
-- 使用 WAL（Write-Ahead Logging）模式
-- 使用连接池减少连接开销
-- 批量操作使用事务提高性能
-
----
-
-## Component 命令（组件相关）
-
-### 1. GETALLCOMPONENTS
-获取所有组件信息
-
-**请求参数**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "获取所有组件",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "GETALLCOMPONENTS"
-  }
-}
-```
-
-**响应**：返回所有组件的列表
-
----
-
-### 2. FINDCOMPONENTBYGUID
-通过GUID查找组件
-
-**请求参数**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过GUID查找组件",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "FINDCOMPONENTBYGUID",
-    "Guid": "组件的GUID字符串"
-  }
-}
-```
-
-**响应**：返回匹配的组件信息
-
-**错误**：如果未找到会返回错误信息
-
----
-
-### 3. FINDCOMPONENTBYNAME
-通过名称查找组件
-
-**请求参数**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过名称查找组件",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "FINDCOMPONENTBYNAME",
-    "Name": "组件名称"
-  }
-}
-```
-
-**响应**：返回匹配的组件信息
-
-**错误**：如果未找到会返回错误信息
-
----
-
-### 4. FINDCOMPONENTBYCATEGORY
-通过分类查找组件
-
-**请求参数**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过分类查找组件",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "FINDCOMPONENTBYCATEGORY",
-    "Category": "主分类（可选）",
-    "SubCategory": "子分类（可选）",
-    "Name": "组件名称（可选）"
-  }
-}
-```
-
-**说明**：至少需要提供Category、SubCategory或Name中的一个参数
-
-**响应**：返回符合条件的组件列表
-
-**错误**：如果未找到会返回错误信息
-
----
-
-### 5. SEARCHCOMPONENTSBYNAME
-通过名称搜索组件（模糊搜索）
-
-**请求参数**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "搜索组件",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "SEARCHCOMPONENTSBYNAME",
-    "Name": "搜索关键词"
-  }
-}
-```
-
-**响应**：
-```json
-{
-  "Name": "SearchComponentsByName",
-  "Info": "搜索组件",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Count": "匹配数量",
-    "Components": [组件列表]
-  }
-}
-```
-
-**错误**：如果未找到会返回错误信息
-
----
-
-## Document 命令（文档相关）
-
-### 1. SAVEDOCUMENT
-保存当前文档
-
-**请求参数**：
-```json
-{
-  "Name": "DOCUMENT",
-  "Info": "保存文档",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "SAVEDOCUMENT",
-    "FilePath": "文件路径（可选）"
-  }
-}
-```
-
-**响应**：保存操作的结果
-
-**错误**：如果保存失败会返回错误信息
-
----
-
-### 2. LOADDOCUMENT
-加载文档
-
-**请求参数**：
-```json
-{
-  "Name": "DOCUMENT",
-  "Info": "加载文档",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "LOADDOCUMENT",
-    "FilePath": "文件路径（必需）"
-  }
-}
-```
-
-**错误**：如果未提供FilePath会返回错误信息
-
-**响应**：加载操作的结果
-
----
-
-### 3. DATABASEPATH
-获取数据库路径
-
-**请求参数**：
-```json
-{
-  "Name": "DOCUMENT",
-  "Info": "获取数据库路径",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "DATABASEPATH"
-  }
-}
-```
-
-**响应**：
-```json
-{
-  "Name": "DatabasePath",
-  "Info": "获取数据库路径",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "DatabasePath": "数据库的完整路径"
-  }
-}
-```
-
-**注意事项**：
-- 可以直接读取数据库，但请勿写入（数据库只是暂存文件，不会和gh同步）
-- 建议使用 SQLite 工具（如 DB Browser for SQLite）查看数据库内容
-- 数据库会在插件运行时自动更新
-
-**快速查询示例**：
-
-```sql
--- 1. 查看所有表及其最后更新时间
-SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
-
--- 2. 查询所有组件（常用）
-SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM ALLCOMPS;
-
--- 3. 按分类查询组件
-SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE Category = 'Curve';
-
--- 4. 模糊搜索组件
-SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%';
-
--- 5. 查询所有 Rhino 对象
-SELECT ObjectId, ObjectType, LayerName, ObjectName, CreateTime FROM RhinoObjects;
-
--- 6. 按图层统计对象数量
-SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
-
--- 7. 查询最近创建的对象
-SELECT * FROM RhinoObjects ORDER BY CreateTime DESC LIMIT 10;
-
--- 8. 统计组件数量
-SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category ORDER BY Count DESC;
-
--- 9. 查询所有 GHScript 修改历史
-SELECT ComponentName, ModifyType, Description, ModifyTime FROM GHScriptModifyHistory ORDER BY ModifyTime DESC;
-
--- 10. 查询特定实例的修改历史（需要替换 {instance_guid}）
-SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER BY ModifyTime DESC;
-```
 
 ---
 
@@ -773,15 +347,6 @@ select_result = send_command(6655, "RHINO", "SELECTOBJECTS", {
 - 如果只需要选择已知对象：使用 `SELECTOBJECTS`
 - 如果需要创建对象后立即选择：使用 `GETANDSELECTLASTOBJECTS`
 
-## 命令分类汇总
-
-| 分类 | 命令数量 | 命令列表 |
-|------|----------|----------|
-| Component | 5 | GETALLCOMPONENTS, FINDCOMPONENTBYGUID, FINDCOMPONENTBYNAME, FINDCOMPONENTBYCATEGORY, SEARCHCOMPONENTSBYNAME |
-| Document | 3 | SAVEDOCUMENT, LOADDOCUMENT, DATABASEPATH |
-| Rhino | 4 | RHINOSCRIPT, GETLASTCREATEDOBJECTS, SELECTOBJECTS, GETANDSELECTLASTOBJECTS |
-| **总计** | **12** | |
-
 ---
 
 ## 错误处理
@@ -874,35 +439,10 @@ for result in results:
 
 ## 测试结果验证
 
-### 1. DATABASEPATH（已测试）
+### 1. RHINOSCRIPT
 
 **请求**：
-```json
-{
-  "Name": "DOCUMENT",
-  "Info": "获取数据库路径",
-  "Value": {"Command": "DATABASEPATH"}
-}
-```
 
-**响应**：
-```json
-{
-  "Name": "DatabasePath",
-  "Info": "获取数据库路径",
-  "Value": {
-    "DatabasePath": "C:\\Users\\SZ\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\GrasshopperSever.db"
-  }
-}
-```
-
-**测试状态**: ✓ 成功
-
----
-
-### 2. RHINOSCRIPT（已测试）
-
-**请求**：
 ```json
 {
   "Name": "RHINO",
@@ -930,7 +470,7 @@ for result in results:
 
 ---
 
-### 3. GETLASTCREATEDOBJECTS（待测试）
+### 2. GETLASTCREATEDOBJECTS（待测试）
 
 **测试步骤**：
 1. 执行 RHINOSCRIPT 命令创建对象（例如：`_-Line 0,0,0 10,10,0`）
@@ -961,7 +501,7 @@ for result in results:
 
 ---
 
-### 4. SELECTOBJECTS（待测试）
+### 3. SELECTOBJECTS（待测试）
 
 **测试步骤**：
 1. 执行 RHINOSCRIPT 命令创建多个对象
@@ -999,7 +539,7 @@ for result in results:
 
 ---
 
-### 5. GETANDSELECTLASTOBJECTS（待测试）
+### 4. GETANDSELECTLASTOBJECTS（待测试）
 
 **测试步骤**：
 1. 执行 RHINOSCRIPT 命令创建对象

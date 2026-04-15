@@ -205,7 +205,7 @@ TcpTestSucceeded : True
   "Name": "DatabasePath",
   "Info": "获取数据库路径",
   "Value": {
-    "DatabasePath": "C:\\Users\\SZ\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\GrasshopperSever.db"
+    "DatabasePath": "C:\\Users\\SZ\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\ComponentsInfo.db"
   }
 }
 ```
@@ -223,7 +223,7 @@ TcpTestSucceeded : True
 ### 6.1 直接读取数据库
 
 **测试时间**: 2026-03-26
-**数据库路径**: `C:\Users\SZ\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
+**数据库路径**: `C:\Users\SZ\AppData\Roaming\Grasshopper\Libraries\GHserver\ComponentsInfo.db`
 
 **SQL查询**:
 ```sql

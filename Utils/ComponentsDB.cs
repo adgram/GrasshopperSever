@@ -8,7 +8,7 @@ namespace GrasshopperSever.Utils
     internal class ComponentsDB
     {
         /// <summary>
-        /// 初始化 AllComponents 表
+        /// 初始化 AllComponents 表（使用主数据库 ComponentsInfo.db）
         /// </summary>
         public static void InitializeAllComponentsTable()
         {
@@ -107,7 +107,7 @@ namespace GrasshopperSever.Utils
             string sql = @"
                 SELECT ComponentGuid, ComponentName, NickName 
                 FROM ALLCOMPS 
-                WHERE ComponentName LIKE @searchTerm OR NickName LIKE @searchTerm
+                WHERE ComponentName LIKE @searchTerm
                 ORDER BY ComponentName";
 
             using (var connection = DatabaseManager.GetConnection())

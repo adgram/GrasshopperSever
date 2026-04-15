@@ -50,7 +50,7 @@ def test_load_saved_document():
     print("测试: 加载刚才保存的文档")
     print("=" * 50)
 
-    load_path = r"C:\Users\SZAUPD\AppData\Roaming\Grasshopper\Libraries\GHserver\test\test_save.gh"
+    load_path = r"C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\test\test_save.gh"
     print(f"加载文件: {load_path}")
 
     results = send_command(6879, "DOCUMENT", "LOADDOCUMENT", {

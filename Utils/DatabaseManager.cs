@@ -3,6 +3,8 @@ using System.IO;
 using System.Data.SQLite;
 using System.Reflection;
 using System.Diagnostics;
+using Grasshopper;
+using Grasshopper.Kernel;
 
 namespace GrasshopperSever.Utils
 {
@@ -11,13 +13,14 @@ namespace GrasshopperSever.Utils
     /// </summary>
     public static class DatabaseManager
     {
-        private static readonly string DatabaseFileName = "GrasshopperSever.db";
+        private static readonly string DatabaseFileName = "ComponentsInfo.db";
         private static readonly string AssemblyLocation = Assembly.GetExecutingAssembly().Location;
         private static readonly string AssemblyDirectory = Path.GetDirectoryName(AssemblyLocation);
         private static string _databasePath;
+        private static string _documentDatabasePath;
 
         /// <summary>
-        /// 获取数据库完整路径
+        /// 获取主数据库完整路径（组件信息）
         /// </summary>
         public static string DatabasePath
         {
@@ -29,6 +32,64 @@ namespace GrasshopperSever.Utils
                 }
                 return _databasePath;
             }
+        }
+
+        /// <summary>
+        /// 获取文档数据库完整路径（文档特定数据）
+        /// 如果文档已保存，则使用文档同名数据库；否则使用临时命名
+        /// </summary>
+        public static string DocumentDatabasePath
+        {
+            get
+            {
+                if (_documentDatabasePath == null)
+                {
+                    _documentDatabasePath = GetDocumentDatabasePathInternal();
+                }
+                return _documentDatabasePath;
+            }
+        }
+
+        /// <summary>
+        /// 内部方法：获取文档数据库路径
+        /// </summary>
+        private static string GetDocumentDatabasePathInternal()
+        {
+            try
+            {
+                GH_Document doc = Instances.ActiveCanvas?.Document;
+                if (doc == null)
+                {
+                    // 没有活动文档，使用临时命名
+                    return Path.Combine(AssemblyDirectory, "TempDocument_" + Guid.NewGuid().ToString("N") + ".db");
+                }
+
+                string ghFilePath = doc.FilePath;
+                if (string.IsNullOrWhiteSpace(ghFilePath))
+                {
+                    // 文档未保存，使用临时命名
+                    return Path.Combine(AssemblyDirectory, "TempDocument_" + Guid.NewGuid().ToString("N") + ".db");
+                }
+
+                // 文档已保存，使用文档同名数据库
+                string dbDir = Path.GetDirectoryName(ghFilePath);
+                string dbName = Path.GetFileNameWithoutExtension(ghFilePath) + "_ghdata.db";
+                return Path.Combine(dbDir, dbName);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"获取文档数据库路径失败: {ex.Message}");
+                // 发生错误时使用临时命名
+                return Path.Combine(AssemblyDirectory, "TempDocument_" + Guid.NewGuid().ToString("N") + ".db");
+            }
+        }
+
+        /// <summary>
+        /// 重置文档数据库路径缓存（在切换文档时调用）
+        /// </summary>
+        public static void ResetDocumentDatabasePath()
+        {
+            _documentDatabasePath = null;
         }
 
         /// <summary>
@@ -285,13 +346,25 @@ namespace GrasshopperSever.Utils
         }
 
         /// <summary>
-        /// 获取数据库连接对象（用于执行自定义SQL）
+        /// 获取主数据库连接对象（用于执行自定义SQL）
         /// </summary>
         /// <returns>SQLite连接对象</returns>
         public static SQLiteConnection GetConnection()
         {
             // 使用 WAL 模式和连接池优化，避免数据库锁定
             var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;Default Timeout=30;Journal Mode=WAL;Pooling=True;");
+            connection.Open();
+            return connection;
+        }
+
+        /// <summary>
+        /// 获取文档数据库连接对象（文档特定数据）
+        /// </summary>
+        /// <returns>SQLite连接对象</returns>
+        public static SQLiteConnection GetDocumentConnection()
+        {
+            string dbPath = DocumentDatabasePath;
+            var connection = new SQLiteConnection($"Data Source={dbPath};Version=3;Default Timeout=30;Journal Mode=WAL;Pooling=True;");
             connection.Open();
             return connection;
         }

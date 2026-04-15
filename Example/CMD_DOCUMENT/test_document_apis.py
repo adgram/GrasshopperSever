@@ -76,7 +76,7 @@ def test_save_document_with_path():
     print("测试2: 保存文档到指定路径")
     print("=" * 50)
 
-    save_path = r"C:\Users\SZAUPD\AppData\Roaming\Grasshopper\Libraries\GHserver\test\test_save.gh"
+    save_path = r"C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\test\test_save.gh"
     results = send_command(6879, "DOCUMENT", "SAVEDOCUMENT", {
         "FilePath": save_path
     })
@@ -98,7 +98,7 @@ def test_load_document():
 
     # 先检查是否有可用的gh文件
     import os
-    test_dir = r"C:\Users\SZAUPD\AppData\Roaming\Grasshopper\Libraries\GHserver\test"
+    test_dir = r"C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\test"
     gh_files = [f for f in os.listdir(test_dir) if f.endswith('.gh')]
 
     if gh_files:

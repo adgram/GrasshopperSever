@@ -1,6 +1,129 @@
 # Grasshopper文件打开和保存API测试报告
 
+## Document 命令（文档相关）
+
+### 1. SAVEDOCUMENT
+
+保存当前文档
+
+**请求参数**：
+
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "保存文档",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "SAVEDOCUMENT",
+    "FilePath": "文件路径（可选）"
+  }
+}
+```
+
+**响应**：保存操作的结果
+
+**错误**：如果保存失败会返回错误信息
+
+---
+
+### 2. LOADDOCUMENT
+
+加载文档
+
+**请求参数**：
+
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "加载文档",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "LOADDOCUMENT",
+    "FilePath": "文件路径（必需）"
+  }
+}
+```
+
+**错误**：如果未提供FilePath会返回错误信息
+
+**响应**：加载操作的结果
+
+---
+
+### 3. DATABASEPATH
+
+获取数据库路径
+
+**请求参数**：
+
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "获取数据库路径",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "DATABASEPATH"
+  }
+}
+```
+
+**响应**：
+
+```json
+{
+  "Name": "DatabasePath",
+  "Info": "获取数据库路径",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "DatabasePath": "数据库的完整路径"
+  }
+}
+```
+
+**注意事项**：
+
+- 可以直接读取数据库，但请勿写入（数据库只是暂存文件，不会和gh同步）
+- 建议使用 SQLite 工具（如 DB Browser for SQLite）查看数据库内容
+- 数据库会在插件运行时自动更新
+
+**快速查询示例**：
+
+```sql
+-- 1. 查看所有表及其最后更新时间
+SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
+
+-- 2. 查询所有组件（常用）
+SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM ALLCOMPS;
+
+-- 3. 按分类查询组件
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE Category = 'Curve';
+
+-- 4. 模糊搜索组件
+SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%';
+
+-- 5. 查询所有 Rhino 对象
+SELECT ObjectId, ObjectType, LayerName, ObjectName, CreateTime FROM RhinoObjects;
+
+-- 6. 按图层统计对象数量
+SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
+
+-- 7. 查询最近创建的对象
+SELECT * FROM RhinoObjects ORDER BY CreateTime DESC LIMIT 10;
+
+-- 8. 统计组件数量
+SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category ORDER BY Count DESC;
+
+-- 9. 查询所有 GHScript 修改历史
+SELECT ComponentName, ModifyType, Description, ModifyTime FROM GHScriptModifyHistory ORDER BY ModifyTime DESC;
+
+-- 10. 查询特定实例的修改历史（需要替换 {instance_guid}）
+SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER BY ModifyTime DESC;
+```
+
+---
+
 ## 测试概述
+
 测试GrasshopperSever插件的文档操作API，包括打开和保存GH文件功能。
 
 ## 测试时间
@@ -27,7 +150,7 @@
   "Name": "DatabasePath",
   "Info": "获取数据库路径",
   "Value": {
-    "DatabasePath": "C:\\Users\\SZ\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\GrasshopperSever.db"
+    "DatabasePath": "C:\\Users\\SZ\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\ComponentsInfo.db"
   }
 }
 ```

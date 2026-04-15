@@ -92,6 +92,9 @@ namespace GrasshopperSever.Commands
                     case "LOADDOCUMENT":
                         return HandleLoadDocument(data);
 
+                    case "GETALLOBJECTS":
+                        return HandleGetAllObjects(data);
+
                     case "DATABASEPATH":
                         return HandleDatabasePath(data);
 
@@ -177,9 +180,6 @@ namespace GrasshopperSever.Commands
             {
                 switch (commandType.ToUpperInvariant())
                 {
-                    case "ADDCOMPONENT":
-                        return HandleAddComponent(data);
-
                     case "ADDCOMPONENTBYGUID":
                         return HandleAddComponentByGuid(data);
 
@@ -205,41 +205,6 @@ namespace GrasshopperSever.Commands
             catch (Exception ex)
             {
                 return Ljson.CreateErrorLjson($"执行 Design 命令时出错: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 处理添加组件命令
-        /// </summary>
-        private static Ljson HandleAddComponent(Ljson data)
-        {
-            try
-            {
-                var componentGuid = data.GetParameterString("ComponentGuid");
-                var xElement = data.GetParameter("X");
-                var yElement = data.GetParameter("Y");
-
-                if (string.IsNullOrWhiteSpace(componentGuid))
-                {
-                    return Ljson.CreateErrorLjson("缺少 ComponentGuid 参数");
-                }
-
-                if (!xElement.HasValue || !yElement.HasValue)
-                {
-                    return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
-                }
-
-                var x = xElement.Value.GetDouble();
-                var y = yElement.Value.GetDouble();
-
-                var point = new System.Drawing.PointF((float)x, (float)y);
-                var result = ComponentExchange.AddComponent(data, point);
-
-                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
-            }
-            catch (Exception ex)
-            {
-                return Ljson.CreateErrorLjson($"添加组件失败: {ex.Message}");
             }
         }
 
@@ -744,6 +709,23 @@ namespace GrasshopperSever.Commands
             catch (Exception ex)
             {
                 return Ljson.CreateErrorLjson($"获取数据库路径失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 处理获取所有对象命令
+        /// 输入：Ljson包含 Command="GetAllObjects"
+        /// 输出：文档中所有对象的信息
+        /// </summary>
+        private static Ljson HandleGetAllObjects(Ljson data)
+        {
+            try
+            {
+                return DocumentInfo.GetAllObjects();
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"获取文档对象失败: {ex.Message}");
             }
         }
     }

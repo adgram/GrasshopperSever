@@ -113,26 +113,8 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 
 Design 命令用于控制组件的添加、移除、连接和值设置等布局相关操作。
 
-#### ADDCOMPONENT
-通过 Ljson 添加组件到文档
-
-**参数**：
-- `ComponentGuid` - 组件 GUID
-- `X` - X 坐标（数字）
-- `Y` - Y 坐标（数字）
-
-**示例**：
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponent",
-  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
-  "X": 100,
-  "Y": 100
-}
-```
-
 #### ADDCOMPONENTBYGUID
+
 通过 GUID 添加组件
 
 **参数**：
@@ -500,9 +482,9 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 - `InputParams` (String): 当前输入端参数信息
 - `OutputParams` (String): 当前输出端参数信息
 
-![scripteditor_test](Example/scripteditor_test.png)
+![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.png)
 
-![scripteditor_test](Example/scripteditor_test2.png)
+![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test2.png)
 
 #### RunScript
 
@@ -527,25 +509,42 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 
 ## 数据库功能
 
-插件使用SQLite数据库存储元数据，数据库文件位于插件目录下（`GrasshopperSever.db`）。
+插件使用SQLite数据库存储数据，采用双层数据库架构：
 
-**数据库路径**：`C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
+### 数据库架构
 
-**获取方式**：使用`DATABASEPATH`命令获取具体路径
+#### 1. 主数据库（ComponentsInfo.db）
+- **位置**：插件目录
+- **用途**：存储全局组件信息，所有Grasshopper文档共享
+- **数据表**：ALLCOMPS, MetaInfo
+
+#### 2. 文档数据库（{_ghdata.db）
+- **位置**：
+  - 如果文档已保存：与gh文件同目录，命名为 `{文档名}_ghdata.db`
+  - 如果文档未保存：插件目录，命名为 `TempDocument_{GUID}.db`
+- **用途**：存储文档特定的数据，与文档紧密关联
+- **数据表**：GHScriptModifyHistory, RhinoObjects
+
+**优势**：
+- 全局组件信息共享，提高性能
+- 文档特定数据与文档绑定，便于分享和管理
+- 自动清理未保存文档的临时数据
 
 ### DatabaseManager
 
 提供以下功能：
 
+- 管理主数据库和文档数据库
 - 自动初始化数据库
 - 创建和管理数据表
-- 跟踪表的更新时间
+- 跟踪表的更新时间（主数据库）
 - 提供数据库连接对象
-- 执行带时间戳更新的SQL命令
+- 执行带时间戳更新的SQL命令（主数据库）
 
-### MetaInfo表
+### 主数据库表结构
 
-用于跟踪表的更新时间，包含以下字段：
+#### MetaInfo表
+用于跟踪主数据库中表的更新时间，包含以下字段：
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -554,9 +553,8 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 | LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
 | Description | TEXT | - | 表描述 |
 
-### ALLCOMPS表
-
-存储所有Grasshopper组件的详细信息。
+#### ALLCOMPS表
+存储所有Grasshopper组件的详细信息（全局缓存）。
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -569,9 +567,10 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 | SubCategory | TEXT | NOT NULL | 子分类 |
 | Prototype | TEXT | DEFAULT '' | 包含输入输出的函数签名（JSON格式） |
 
-### RhinoObjects表
+### 文档数据库表结构
 
-存储Rhino中创建的对象信息。
+#### RhinoObjects表
+存储Rhino中创建的对象信息（文档特定）。
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -584,9 +583,8 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 | DocumentSerialNumber | TEXT | - | 文档序列号 |
 | Description | TEXT | - | 描述信息 |
 
-### GHScriptModifyHistory表
-
-存储GHScript组件的修改历史记录。
+#### GHScriptModifyHistory表
+存储GHScript组件的修改历史记录（文档特定）。
 
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
@@ -599,8 +597,30 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 | Description | TEXT | - | 描述信息 |
 | ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 修改时间 |
 
+#### ComponentExchangeHistory表
+存储组件交换操作的历史记录（文档特定），包括添加、删除、连接、断开等操作。
+
+| 字段名 | 数据类型 | 约束 | 说明 |
+|--------|----------|------|------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
+| OperationType | TEXT | NOT NULL | 操作类型（AddComponent, RemoveComponent, SetComponentValue, ConnectComponents, DisconnectComponents） |
+| ComponentGuid | TEXT | - | 组件GUID |
+| InstanceGuid | TEXT | - | 组件实例GUID |
+| ComponentName | TEXT | - | 组件名称 |
+| PositionX | REAL | - | X坐标（添加组件时） |
+| PositionY | REAL | - | Y坐标（添加组件时） |
+| Value | TEXT | - | 设置的值（设置组件值时） |
+| FromInstanceGuid | TEXT | - | 源组件实例GUID（连接/断开操作时） |
+| FromParameter | TEXT | - | 源参数名称（连接/断开操作时） |
+| ToInstanceGuid | TEXT | - | 目标组件实例GUID（连接/断开操作时） |
+| ToParameter | TEXT | - | 目标参数名称（连接/断开操作时） |
+| OperationTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 操作时间 |
+| Description | TEXT | - | 描述信息 |
+
 **注意事项**：
-- 数据库是暂存文件，不会和Grasshopper文件同步
+- 主数据库（ComponentsInfo.db）存储全局组件信息，可随时重建
+- 文档数据库与gh文件同目录，便于分享和版本控制
+- 未保存文档使用临时命名，避免冲突
 - 建议只读操作，不建议手动写入数据
 - 可以使用SQL查询组件信息和对象信息
 

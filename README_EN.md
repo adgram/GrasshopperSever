@@ -113,25 +113,6 @@ Get and select last created objects (composite command)
 
 Design commands are used to control component layout operations such as adding, removing, connecting, and setting values.
 
-#### ADDCOMPONENT
-Add component to document via Ljson
-
-**Parameters**:
-- `ComponentGuid` - Component GUID
-- `X` - X coordinate (number)
-- `Y` - Y coordinate (number)
-
-**Example**:
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponent",
-  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
-  "X": 100,
-  "Y": 100
-}
-```
-
 #### ADDCOMPONENTBYGUID
 Add component via GUID
 
@@ -490,9 +471,9 @@ Modifies a Script component via input code, supports C# and Python.
 - `InputParams` (String): Current input parameter information
 - `OutputParams` (String): Current output parameter information
 
-![scripteditor_test](Example/scripteditor_test.png)
+![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.png)
 
-![scripteditor_test](Example/scripteditor_test2.png)
+![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test2.png)
 
 #### RunScript
 
@@ -517,25 +498,42 @@ Executes Rhino script.
 
 ## Database Features
 
-The plugin uses SQLite database to store metadata. The database file is located in the plugin directory (`GrasshopperSever.db`).
+The plugin uses SQLite database to store data with a dual-database architecture:
 
-**Database Path**: `C:\Users\[Username]\AppData\Roaming\Grasshopper\Libraries\GHserver\GrasshopperSever.db`
+### Database Architecture
 
-**Get Path**: Use `DATABASEPATH` command to get specific path
+#### 1. Main Database (ComponentsInfo.db)
+- **Location**: Plugin directory
+- **Purpose**: Stores global component information, shared by all Grasshopper documents
+- **Tables**: ALLCOMPS, MetaInfo
+
+#### 2. Document Database ({_ghdata.db)
+- **Location**:
+  - If document is saved: Same directory as gh file, named `{document_name}_ghdata.db`
+  - If document is not saved: Plugin directory, named `TempDocument_{GUID}.db`
+- **Purpose**: Stores document-specific data, tightly associated with the document
+- **Tables**: GHScriptModifyHistory, RhinoObjects
+
+**Advantages**:
+- Global component information shared, improved performance
+- Document-specific data bound to document, easy to share and manage
+- Automatic cleanup of temporary data for unsaved documents
 
 ### DatabaseManager
 
 Provides the following features:
 
+- Manage main database and document database
 - Automatic database initialization
 - Create and manage data tables
-- Track table update times
+- Track table update times (main database)
 - Provide database connection objects
-- Execute SQL commands with timestamp updates
+- Execute SQL commands with timestamp updates (main database)
 
-### MetaInfo Table
+### Main Database Tables
 
-Used to track table update times, contains the following fields:
+#### MetaInfo Table
+Used to track table update times in the main database, contains the following fields:
 
 | Field Name | Data Type | Constraint | Description |
 |------------|-----------|------------|-------------|
@@ -544,9 +542,8 @@ Used to track table update times, contains the following fields:
 | LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Last update time |
 | Description | TEXT | - | Table description |
 
-### ALLCOMPS Table
-
-Stores detailed information for all Grasshopper components.
+#### ALLCOMPS Table
+Stores detailed information for all Grasshopper components (global cache).
 
 | Field Name | Data Type | Constraint | Description |
 |------------|-----------|------------|-------------|
@@ -559,9 +556,10 @@ Stores detailed information for all Grasshopper components.
 | SubCategory | TEXT | NOT NULL | Sub-category |
 | Prototype | TEXT | DEFAULT '' | Function signature containing input and output parameters (JSON format) |
 
-### RhinoObjects Table
+### Document Database Tables
 
-Stores information about objects created in Rhino.
+#### RhinoObjects Table
+Stores information about objects created in Rhino (document-specific).
 
 | Field Name | Data Type | Constraint | Description |
 |------------|-----------|------------|-------------|
@@ -574,9 +572,8 @@ Stores information about objects created in Rhino.
 | DocumentSerialNumber | TEXT | - | Document serial number |
 | Description | TEXT | - | Description |
 
-### GHScriptModifyHistory Table
-
-Stores modification history records for GHScript components.
+#### GHScriptModifyHistory Table
+Stores modification history records for GHScript components (document-specific).
 
 | Field Name | Data Type | Constraint | Description |
 |------------|-----------|------------|-------------|
@@ -589,8 +586,30 @@ Stores modification history records for GHScript components.
 | Description | TEXT | - | Description |
 | ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Modification time |
 
+#### ComponentExchangeHistory Table
+Stores component exchange operation history (document-specific), including add, remove, connect, disconnect operations.
+
+| Field Name | Data Type | Constraint | Description |
+|------------|-----------|------------|-------------|
+| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
+| OperationType | TEXT | NOT NULL | Operation type (AddComponent, RemoveComponent, SetComponentValue, ConnectComponents, DisconnectComponents) |
+| ComponentGuid | TEXT | - | Component GUID |
+| InstanceGuid | TEXT | - | Component instance GUID |
+| ComponentName | TEXT | - | Component name |
+| PositionX | REAL | - | X coordinate (when adding component) |
+| PositionY | REAL | - | Y coordinate (when adding component) |
+| Value | TEXT | - | Set value (when setting component value) |
+| FromInstanceGuid | TEXT | - | Source component instance GUID (for connect/disconnect operations) |
+| FromParameter | TEXT | - | Source parameter name (for connect/disconnect operations) |
+| ToInstanceGuid | TEXT | - | Target component instance GUID (for connect/disconnect operations) |
+| ToParameter | TEXT | - | Target parameter name (for connect/disconnect operations) |
+| OperationTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Operation time |
+| Description | TEXT | - | Description |
+
 **Notes**:
-- Database is a temporary file, does not sync with Grasshopper files
+- Main database (ComponentsInfo.db) stores global component information, can be rebuilt at any time
+- Document database is in the same directory as gh file, easy to share and version control
+- Unsaved documents use temporary naming to avoid conflicts
 - Read-only operations are recommended, manual write operations are not advised
 - Can use SQL queries for component information and object information
 
