@@ -446,6 +446,109 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 }
 ```
 
+#### ADDPARAMWITHVALUE
+
+添加参数组件并设置值
+
+**参数**：
+
+- `ParamName` - 参数类型名称（必需）
+- `X` - X 坐标（必需）
+- `Y` - Y 坐标（必需）
+- `Path` - 数据路径（可选，格式如 "{0;1;2}"）
+- `Value` - 要设置的值（可选，可以是单个值或JSON数组）
+
+**支持的参数类型**：
+
+- `Number`/`num`/`param_number` - 数字参数
+- `Int`/`integer`/`param_int`/`param_integer` - 整数参数
+- `Bool`/`boolean`/`param_bool`/`param_boolean` - 布尔参数
+- `True`/`False` - 布尔开关
+- `Toggle` - 布尔切换
+- `Button` - 按钮
+- `Slider`/`numberslider` - 数字滑块
+- `Panel`/`param_panel` - 面板
+- `Text`/`string`/`param_text`/`param_string` - 文本参数
+- `Point`/`pt`/`param_pt`/`param_point` - 点参数
+- `Vector`/`vect`/`param_vect` - 向量参数
+- `Color`/`colour`/`param_color`/`param_colour` - 颜色参数
+- `Swatch` - 色板
+- `Plane`/`param_plane` - 平面参数
+- `Param_line` - 线参数
+- `Curve`/`crv`/`param_crv`/`param_curve` - 曲线参数
+- `Param_circle` - 圆参数
+
+**示例 1**：添加简单的数字参数
+
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "number",
+  "X": 100,
+  "Y": 100,
+  "Value": "42.5"
+}
+```
+
+**示例 2**：添加数字滑块并设置范围
+
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "slider",
+  "X": 100,
+  "Y": 100,
+  "Value": "0.0 < 0.5 < 1.0"
+}
+```
+
+**示例 3**：添加文本参数并设置值
+
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "text",
+  "X": 100,
+  "Y": 100,
+  "Value": "Hello Grasshopper"
+}
+```
+
+**示例 4**：添加带数据路径的参数（设置数据树）
+
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "number",
+  "X": 100,
+  "Y": 100,
+  "Path": "{0;1;2}",
+  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
+}
+```
+
+**示例 5**：添加布尔开关
+
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "true",
+  "X": 100,
+  "Y": 100
+}
+```
+
+**说明**：
+- `Value` 参数对于简单类型（布尔、滑块、面板、色板）可以是简单的字符串
+- 对于需要设置数据树的情况，`Value` 应该是 JSON 数组格式的字符串
+- `Path` 参数用于指定数据树中的路径，格式为 `{索引1;索引2;索引3}`
+- 某些参数类型（如 Button）不需要 Value 参数
+
 #### REMOVECOMPONENT
 
 移除组件
@@ -464,23 +567,50 @@ Design 命令用于控制组件的添加、移除、连接和值设置等布局�
 }
 ```
 
-#### SETCOMPONENTVALUE
+#### SETPARAMVALUE
 
-设置组件值
+设置参数值
 
 **参数**：
 
 - `InstanceGuid` - 组件实例 GUID
-- `Value` - 要设置的值
+- `Path` - 数据路径（可选，格式如 "{0;1;2}"）
+- `Value` - 要设置的值（可以是单个值或JSON数组）
 
-**示例**：
-
+**示例 1**：设置简单值
 ```json
 {
   "Name": "Design",
-  "Command": "SetComponentValue",
+  "Command": "SetParamValue",
   "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
   "Value": "42"
+}
+```
+
+**示例 2**：设置数据树值
+```json
+{
+  "Name": "Design",
+  "Command": "SetParamValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Path": "{0;1;2}",
+  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
+}
+```
+
+**示例 3**：设置滑块值
+```json
+{
+  "Name": "Design",
+  "Command": "SetParamValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Value": "0.5"
+}
+{
+  "Name": "Design",
+  "Command": "SetParamValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Value": "0.0 < 0.5 < 1.0"
 }
 ```
 
@@ -687,7 +817,7 @@ SELECT * FROM GHScriptModifyHistory WHERE ModifyType = 'CODE_CHANGE' ORDER BY Mo
 | 字段名 | 数据类型 | 约束 | 说明 |
 |--------|----------|------|------|
 | Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| OperationType | TEXT | NOT NULL | 操作类型（AddComponent, RemoveComponent, SetComponentValue, ConnectComponents, DisconnectComponents） |
+| OperationType | TEXT | NOT NULL | 操作类型（AddComponent, RemoveComponent, SetParamValue, ConnectComponents, DisconnectComponents） |
 | ComponentGuid | TEXT | - | 组件GUID |
 | InstanceGuid | TEXT | - | 组件实例GUID |
 | ComponentName | TEXT | - | 组件名称 |

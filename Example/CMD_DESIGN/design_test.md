@@ -1,7 +1,7 @@
 # Design 命令测试报告
 
 **测试端口**: 9653  
-**测试日期**: 2026-04-15  
+**测试日期**: 2026-04-16  
 **测试状态**: ✓ 全部测试通过
 
 ---
@@ -19,7 +19,7 @@
 
 **使用场景**：
 - `ADDCOMPONENTBYNAME` - 使用组件名称即可，返回结果中会包含 InstanceGuid
-- `SETCOMPONENTVALUE`、`CONNECTCOMPONENTS`、`REMOVECOMPONENT`、`DISCONNECTCOMPONENTS` - 需要使用 **InstanceGuid**
+- `SETPARAMVALUE`、`CONNECTCOMPONENTS`、`REMOVECOMPONENT`、`DISCONNECTCOMPONENTS` - 需要使用 **InstanceGuid**
 
 ---
 
@@ -257,7 +257,7 @@ client.connect((HOST, PORT))
 
 ---
 
-### 测试3: SETCOMPONENTVALUE - 设置组件值
+### 测试3: SETPARAMVALUE - 设置组件值
 
 **状态**: ✓ 成功
 
@@ -272,8 +272,9 @@ client.connect((HOST, PORT))
 ```json
 {
   "Name": "Design",
-  "Command": "SETCOMPONENTVALUE",
+  "Command": "SETPARAMVALUE",
   "InstanceGuid": "组件实例GUID",
+  "Path": "数据结构",
   "Value": "设置的值"
 }
 ```
@@ -286,7 +287,7 @@ client.connect((HOST, PORT))
 
 **重要说明**:
 - 每次发送命令建议重新连接
-- 提取 InstanceGuid 后，使用新连接发送 SETCOMPONENTVALUE 命令
+- 提取 InstanceGuid 后，使用新连接发送 SETPARAMVALUE 命令
 - 需要正确处理响应中的嵌套 JSON（"组件添加成功{"..."}" 格式）
 
 **获取 InstanceGuid 的方法**:
@@ -316,7 +317,133 @@ for msg in messages:
 
 ---
 
-### 测试4: REMOVECOMPONENT - 移除组件
+### 测试4: ADDPARAMWITHVALUE - 添加参数组件并设置值
+
+**状态**: ✓ 成功
+
+**测试日期**: 2026-04-16
+
+**测试脚本**: `test_addparamwithvalue.py`
+
+**命令格式**:
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "参数类型名称",
+  "X": 100,
+  "Y": 100,
+  "Path": "{0;1;2}",
+  "Value": "值或JSON数组"
+}
+```
+
+**测试结果**: ✓ 所有测试用例通过
+
+**测试的参数类型**:
+- ✓ Number - 数字参数
+- ✓ Slider - 数字滑块（带范围）
+- ✓ Text - 文本参数
+- ✓ Bool - 布尔参数
+- ✓ True/False - 布尔开关
+- ✓ Int - 整数参数
+- ✓ Panel - 面板（支持多行文本）
+- ✓ Point - 点参数
+- ✓ Vector - 向量参数
+- ✓ Color - 颜色参数
+- ✓ Toggle - 切换按钮
+
+**支持的参数类型**:
+- `Number`/`num`/`param_number` - 数字参数
+- `Int`/`integer`/`param_int`/`param_integer` - 整数参数
+- `Bool`/`boolean`/`param_bool`/`param_boolean` - 布尔参数
+- `True`/`False` - 布尔开关
+- `Toggle` - 布尔切换
+- `Button` - 按钮
+- `Slider`/`numberslider` - 数字滑块
+- `Panel`/`param_panel` - 面板
+- `Text`/`string`/`param_text`/`param_string` - 文本参数
+- `Point`/`pt`/`param_pt`/`param_point` - 点参数
+- `Vector`/`vect`/`param_vect` - 向量参数
+- `Color`/`colour`/`param_color`/`param_colour` - 颜色参数
+- `Swatch` - 色板
+- `Plane`/`param_plane` - 平面参数
+- `Param_line` - 线参数
+- `Curve`/`crv`/`param_crv`/`param_curve` - 曲线参数
+- `Param_circle` - 圆参数
+
+**测试示例**:
+
+**示例1**: 简单数字参数
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "number",
+  "X": 100,
+  "Y": 100,
+  "Value": "42.5"
+}
+```
+
+**示例2**: 数字滑块并设置范围
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "slider",
+  "X": 100,
+  "Y": 100,
+  "Value": "0.0 < 0.5 < 1.0"
+}
+```
+
+**示例3**: 文本参数
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "text",
+  "X": 100,
+  "Y": 100,
+  "Value": "Hello Grasshopper"
+}
+```
+
+**示例4**: 带数据路径的参数（设置数据树）
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "number",
+  "X": 100,
+  "Y": 100,
+  "Path": "{0;1;2}",
+  "Value": "[\"1.0\", \"2.0\", \"3.0\", \"4.0\", \"5.0\"]"
+}
+```
+
+**示例5**: 布尔开关
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "true",
+  "X": 100,
+  "Y": 100
+}
+```
+
+**重要说明**:
+- **Value 格式**: 简单值直接传入字符串，列表值使用 JSON 数组格式（元素必须是字符串）
+- **数字列表**: 使用 `"[\"1.0\", \"2.0\", \"3.0\"]"` 而不是 `"[1.0, 2.0, 3.0]"`
+- **Path 参数**: 可选，用于指定数据树路径，格式为 `{索引1;索引2;索引3}`
+- **智能处理**: Value 会自动判断是否为列表格式，非列表格式会自动封装为单元素列表
+- **类型转换**: Grasshopper 内部会自动将字符串列表转换为参数所需的类型（数字、整数、布尔等）
+
+---
+
+### 测试5: REMOVECOMPONENT - 移除组件
 
 **状态**: ✓ 成功
 
@@ -339,7 +466,7 @@ for msg in messages:
 
 ---
 
-### 测试5: CONNECTCOMPONENTS - 连接组件
+### 测试6: CONNECTCOMPONENTS - 连接组件
 
 **状态**: ✓ 成功
 
@@ -380,7 +507,7 @@ for msg in messages:
 
 ---
 
-### 测试6: DISCONNECTCOMPONENTS - 断开组件连接
+### 测试7: DISCONNECTCOMPONENTS - 断开组件连接
 
 **状态**: ✓ 成功（功能可用）
 
@@ -425,7 +552,7 @@ def send_and_receive(command_dict, timeout=10):
         # 发送
         data = {
             'Name': 'Design',
-            'Info': 'SETCOMPONENTVALUE 测试',
+            'Info': 'SETPARAMVALUE 测试',
             'Time': datetime.now().isoformat(),
             'Value': command_dict
         }
@@ -481,7 +608,7 @@ guid = extract_guid(r1)
 
 # 步骤2: 设置值
 r2 = send_and_receive({
-    'Command': 'SETCOMPONENTVALUE',
+    'Command': 'SETPARAMVALUE',
     'InstanceGuid': guid,
     'Value': '0.75'
 })
@@ -510,6 +637,7 @@ r2 = send_and_receive({
 
 - `test_addcomponentbyguid.py` - 测试通过 GUID 添加组件
 - `test_addcomponentbyname.py` - 测试通过名称添加组件
+- `test_addparamwithvalue.py` - 测试添加参数组件并设置值
 - `test_set_value.py` - 测试设置 Panel 值
 - `test_set_slider_value.py` - 测试添加 Number Slider 并设置值
 - `test_set_slider_direct.py` - 测试直接设置 Number Slider 值
@@ -520,7 +648,7 @@ r2 = send_and_receive({
 
 ## 注意事项
 
-1. **InstanceGuid 获取**: SETCOMPONENTVALUE、REMOVECOMPONENT、CONNECTCOMPONENTS、DISCONNECTCOMPONENTS 命令需要 InstanceGuid，这个在创建组件时会返回。
+1. **InstanceGuid 获取**: SETPARAMVALUE、REMOVECOMPONENT、CONNECTCOMPONENTS、DISCONNECTCOMPONENTS 命令需要 InstanceGuid，这个在创建组件时会返回。
 
 2. **坐标系统**: X, Y 坐标是 Grasshopper 画布上的像素坐标。
 
@@ -528,7 +656,9 @@ r2 = send_and_receive({
 
 4. **连接管理**: 建议每次发送命令都重新连接，避免缓冲区问题。
 
-5. **值设置**: SETCOMPONENTVALUE 支持设置简单值（如 Panel 文本、Number Slider 数值），但不支持复杂属性。
+5. **值设置**: SETPARAMVALUE 支持设置简单值（如 Panel 文本、Number Slider 数值），但不支持复杂属性。
+
+6. **列表值格式**: ADDPARAMWITHVALUE 中设置列表值时，Value 必须是 JSON 字符串数组格式（元素为字符串），如 `"[\"1.0\", \"2.0\", \"3.0\"]"`。
 
 ---
 
@@ -539,7 +669,8 @@ r2 = send_and_receive({
 **成功的命令**:
 - ✓ ADDCOMPONENTBYNAME - 通过名称添加组件
 - ✓ ADDCOMPONENTBYGUID - 通过 GUID 添加组件
-- ✓ SETCOMPONENTVALUE - 设置组件值
+- ✓ ADDPARAMWITHVALUE - 添加参数组件并设置值
+- ✓ SETPARAMVALUE - 设置组件值
 - ✓ REMOVECOMPONENT - 移除组件
 - ✓ CONNECTCOMPONENTS - 连接组件
 - ✓ DISCONNECTCOMPONENTS - 断开组件连接
@@ -549,3 +680,4 @@ r2 = send_and_receive({
 - 正确提取 InstanceGuid（处理嵌套 JSON）
 - 设置合适的超时时间
 - 使用正则表达式处理转义字符
+- ADDPARAMWITHVALUE 中列表值使用字符串格式（如 `"[\"1.0\", \"2.0\"]"`）

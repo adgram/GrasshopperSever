@@ -151,6 +151,95 @@ Add component via name
 }
 ```
 
+#### ADDPARAMWITHVALUE
+Add parameter component and set value
+
+**Parameters**:
+- `ParamName` - Parameter type name (required)
+- `X` - X coordinate (required)
+- `Y` - Y coordinate (required)
+- `Path` - Data path (optional, format like "{0;1;2}")
+- `Value` - Value to set (optional, can be single value or JSON array)
+
+**Supported Parameter Types**:
+- `Number`/`num`/`param_number` - Number parameter
+- `Int`/`integer`/`param_int`/`param_integer` - Integer parameter
+- `Bool`/`boolean`/`param_bool`/`param_boolean` - Boolean parameter
+- `True`/`False` - Boolean switch
+- `Toggle` - Boolean toggle
+- `Button` - Button
+- `Slider`/`numberslider` - Number slider
+- `Panel`/`param_panel` - Panel
+- `Text`/`string`/`param_text`/`param_string` - Text parameter
+- `Point`/`pt`/`param_pt`/`param_point` - Point parameter
+- `Vector`/`vect`/`param_vect` - Vector parameter
+- `Color`/`colour`/`param_color`/`param_colour` - Color parameter
+- `Swatch` - Color swatch
+- `Plane`/`param_plane` - Plane parameter
+- `Param_line` - Line parameter
+- `Curve`/`crv`/`param_crv`/`param_curve` - Curve parameter
+- `Param_circle` - Circle parameter
+
+**Example 1**: Add simple number parameter
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "number",
+  "X": 100,
+  "Y": 100,
+  "Value": "42.5"
+}
+```
+
+**Example 2**: Add number slider with range
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "slider",
+  "X": 100,
+  "Y": 100,
+  "Value": "0.0 < 0.5 < 1.0"
+}
+```
+
+**Example 3**: Add text parameter with value
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "text",
+  "X": 100,
+  "Y": 100,
+  "Value": "Hello Grasshopper"
+}
+```
+
+**Example 4**: Add parameter with data path (set data tree)
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "number",
+  "X": 100,
+  "Y": 100,
+  "Path": "{0;1;2}",
+  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
+}
+```
+
+**Example 5**: Add boolean switch
+```json
+{
+  "Name": "Design",
+  "Command": "AddParamWithValue",
+  "ParamName": "true",
+  "X": 100,
+  "Y": 100
+}
+```
+
 #### REMOVECOMPONENT
 Remove component
 
@@ -166,20 +255,48 @@ Remove component
 }
 ```
 
-#### SETCOMPONENTVALUE
-Set component value
+#### SETPARAMVALUE
+Set parameter value
 
 **Parameters**:
 - `InstanceGuid` - Component instance GUID
-- `Value` - Value to set
+- `Path` - Data path (optional, format like "{0;1;2}")
+- `Value` - Value to set (can be single value or JSON array)
 
-**Example**:
+**Example 1**: Set simple value
 ```json
 {
   "Name": "Design",
-  "Command": "SetComponentValue",
+  "Command": "SetParamValue",
   "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
   "Value": "42"
+}
+```
+
+**Example 2**: Set data tree value
+```json
+{
+  "Name": "Design",
+  "Command": "SetParamValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Path": "{0;1;2}",
+  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
+}
+```
+
+**Example 3**: Set slider value
+```json
+{
+  "Name": "Design",
+  "Command": "SetParamValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Value": "0.5"
+}
+{
+  "Name": "Design",
+  "Command": "SetParamValue",
+  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
+  "Value": "0.0 < 0.5 < 1.0"
 }
 ```
 
@@ -592,7 +709,7 @@ Stores component exchange operation history (document-specific), including add, 
 | Field Name | Data Type | Constraint | Description |
 |------------|-----------|------------|-------------|
 | Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
-| OperationType | TEXT | NOT NULL | Operation type (AddComponent, RemoveComponent, SetComponentValue, ConnectComponents, DisconnectComponents) |
+| OperationType | TEXT | NOT NULL | Operation type (AddComponent, RemoveComponent, SetParamValue, ConnectComponents, DisconnectComponents) |
 | ComponentGuid | TEXT | - | Component GUID |
 | InstanceGuid | TEXT | - | Component instance GUID |
 | ComponentName | TEXT | - | Component name |

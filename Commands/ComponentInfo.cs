@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Data.SQLite;
 using System.Diagnostics;
-using System.Drawing;
+
 
 namespace GrasshopperSever.Commands
 {
@@ -72,8 +72,7 @@ namespace GrasshopperSever.Commands
         /// <returns>文件信息</returns>
         public static Ljson GetAllComponentsNested()
         {
-            var server = Instances.ComponentServer;
-            var proxies = server.ObjectProxies;
+            var proxies = Instances.ComponentServer.ObjectProxies;
 
             // 预构建组件代理字典缓存，加速后续查询
             GetComponentProxyCache();
@@ -244,7 +243,8 @@ namespace GrasshopperSever.Commands
             // 从数据库查询组件信息
             using (var connection = DatabaseManager.GetConnection())
             {
-                string sql = @"                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
+                string sql = @"
+                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
                     FROM ALLCOMPS
                     WHERE ComponentGuid = @guid";
 
@@ -284,13 +284,21 @@ namespace GrasshopperSever.Commands
             // 从数据库查询第一个匹配的组件信息
             using (var connection = DatabaseManager.GetConnection())
             {
-                string sql = @"                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
+                /*ORDER BY ComponentName
+                按组件名称排序
+                如果有多个匹配结果，按名称排序
+                LIMIT 1
+                只返回第一条结果
+                即使有多个匹配，也只返回一个
+                */
+                string sql = @"
+                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
                     FROM ALLCOMPS
                     WHERE ComponentName = @name COLLATE NOCASE
                     ORDER BY ComponentName
                     LIMIT 1";
 
-                using (var command = new System.Data.SQLite.SQLiteCommand(sql, connection))
+                using (var command = new SQLiteCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@name", name);
 
@@ -320,7 +328,43 @@ namespace GrasshopperSever.Commands
 
             return null;
         }
-        
+
+        public static string FindComponentsGuidByName(string name)
+        {
+            // 从数据库查询第一个匹配的组件信息
+            using (var connection = DatabaseManager.GetConnection())
+            {
+                /*ORDER BY ComponentName
+                按组件名称排序
+                如果有多个匹配结果，按名称排序
+                LIMIT 1
+                只返回第一条结果
+                即使有多个匹配，也只返回一个
+                */
+                string sql = @"
+                    SELECT ComponentGuid
+                    FROM ALLCOMPS
+                    WHERE ComponentName = @name COLLATE NOCASE
+                    ORDER BY ComponentName
+                    LIMIT 1";
+
+                using (var command = new SQLiteCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@name", name);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return reader["ComponentGuid"].ToString();
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
         // 通过分类和名称搜索组件（只返回第一个匹配的）
         public static Ljson FindComponentsByCategory(string category, string subCategory, string name)
         {
@@ -364,7 +408,7 @@ namespace GrasshopperSever.Commands
             // 执行查询
             using (var connection = DatabaseManager.GetConnection())
             {
-                using (var command = new System.Data.SQLite.SQLiteCommand(sql, connection))
+                using (var command = new SQLiteCommand(sql, connection))
                 {
                     foreach (var param in parameters)
                     {
@@ -412,7 +456,7 @@ namespace GrasshopperSever.Commands
                     WHERE ComponentName LIKE @name COLLATE NOCASE OR NickName LIKE @name COLLATE NOCASE OR Description LIKE @name COLLATE NOCASE
                     ORDER BY ComponentName";
 
-                using (var command = new System.Data.SQLite.SQLiteCommand(sql, connection))
+                using (var command = new SQLiteCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@name", $"%{name}%");
 
@@ -513,6 +557,22 @@ namespace GrasshopperSever.Commands
                         {
                             // 手动释放资源
                             if (component is IDisposable d)
+                                d.Dispose();
+                        }
+                        IGH_Param param = null;
+                        try
+                        {
+                            // 使用反射创建实例
+                            param = Activator.CreateInstance(type) as IGH_Param;
+                            if (param != null)
+                            {
+                                return "param item";
+                            }
+                        }
+                        finally
+                        {
+                            // 手动释放资源
+                            if (param is IDisposable d)
                                 d.Dispose();
                         }
                     }

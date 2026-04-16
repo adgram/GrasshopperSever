@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GrasshopperSever.Commands
 {
@@ -186,11 +187,14 @@ namespace GrasshopperSever.Commands
                     case "ADDCOMPONENTBYNAME":
                         return HandleAddComponentByName(data);
 
+                    case "ADDPARAMWITHVALUE":
+                        return HandleAddParamWithValue(data);
+
                     case "REMOVECOMPONENT":
                         return HandleRemoveComponent(data);
 
-                    case "SETCOMPONENTVALUE":
-                        return HandleSetComponentValue(data);
+                    case "SETPARAMVALUE":
+                        return HandleSetParamValue(data);
 
                     case "CONNECTCOMPONENTS":
                         return HandleConnectComponents(data);
@@ -278,6 +282,39 @@ namespace GrasshopperSever.Commands
             }
         }
 
+        private static Ljson HandleAddParamWithValue(Ljson data)
+        {
+            try
+            {
+                var componentName = data.GetParameterString("ParamName");
+                var xElement = data.GetParameter("X");
+                var yElement = data.GetParameter("Y");
+                var path = data.GetParameterString("Path");
+                var value = data.GetParameterString("Value");
+
+                if (string.IsNullOrWhiteSpace(componentName))
+                {
+                    return Ljson.CreateErrorLjson("缺少 ParamName 参数");
+                }
+
+                if (!xElement.HasValue || !yElement.HasValue)
+                {
+                    return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
+                }
+
+                var x = xElement.Value.GetDouble();
+                var y = yElement.Value.GetDouble();
+
+                var point = new System.Drawing.PointF((float)x, (float)y);
+                var result = CommonlyParam.AddParamWithValue(componentName, point, path, value);
+
+                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"添加组件失败: {ex.Message}");
+            }
+        }
         /// <summary>
         /// 处理移除组件命令
         /// </summary>
@@ -312,11 +349,12 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 处理设置组件值命令
         /// </summary>
-        private static Ljson HandleSetComponentValue(Ljson data)
+        private static Ljson HandleSetParamValue(Ljson data)
         {
             try
             {
                 var instanceGuid = data.GetParameterString("InstanceGuid");
+                var path = data.GetParameterString("Path");
                 var value = data.GetParameterString("Value");
 
                 if (string.IsNullOrWhiteSpace(instanceGuid))
@@ -329,7 +367,7 @@ namespace GrasshopperSever.Commands
                     return Ljson.CreateErrorLjson("缺少 Value 参数");
                 }
 
-                var result = ComponentExchange.SetComponentValue(instanceGuid, value);
+                var result = CommonlyParam.SetParamValue(instanceGuid, path, value);
 
                 if (result)
                 {

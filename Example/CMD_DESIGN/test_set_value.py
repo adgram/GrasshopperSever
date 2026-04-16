@@ -1,5 +1,5 @@
 """
-测试 SETCOMPONENTVALUE - 设置组件值
+测试 SETPARAMVALUE - 设置组件值
 端口: 9653
 """
 
@@ -14,7 +14,7 @@ PORT = 9653
 def send(client, name, value):
     data = {
         'Name': name,
-        'Info': 'SETCOMPONENTVALUE测试',
+        'Info': 'SETPARAMVALUE测试',
         'Time': datetime.now().isoformat(),
         'Value': value
     }
@@ -51,7 +51,7 @@ panel_guid = "4d59aa20-4f1e-4bb0-a8c4-c486d0ba571f"
 # 步骤1: 设置 Panel 的文本值
 print("\n=== 步骤1: 设置 Panel 的值为 'Hello Grasshopper' ===")
 send(client, 'Design', {
-    'Command': 'SETCOMPONENTVALUE',
+    'Command': 'SETPARAMVALUE',
     'InstanceGuid': panel_guid,
     'Value': 'Hello Grasshopper'
 })

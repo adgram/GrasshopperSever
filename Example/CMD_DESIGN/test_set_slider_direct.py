@@ -21,7 +21,7 @@ except:
 
 time.sleep(0.5)
 
-slider_guid = "fd85c536-d710-4018-aa33-dc42cb96a1b8"
+slider_guid = "8210e72c-09e5-4f7e-af9d-acefc4e03870"
 
 # 测试1: 设置为 0.75
 print("设置 Number Slider 值为 0.75...")
@@ -30,7 +30,7 @@ data = {
     'Info': '测试',
     'Time': datetime.now().isoformat(),
     'Value': {
-        'Command': 'SETCOMPONENTVALUE',
+        'Command': 'SETPARAMVALUE',
         'InstanceGuid': slider_guid,
         'Value': '0.75'
     }
@@ -55,7 +55,7 @@ if total:
 else:
     print("未收到响应")
 
-time.sleep(1)
+time.sleep(2)
 
 # 测试2: 设置为 50
 print("\n设置 Number Slider 值为 50...")
@@ -64,9 +64,9 @@ data2 = {
     'Info': '测试',
     'Time': datetime.now().isoformat(),
     'Value': {
-        'Command': 'SETCOMPONENTVALUE',
+        'Command': 'SETPARAMVALUE',
         'InstanceGuid': slider_guid,
-        'Value': '50'
+        'Value': '0 < 50< 67'
     }
 }
 

@@ -24,7 +24,7 @@ def send_and_receive(command_dict, timeout=10):
         # 发送
         data = {
             'Name': 'Design',
-            'Info': 'SETCOMPONENTVALUE 测试',
+            'Info': 'SETPARAMVALUE 测试',
             'Time': datetime.now().isoformat(),
             'Value': command_dict
         }
@@ -92,7 +92,7 @@ def extract_guid(response):
 
 def main():
     print("="*60)
-    print("GrasshopperSever SETCOMPONENTVALUE 测试")
+    print("GrasshopperSever SETPARAMVALUE 测试")
     print("添加 Number Slider 并设置值")
     print("="*60)
     
@@ -118,7 +118,7 @@ def main():
     # 步骤 2: 设置值
     print("\n步骤 2: 设置 Number Slider 值为 0.75")
     r2 = send_and_receive({
-        'Command': 'SETCOMPONENTVALUE',
+        'Command': 'SETPARAMVALUE',
         'InstanceGuid': guid,
         'Value': '0.75'
     }, timeout=10)

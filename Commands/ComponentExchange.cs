@@ -1,6 +1,5 @@
 ﻿using Grasshopper;
 using Grasshopper.Kernel;
-using Grasshopper.Kernel.Special;
 using GrasshopperSever.Utils;
 using Rhino;
 using System;
@@ -36,10 +35,17 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 添加组件到 Grasshopper 文档
         /// </summary>
-        public static Ljson AddComponent(Ljson ljson, PointF point)
+        public static Ljson AddComponentByLjson(Ljson ljson, PointF point)
         {
             var componentGuid = ljson.GetParameterString("ComponentGuid");
-            var componentName = ljson.GetParameterString("ComponentName");
+            return AddComponentByGuid(componentGuid, point);
+        }
+
+        /// <summary>
+        /// 通过组件 GUID 添加组件到 Grasshopper 文档
+        /// </summary>
+        public static Ljson AddComponentByGuid(string guid, PointF point)
+        {
             Exception caughtException = null;
             IGH_DocumentObject dobj = null;
 
@@ -48,7 +54,7 @@ namespace GrasshopperSever.Commands
                 try
                 {
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
-                    dobj = Instances.ComponentServer.EmitObject(new Guid(componentGuid));
+                    dobj = Instances.ComponentServer.EmitObject(new Guid(guid));
 
                     if (dobj != null)
                     {
@@ -65,7 +71,7 @@ namespace GrasshopperSever.Commands
                     }
                     else
                     {
-                        caughtException = new InvalidOperationException($"Failed to create component with GUID: {componentGuid}");
+                        caughtException = new InvalidOperationException($"Failed to create component with GUID: {guid}");
                     }
                 }
                 catch (Exception ex)
@@ -79,52 +85,95 @@ namespace GrasshopperSever.Commands
                 throw caughtException;
             }
 
-            // 记录添加组件操作到数据库
-            if (dobj != null)
+            return RecordAddComponent(dobj, point);
+        }
+
+        public static Ljson AddComponent(IGH_DocumentObject dobj, PointF point)
+        {
+            if (dobj == null) throw new InvalidOperationException("Failed to create component");
+            Exception caughtException = null;
+
+            RhinoApp.InvokeOnUiThread(new Action(() =>
             {
-                ComponentExchangeDB.RecordAddComponent(
-                    componentGuid: componentGuid,
-                    instanceGuid: dobj.InstanceGuid.ToString(),
-                    componentName: componentName,
-                    x: point.X,
-                    y: point.Y,
-                    description: $"添加组件 {componentName}"
-                );
+                try
+                {
+                    var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
+                    if (dobj != null)
+                    {
+                        // 确保有属性
+                        if (dobj.Attributes == null)
+                        {
+                            dobj.CreateAttributes();
+                        }
+                        // 设置位置
+                        dobj.Attributes.Pivot = point;
+                        doc.AddObject(dobj, false);
+                        doc.NewSolution(false);
+                    }
+                    else
+                    {
+                        caughtException = new InvalidOperationException("Failed to create component with DocumentObjec");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            }));
+
+            if (caughtException != null)
+            {
+                throw caughtException;
             }
 
-            // 获取组件的输入输出信息
-            var (newInputs, newOutputs) = ParamExchange.GetComponentIOInfo(componentGuid);
-
-            // 返回 InstanceLjson
-            return InstanceLjson(
-                componentGuid: componentGuid,
-                instanceGuid: dobj?.InstanceGuid.ToString() ?? "",
-                name: componentName,
-                position: point,
-                state: "",
-                input: newInputs?.ToString() ?? "",
-                output: newOutputs?.ToString() ?? ""
-            );
+            return RecordAddComponent(dobj, point);
         }
 
         /// <summary>
-        /// 通过组件 GUID 添加组件到 Grasshopper 文档
+        /// 添加组件到 Grasshopper 文档
         /// </summary>
-        public static Ljson AddComponentByGuid(string cguid, PointF point)
+        public static Ljson RecordAddComponent(IGH_DocumentObject component, PointF point)
         {
-            Ljson ljson = ComponentInfo.FindComponentsByGuid(cguid);
-            if(ljson != null) return AddComponent(ljson, point);
-            
-            throw new InvalidOperationException($"Failed to find component with GUID: {cguid}");
+            if (component == null) throw new InvalidOperationException("Failed to create component");
+
+            // 记录添加组件操作到数据库
+            ComponentExchangeDB.RecordAddComponent(
+                componentGuid: component.ComponentGuid.ToString(),
+                instanceGuid: component.InstanceGuid.ToString(),
+                componentName: component.Name,
+                x: point.X,
+                y: point.Y,
+                description: $"添加组件 {component.Name}"
+            );
+
+            Ljson inputsJson = null;
+            Ljson outputsJson = null;
+            if (component is IGH_Component cominst)
+            {
+                inputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Input);
+                outputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Output);
+            }
+
+            // 返回 InstanceLjson
+            return InstanceLjson(
+                componentGuid: component.ComponentGuid.ToString(),
+                instanceGuid: component.InstanceGuid.ToString(),
+                name: component.Name,
+                position: point,
+                state: "",
+                input: inputsJson?.ToString() ?? "",
+                output: outputsJson?.ToString() ?? ""
+            );
         }
+
 
         /// <summary>
         /// 通过组件名称添加组件到 Grasshopper 文档
         /// </summary>
         public static Ljson AddComponentByName(string name, PointF point)
         {
-            Ljson ljson = ComponentInfo.FindComponentsByName(name);
-            if (ljson != null) return AddComponent(ljson, point);
+            string guid = ComponentInfo.FindComponentsGuidByName(name);
+            if (guid != null) return AddComponentByGuid(guid, point);
             
             throw new InvalidOperationException($"Failed to find component with name: {name}");
         }
@@ -186,75 +235,6 @@ namespace GrasshopperSever.Commands
         }
 
         /// <summary>
-        /// 设置组件的值
-        /// </summary>
-        public static bool SetComponentValue(string guid, string value)
-        {
-            bool success = false;
-            Exception caughtException = null;
-            string componentName = null;
-
-            RhinoApp.InvokeOnUiThread(new Action(() =>
-            {
-                try
-                {
-                    var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
-
-                    // 查找组件
-                    var component = doc.FindObject(new Guid(guid), false);
-
-                    if (component != null)
-                    {
-                        componentName = component.Name;
-
-                        if (component is GH_Panel panel)
-                        {
-                            panel.UserText = value;
-                        }
-                        else if (component is GH_NumberSlider slider)
-                        {
-                            double doubleValue;
-                            if (double.TryParse(value, out doubleValue))
-                            {
-                                slider.SetSliderValue((decimal)doubleValue);
-                            }
-                            else
-                            {
-                                throw new ArgumentException("Invalid slider value format");
-                            }
-                        }
-                        success = true;
-                    }
-                    else
-                    {
-                        caughtException = new InvalidOperationException($"Failed to find component with instance GUID: {guid}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    caughtException = ex;
-                }
-            }));
-
-            if (caughtException != null)
-            {
-                throw caughtException;
-            }
-
-            // 记录设置组件值操作到数据库
-            if (success && !string.IsNullOrEmpty(componentName))
-            {
-                ComponentExchangeDB.RecordSetComponentValue(
-                    instanceGuid: guid,
-                    componentName: componentName,
-                    value: value,
-                    description: $"设置组件 {componentName} 的值为 {value}"
-                );
-            }
-
-            return success;
-        }
-
 
         /// <summary>
         /// 连接两个组件的参数
