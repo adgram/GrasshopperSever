@@ -10,7 +10,7 @@ namespace GrasshopperSever.Components
     public class RunScript : GH_Component
     {
         // 编译缓存
-        private readonly CSharpComponent _cachedComponent;
+        private CSharpComponent _cachedComponent;
         // 当前代码
         private string _cachedCode = @"
         // Grasshopper Script Instance
@@ -63,10 +63,7 @@ namespace GrasshopperSever.Components
           : base("RunScript", "RunC#",
               "一个对C#的包装器",
                 "Maths", "Sever")
-        {
-            // 初始化组件
-            _cachedComponent ??= RunScript.CreateCSharpComponent();
-        }
+        {}
 
         public override GH_Exposure Exposure => GH_Exposure.primary | GH_Exposure.obscure;
 
@@ -183,6 +180,13 @@ namespace GrasshopperSever.Components
             component.UsingStandardOutputParam = true;
             component.UsingScriptOutputParam = true; // 启用脚本输出参数
             return component;
+        }
+
+        public override void AddedToDocument(GH_Document document)
+        {
+            // 初始化组件
+            _cachedComponent ??= CreateCSharpComponent();
+            base.AddedToDocument(document);
         }
 
         /// <summary>
