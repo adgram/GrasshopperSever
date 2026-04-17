@@ -7,7 +7,7 @@ using GrasshopperSever.Commands;
 
 namespace GrasshopperSever.Components
 {
-    public class RunScript : GH_Component
+    public class RunScript: GH_Component
     {
         // 编译缓存
         private CSharpComponent _cachedComponent;
@@ -80,8 +80,8 @@ namespace GrasshopperSever.Components
         /// </summary>
         protected override void RegisterOutputParams(GH_OutputParamManager pManager)
         {
-            pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "数据输出", GH_ParamAccess.item);
             pManager.AddTextParameter("Out", "O", "调试输出", GH_ParamAccess.item);
+            pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "数据输出", GH_ParamAccess.item);
         }
 
 
@@ -148,7 +148,7 @@ namespace GrasshopperSever.Components
                 {
                     if (!ljsonParam.VolatileData.IsEmpty)
                     {
-                        DA.SetDataTree(0, ljsonParam.VolatileData);
+                        DA.SetDataTree(1, ljsonParam.VolatileData);
                     }
                     else
                     {
@@ -161,12 +161,12 @@ namespace GrasshopperSever.Components
                 }
 
                 // 将调试信息作为最终输出（覆盖原有的 out 输出）
-                DA.SetData(1, debugInfo.ToString());
+                DA.SetData(0, debugInfo.ToString());
             }
             catch (Exception ex)
             {
                 this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, $"执行失败: {ex.Message}");
-                DA.SetData(1, $"错误: {ex.Message}");
+                DA.SetData(0, $"错误: {ex.Message}");
             }
         }
 

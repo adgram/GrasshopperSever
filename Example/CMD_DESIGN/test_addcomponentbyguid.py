@@ -65,6 +65,10 @@ def get_test_components():
         {
             'name': 'Test Component 4',
             'guid': '93b8e93d-f932-402c-b435-84be04d87666'
+        },
+        {
+            'name': 'Test Component 5',
+            'guid': 'A9A8EBD2-FFF5-4c44-A8F5-739736D129BA'
         }
     ]
 

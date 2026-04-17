@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Xml.Linq;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace GrasshopperSever.Utils
 {
@@ -536,6 +538,11 @@ namespace GrasshopperSever.Utils
             }
 
             return result;
+        }
+
+        public static JsonElement JsonElementFromString(string json)
+        {
+            return JsonSerializer.SerializeToElement(json);
         }
     }
 }
