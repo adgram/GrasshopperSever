@@ -290,30 +290,30 @@ namespace GrasshopperSever.Utils
             {
                 try
                 {
-                    Ljson queueToSend = null;
+                    Ljson jsonToSend = null;
 
                     // 从发送队列获取Ljson
                     lock (_lock)
                     {
                         if (_sendList.Count > 0)
                         {
-                            queueToSend = _sendList.Dequeue();
+                            jsonToSend = _sendList.Dequeue();
                         }
                     }
 
-                    if (queueToSend != null)
+                    if (jsonToSend != null)
                     {
                         // 检查time标签，只发送比上次更新的消息
-                        if (queueToSend.Time <= LastSentTime)
+                        if (jsonToSend.Time <= LastSentTime)
                         {
-                            Log($"ResponseSender: 忽略过期的Ljson (时间: {queueToSend.Time}, 最后发送: {LastSentTime})");
+                            Log($"ResponseSender: 忽略过期的Ljson (时间: {jsonToSend.Time}, 最后发送: {LastSentTime})");
                             continue;
                         }
 
                         // 发送Ljson
-                        await SendLjson(queueToSend);
-                        LastSentTime = queueToSend.Time;
-                        Log($"ResponseSender: 已发送Ljson (时间: {queueToSend.Time}, 数据项: {queueToSend.Name})");
+                        await SendLjson(jsonToSend);
+                        LastSentTime = jsonToSend.Time;
+                        Log($"ResponseSender: 已发送Ljson (时间: {jsonToSend.Time}, 数据项: {jsonToSend.Name})");
                     }
                     else
                     {
@@ -331,9 +331,9 @@ namespace GrasshopperSever.Utils
         /// <summary>
         /// 发送Ljson到客户端
         /// </summary>
-        /// <param name="queue">要发送的Ljson对象</param>
+        /// <param name="json">要发送的Ljson对象</param>
         /// <returns>异步任务</returns>
-        private async Task SendLjson(Ljson queue)
+        private async Task SendLjson(Ljson json)
         {
             try
             {
@@ -343,8 +343,8 @@ namespace GrasshopperSever.Utils
                 }
                 var stream = _client.GetStream();
                 var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
-                string queueJson = queue.ToJson();
-                await writer.WriteLineAsync(queueJson);
+                string jsonJson = json.ToJson();
+                await writer.WriteLineAsync(jsonJson);
             }
             catch (Exception ex)
             {
@@ -356,42 +356,42 @@ namespace GrasshopperSever.Utils
         /// <summary>
         /// 添加Ljson到发送队列
         /// </summary>
-        /// <param name="queue">要发送的Ljson对象</param>
-        public void EnqueueLjson(Ljson queue)
+        /// <param name="json">要发送的Ljson对象</param>
+        public void EnqueueLjson(Ljson json)
         {
-            if (queue == null)
+            if (json == null)
             {
-                throw new ArgumentNullException(nameof(queue));
+                throw new ArgumentNullException(nameof(json));
             }
 
             lock (_lock)
             {
-                _sendList.Enqueue(queue);
-                Log($"ResponseSender: Ljson已加入发送队列 (时间: {queue.Time}, 待发送: {_sendList.Count})");
+                _sendList.Enqueue(json);
+                Log($"ResponseSender: Ljson已加入发送队列 (时间: {json.Time}, 待发送: {_sendList.Count})");
             }
         }
 
         /// <summary>
         /// 批量添加Ljson到发送队列
         /// </summary>
-        /// <param name="queues">要发送的Ljson数组</param>
-        public void EnqueueLjsonRange(Ljson[] queues)
+        /// <param name="jsons">要发送的Ljson数组</param>
+        public void EnqueueLjsonRange(Ljson[] jsons)
         {
-            if (queues == null)
+            if (jsons == null)
             {
-                throw new ArgumentNullException(nameof(queues));
+                throw new ArgumentNullException(nameof(jsons));
             }
 
             lock (_lock)
             {
-                foreach (var queue in queues)
+                foreach (var json in jsons)
                 {
-                    if (queue != null)
+                    if (json != null)
                     {
-                        _sendList.Enqueue(queue);
+                        _sendList.Enqueue(json);
                     }
                 }
-                Log($"ResponseSender: {queues.Length}个Ljson已加入发送队列，待发送: {_sendList.Count}");
+                Log($"ResponseSender: {jsons.Length}个Ljson已加入发送队列，待发送: {_sendList.Count}");
             }
         }
 

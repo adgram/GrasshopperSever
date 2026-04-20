@@ -3,9 +3,7 @@
 端口：9653
 """
 
-import socket
 import json
-import time
 import sqlite3
 
 # 数据库路径

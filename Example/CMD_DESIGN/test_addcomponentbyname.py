@@ -1,51 +1,13 @@
-"""
+﻿"""
 ADDCOMPONENTBYNAME 命令增强测试脚本 - 逐个测试，便于调试
-测试端口: 9653
-测试日期: 2026-04-15
+测试端口：9653
+测试日期：2026-04-15
 """
 
-import socket
-import json
-from datetime import datetime
+from ghclient import GHClient
 import time
 
-HOST = '127.0.0.1'
 PORT = 9653
-
-def send_command(client, name, value):
-    """发送命令到 GrasshopperSever"""
-    data = {
-        'Name': name,
-        'Info': 'ADDCOMPONENTBYNAME测试',
-        'Time': datetime.now().isoformat(),
-        'Value': value
-    }
-    message = json.dumps(data, ensure_ascii=False)
-    print(f"\n发送: {message}")
-    client.sendall((message + '\n').encode('utf-8'))
-
-def receive_all(client, timeout=5):
-    """接收所有响应"""
-    client.settimeout(timeout)
-    total_response = b''
-    try:
-        while True:
-            chunk = client.recv(8192)
-            if not chunk:
-                break
-            total_response += chunk
-            # 如果收到完整消息，尝试提前结束
-            if b'"Value"' in chunk and b'}' in chunk:
-                time.sleep(0.2)  # 等待可能的后续消息
-                break
-    except socket.timeout:
-        pass
-
-    if total_response:
-        response = total_response.decode('utf-8-sig')
-        messages = [msg for msg in response.split('\ufeff') if msg.strip()]
-        return [json.loads(msg.strip()) for msg in messages]
-    return []
 
 def test_single_component(client, component_name, x, y, test_number):
     """测试单个组件，返回详细信息"""
@@ -55,18 +17,19 @@ def test_single_component(client, component_name, x, y, test_number):
     
     try:
         # 发送命令
-        send_command(client, 'Design', {
-            'Command': 'AddComponentByName',
-            'ComponentName': component_name,
-            'X': x,
-            'Y': y
-        })
-        
-        # 接收响应
-        responses = receive_all(client)
+        responses = client.send_command(
+            name="Design",
+            info="ADDCOMPONENTBYNAME 测试",
+            value={
+                "Command": "AddComponentByName",
+                "ComponentName": component_name,
+                "X": x,
+                "Y": y
+            }
+        )
         
         if responses:
-            print(f"\n✓ 收到 {len(responses)} 条响应:")
+            print(f"\n📨收到 {len(responses)} 条响应")
             for i, resp in enumerate(responses, 1):
                 name = resp.get('Name', 'N/A')
                 value = resp.get('Value', 'N/A')
@@ -92,7 +55,7 @@ def test_single_component(client, component_name, x, y, test_number):
                 'responses': responses
             }
         else:
-            print(f"\n✗ 未收到任何响应（超时）")
+            print(f"\n❌未收到任何响应（超时）")
             return {
                 'component': component_name,
                 'success': False,
@@ -100,7 +63,7 @@ def test_single_component(client, component_name, x, y, test_number):
             }
             
     except Exception as e:
-        print(f"\n✗ 错误: {e}")
+        print(f"\n❌错误：{e}")
         return {
             'component': component_name,
             'success': False,
@@ -111,7 +74,7 @@ def main():
     """主测试函数"""
     print("="*70)
     print("ADDCOMPONENTBYNAME 命令增强测试")
-    print("每个组件独立测试，避免互相影响")
+    print("每个组件独立测试，避免相互影响")
     print("="*70)
     
     # 测试用例 - 包含多种可能的名称格式
@@ -128,31 +91,24 @@ def main():
         print(f"# 开始测试 #{i}: {component_name}")
         print(f"{'#'*70}")
         
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            client.connect((HOST, PORT))
-            print(f"✓ 已连接到 {HOST}:{PORT}")
-            
-            # 接收连接响应
-            init_responses = receive_all(client, timeout=2)
-            if init_responses:
-                print(f"连接响应: {init_responses}")
-            
-            # 等待一下确保连接稳定
-            time.sleep(0.5)
-            
-            # 测试组件添加
-            result = test_single_component(client, component_name, x, y, i)
-            results.append(result)
-            
+            with GHClient(port = PORT) as client:
+                print(f"✔️ 已连接到端口:{PORT}")
+                
+                # 等待一下确保连接稳定
+                time.sleep(0.5)
+                
+                # 测试组件添加
+                result = test_single_component(client, component_name, x, y, i)
+                results.append(result)
+                
         except ConnectionRefusedError:
-            print(f"\n✗ 无法连接到 {HOST}:{PORT}")
+            print(f"\n❌无法连接到端口:{PORT}")
             break
         except Exception as e:
-            print(f"\n✗ 错误: {e}")
+            print(f"\n❌错误：{e}")
         finally:
-            client.close()
-            time.sleep(1)  # 等待连接完全关闭
+            time.sleep(1)
     
     # 打印测试结果汇总
     print(f"\n\n{'='*70}")
@@ -161,7 +117,7 @@ def main():
     print(f"{'#':<5} {'组件名称':<20} {'状态':<10} {'说明'}")
     print(f"{'-'*70}")
     for i, result in enumerate(results, 1):
-        status = '✓ 成功' if result['success'] else '✗ 失败'
+        status = '✅成功' if result['success'] else '❌失败'
         component = result['component']
         note = ''
         if not result['success']:
@@ -169,8 +125,8 @@ def main():
         print(f"{i:<5} {component:<20} {status:<10} {note}")
     
     print(f"\n{'='*70}")
-    print(f"总计: {len(results)} 个测试, "
-          f"{sum(1 for r in results if r['success'])} 成功, "
+    print(f"总计：{len(results)} 个测试 "
+          f"{sum(1 for r in results if r['success'])} 成功，"
           f"{sum(1 for r in results if not r['success'])} 失败")
     print(f"{'='*70}")
 

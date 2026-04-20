@@ -1,16 +1,14 @@
-# GrasshopperSever 命令列表
+﻿# GrasshopperSever Rhino 命令文档
 
-本文档列出了GrasshopperSever插件支持的所有可用命令。
-
-警告：不要轻易获取所有组件信息，优先使用分组或名称查询、检索，或者调用数据库。
+本文档列出了 GrasshopperSever 插件支持的 Rhino 相关命令。
 
 ## 命令格式
 
-所有命令通过LJSON格式发送，必须包含以下结构：
+所有命令通过 LJSON 格式发送，必须包含以下结构：
 
 ```json
 {
-  "Name": "命令类型",
+  "Name": "RHINO",
   "Info": "命令描述",
   "Time": "2026-03-26T10:00:00",
   "Value": {
@@ -20,18 +18,13 @@
 }
 ```
 
-**Name字段（命令类型）**：
-- `COMPONENT` - 组件相关命令
-- `DOCUMENT` - 文档相关命令
-- `RHINO` - Rhino相关命令
-- `SCRIPT` - 脚本相关命令
-- `DESIGN` - 设计相关命令
+**端口**：6655
 
 ---
 
 ## 数据库表结构
 
-### 1. RhinoObjects 表（Rhino对象信息表）
+### RhinoObjects 表（Rhino 对象信息表）
 
 存储 Rhino 中创建的对象信息。
 
@@ -82,20 +75,17 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 
 ---
 
-## Rhino命令测试记录
+## Rhino 命令
 
-### RHINOSCRIPT - 运行Rhino命令
+### 1. RHINOSCRIPT - 运行 Rhino 命令
 
-**端口**: 6655
-
-**测试命令**: `_-Line 0,0,0 10,10,0` (创建直线)
+执行 Rhino 脚本命令。
 
 **请求**：
-
 ```json
 {
   "Name": "RHINO",
-  "Info": "执行RHINOSCRIPT命令",
+  "Info": "执行 RHINOSCRIPT 命令",
   "Time": "2026-03-26T...",
   "Value": {
     "Command": "RHINOSCRIPT",
@@ -104,18 +94,11 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 }
 ```
 
-**测试结果**:
-
-- ✓ 成功：命令执行成功，直线已创建
-- ✓ 响应：返回3条消息（客户端已连接、数据接收成功、命令执行结果）
-- ✓ 命令执行结果包含 `Result: True` 和执行的 `Script` 内容
-
 **响应示例**：
-
 ```json
 {
   "Name": "RhinoCommand",
-  "Info": "执行Rhino脚本成功",
+  "Info": "执行 Rhino 脚本成功",
   "Value": {
     "Result": "True",
     "Script": "_-Line 0,0,0 10,10,0"
@@ -123,22 +106,18 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 }
 ```
 
-**说明**:
-
-- RHINOSCRIPT命令执行成功时，会返回执行结果，包含 Result 和 Script 字段
+**说明**：
+- RHINOSCRIPT 命令执行成功时，会返回执行结果，包含 Result 和 Script 字段
 - 命令执行失败时，会返回错误信息
-- 需要在Rhino中验证命令是否实际执行成功
-
-**测试脚本**: `test_rhinoscript_6655.py`
+- 需要在 Rhino 中验证命令是否实际执行成功
 
 ---
 
-### GETLASTCREATEDOBJECTS - 获取最后创建的对象
+### 2. GETLASTCREATEDOBJECTS - 获取最后创建的对象
 
-**功能**：获取Rhino中最后创建的对象信息，并将对象信息存入数据库
+获取 Rhino 中最后创建的对象信息，并将对象信息存入数据库。
 
 **请求**：
-
 ```json
 {
   "Name": "RHINO",
@@ -150,8 +129,7 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 }
 ```
 
-**响应示例**（成功）：
-
+**响应示例（成功）**：
 ```json
 {
   "Name": "GetLastCreatedObjects",
@@ -171,8 +149,7 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 }
 ```
 
-**响应示例**（无对象）：
-
+**响应示例（无对象）**：
 ```json
 {
   "Name": "GetLastCreatedObjects",
@@ -183,36 +160,19 @@ SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
 ```
 
 **说明**：
-
 - 自动初始化对象表（如果不存在）
 - 使用 `_SelLast` 命令选择最后创建的对象
 - 获取对象的详细信息：ID、类型、图层、名称
 - 将对象信息存入数据库的 `RhinoObjects` 表
 - 返回对象数量和每个对象的详细信息
 
-**数据库表结构**：
-
-```sql
-CREATE TABLE RhinoObjects (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ObjectId TEXT NOT NULL,
-    ObjectType TEXT,
-    LayerName TEXT,
-    ObjectName TEXT,
-    CreateTime DATETIME DEFAULT CURRENT_TIMESTAMP,
-    DocumentSerialNumber TEXT,
-    Description TEXT
-)
-```
-
 ---
 
-### SELECTOBJECTS - 选择对象
+### 3. SELECTOBJECTS - 选择对象
 
-**功能**：根据对象ID列表选择Rhino中的对象
+根据对象 ID 列表选择 Rhino 中的对象。
 
 **请求**：
-
 ```json
 {
   "Name": "RHINO",
@@ -226,74 +186,51 @@ CREATE TABLE RhinoObjects (
 ```
 
 **参数说明**：
-- `Objects`：对象ID列表，支持以下分隔符：逗号(,)、分号(;)、空格
+- `Objects`：对象 ID 列表，支持以下分隔符：逗号 (,)、分号 (;)、空格
 
-**响应示例**（成功）：
-
+**响应示例（成功选择 3 个对象）**：
 ```json
 {
   "Name": "SelectObjects",
   "Info": "选择对象",
-  "Time": "2026-03-26T10:00:00",
   "Value": {
     "TotalRequested": "3",
-    "TotalSelected": "2",
+    "TotalSelected": "3",
     "InvalidIdCount": "0",
-    "NotFoundCount": "1",
-    "Message": "部分对象选择成功（成功: 2, 无效ID: 0, 未找到: 1）"
+    "NotFoundCount": "0"
   }
 }
 ```
 
-**响应示例**（全部失败）：
-
+**响应示例（全部失败）**：
 ```json
 {
   "Name": "SelectObjects",
   "Info": "选择对象",
-  "Time": "2026-03-26T10:00:00",
   "Value": {
     "TotalRequested": "2",
     "TotalSelected": "0",
     "InvalidIdCount": "2",
     "NotFoundCount": "0",
-    "Message": "所有ID均无效或未找到对象（无效ID: 2, 未找到: 0）"
+    "Message": "所有 ID 均无效或未找到对象（无效 ID: 2, 未找到：0）"
   }
 }
 ```
 
 **说明**：
-
 - 支持批量选择多个对象
 - 自动清除之前的选择
-- 验证每个ID的格式和有效性
+- 验证每个 ID 的格式和有效性
 - 自动刷新视图以显示选择结果
 - 返回详细的统计信息
 
-**使用示例**：
-
-```python
-# 从 GETLASTCREATEDOBJECTS 的结果中提取 Guid
-objects_result = send_command(6655, "RHINO", "GETLASTCREATEDOBJECTS", {})
-guids = []
-for key, value in objects_result[0]['Value'].items():
-    if key.startswith('Object_'):
-        guids.append(value['Guid'])
-
-# 选择这些对象
-select_result = send_command(6655, "RHINO", "SELECTOBJECTS", {
-    "Objects": ",".join(guids)
-})
-```
-
 ---
 
-### GETANDSELECTLASTOBJECTS - 获取并选择最后创建的对象
+### 4. GETANDSELECTLASTOBJECTS - 获取并选择最后创建的对象
 
-**功能**：一次性完成"获取最后创建的对象"和"选择它们"两个操作
+一次性完成"获取最后创建的对象"和"选择它们"两个操作。
 
 **请求**：
-
 ```json
 {
   "Name": "RHINO",
@@ -305,8 +242,7 @@ select_result = send_command(6655, "RHINO", "SELECTOBJECTS", {
 }
 ```
 
-**响应示例**（成功）：
-
+**响应示例（成功）**：
 ```json
 {
   "Name": "GetAndSelectLastObjects",
@@ -335,23 +271,165 @@ select_result = send_command(6655, "RHINO", "SELECTOBJECTS", {
 ```
 
 **说明**：
-
 - 复合命令，自动执行 GETLASTCREATEDOBJECTS 和 SELECTOBJECTS
 - 自动处理数据格式转换
 - 返回包含对象信息和选择结果的合并数据
 - 适用于需要立即选择刚创建对象的场景
 
 **使用建议**：
-
 - 如果只需要获取对象信息：使用 `GETLASTCREATEDOBJECTS`
 - 如果只需要选择已知对象：使用 `SELECTOBJECTS`
 - 如果需要创建对象后立即选择：使用 `GETANDSELECTLASTOBJECTS`
 
 ---
 
+## 使用示例（标准接收方式）
+
+### Python 示例（使用 readline()）
+
+```python
+import socket
+import json
+from datetime import datetime
+
+def receive_responses(client, max_count=10, timeout=10):
+    """
+    按行接收服务器响应（标准方式）
+    
+    Args:
+        client: TCP socket 连接对象
+        max_count: 最多接收的消息数量
+        timeout: 超时时间（秒）
+    
+    Returns:
+        响应消息列表
+    """
+    if not client:
+        return []
+    
+    client.settimeout(timeout)
+    reader = client.makefile('r', encoding='utf-8')
+    messages = []
+    
+    for i in range(max_count):
+        try:
+            line = reader.readline()
+            if not line:
+                break
+            
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 尝试解析 JSON
+            try:
+                msg = json.loads(line)
+                messages.append(msg)
+            except json.JSONDecodeError as e:
+                # 尝试去除 BOM 标记
+                if line.startswith('\ufeff'):
+                    try:
+                        msg = json.loads(line[1:])
+                        messages.append(msg)
+                    except json.JSONDecodeError:
+                        pass
+        
+        except Exception as e:
+            break
+    
+    reader.close()
+    return messages
+
+
+def send_command(command_name, params, max_responses=2):
+    """
+    发送 Rhino 命令到 GrasshopperSever
+    
+    Args:
+        command_name: 具体命令名称
+        params: 命令参数字典
+        max_responses: 预期接收的响应数量
+                     - Rhino 命令：2 条（接收确认 + 命令结果）
+    
+    Returns:
+        响应消息列表
+    """
+    data = {
+        "Name": "RHINO",
+        "Info": f"执行{command_name}命令",
+        "Time": datetime.now().isoformat(),
+        "Value": {
+            "Command": command_name,
+            **params
+        }
+    }
+
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect(('127.0.0.1', 6655))
+    
+    message = json.dumps(data, ensure_ascii=False)
+    client.sendall((message + '\n').encode('utf-8'))
+
+    # 使用 readline() 接收响应
+    responses = receive_responses(client, max_count=max_responses)
+    
+    client.close()
+    return responses
+
+
+# 示例 1：执行 Rhino 命令创建直线
+print("=== 创建直线 ===")
+results = send_command("RHINOSCRIPT", 
+                       {"Script": "_-Line 0,0,0 10,10,0"}, 
+                       max_responses=2)
+for result in results:
+    print(f"响应：{result}")
+
+# 示例 2：获取最后创建的对象
+print("\n=== 获取最后创建的对象 ===")
+results = send_command("GETLASTCREATEDOBJECTS", {}, max_responses=2)
+for result in results:
+    if result.get('Name') == 'GetLastCreatedObjects':
+        print(f"找到 {result['Value'].get('Count', 0)} 个对象")
+        for key, value in result['Value'].items():
+            if key.startswith('Object_'):
+                print(f"  对象 ID: {value.get('Guid')}")
+                print(f"  类型：{value.get('Type')}")
+
+# 示例 3：选择对象
+print("\n=== 选择对象 ===")
+# 先获取对象
+obj_results = send_command("GETLASTCREATEDOBJECTS", {}, max_responses=2)
+guids = []
+for result in obj_results:
+    if result.get('Name') == 'GetLastCreatedObjects':
+        for key, value in result['Value'].items():
+            if key.startswith('Object_'):
+                guids.append(value['Guid'])
+
+# 选择这些对象
+if guids:
+    results = send_command("SELECTOBJECTS", 
+                           {"Objects": ",".join(guids)}, 
+                           max_responses=2)
+    for result in results:
+        if result.get('Name') == 'SelectObjects':
+            print(f"选择成功：{result['Value'].get('TotalSelected')} 个对象")
+
+# 示例 4：获取并选择最后创建的对象（复合命令）
+print("\n=== 获取并选择最后创建的对象 ===")
+results = send_command("GETANDSELECTLASTOBJECTS", {}, max_responses=2)
+for result in results:
+    if result.get('Name') == 'GetAndSelectLastObjects':
+        print(f"对象数量：{result['Value']['Objects'].get('Count', 0)}")
+        print(f"选择成功：{result['Value']['Selection']['TotalSelected']} 个")
+```
+
+---
+
 ## 错误处理
 
-所有命令在执行失败时会返回错误格式的LJSON：
+所有命令在执行失败时会返回错误格式的 LJSON：
 
 ```json
 {
@@ -364,101 +442,33 @@ select_result = send_command(6655, "RHINO", "SELECTOBJECTS", {
 
 常见错误类型：
 - 输入数据为空
-- 未找到命令类型
 - 未知的命令
 - 缺少必需参数
 - 执行命令时出错
+- 对象 ID 无效或不存在
 
 ---
 
-## 使用示例
+## 响应消息说明
 
-### Python示例
+### Rhino 命令响应
+执行 Rhino 命令时，会收到 **2 条响应**：
 
-```python
-import socket
-import json
-from datetime import datetime
-
-def send_command(port, ljson_type, command_name, params):
-    """发送命令到GrasshopperSever
-
-    Args:
-        port: 端口号
-        ljson_type: 命令类型 (COMPONENT/DOCUMENT/RHINO/SCRIPT/DESIGN)
-        command_name: 具体命令名称
-        params: 命令参数字典
-    """
-    data = {
-        "Name": ljson_type,  # 命令类型
-        "Info": f"执行{command_name}命令",
-        "Time": datetime.now().isoformat(),
-        "Value": {
-            "Command": command_name,  # 具体命令
-            **params
-        }
-    }
-
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect(('127.0.0.1', port))
-    message = json.dumps(data, ensure_ascii=False)
-    client.sendall((message + '\n').encode('utf-8'))
-
-    client.settimeout(10)
-    total_response = b''
-    while True:
-        try:
-            chunk = client.recv(4096)
-            if not chunk:
-                break
-            total_response += chunk
-        except socket.timeout:
-            break
-
-    client.close()
-
-    # 解析响应（可能有多个消息）
-    response = total_response.decode('utf-8-sig')
-    messages = [msg for msg in response.split('\ufeff') if msg.strip()]
-    results = [json.loads(msg.strip()) for msg in messages]
-
-    return results
-
-# 示例：获取数据库路径
-results = send_command(6879, "DOCUMENT", "DATABASEPATH", {})
-for result in results:
-    if result.get('Name') == 'DatabasePath':
-        print(f"数据库路径: {result['Value']['DatabasePath']}")
-
-# 示例：搜索组件
-results = send_command(6879, "COMPONENT", "SEARCHCOMPONENTSBYNAME", {"Name": "Circle"})
-for result in results:
-    if result.get('Name') == 'SearchComponentsByName':
-        print(f"找到 {result['Value']['Count']} 个组件")
-```
-
-## 测试结果验证
-
-### 1. RHINOSCRIPT
-
-**请求**：
-
+**响应 1 - 接收确认**：
 ```json
 {
-  "Name": "RHINO",
-  "Info": "执行RHINOSCRIPT命令",
-  "Value": {
-    "Command": "RHINOSCRIPT",
-    "Script": "_-Line 0,0,0 10,10,0"
-  }
+  "Name": "OK",
+  "Info": "成功响应",
+  "Time": "2026-03-26T10:00:00",
+  "Value": "客户端已连接"
 }
 ```
 
-**响应**：
+**响应 2 - 命令结果**：
 ```json
 {
-  "Name": "RunScript",
-  "Info": "执行Rhino脚本成功",
+  "Name": "RhinoCommand",
+  "Info": "执行 Rhino 脚本成功",
   "Value": {
     "Result": "True",
     "Script": "_-Line 0,0,0 10,10,0"
@@ -466,124 +476,31 @@ for result in results:
 }
 ```
 
-**测试状态**: ✓ 成功
+### 注意事项
+1. **BOM 处理**：服务器响应包含 UTF-8 BOM 标记，需要手动去除
+2. **消息边界**：使用 `readline()` 按行接收，每条消息以换行符分隔
+3. **响应数量**：Rhino 命令固定返回 2 条响应
 
 ---
 
-### 2. GETLASTCREATEDOBJECTS（待测试）
+## 测试总结
 
-**测试步骤**：
-1. 执行 RHINOSCRIPT 命令创建对象（例如：`_-Line 0,0,0 10,10,0`）
-2. 执行 GETLASTCREATEDOBJECTS 命令
-3. 验证返回的对象信息是否正确
-4. 检查数据库中是否已存储对象记录
+### 已测试命令（端口 6655）
 
-**预期响应**：
-```json
-{
-  "Name": "GetLastCreatedObjects",
-  "Info": "获取最后创建的对象",
-  "Value": {
-    "Object_0": {
-      "Id": "{guid}",
-      "Guid": "{guid}",
-      "Type": "Curve",
-      "Layer": "Default",
-      "Name": "",
-      "DatabaseRecordId": "1"
-    },
-    "Count": "1"
-  }
-}
-```
+| 命令 | 状态 | 测试结果 |
+|------|------|----------|
+| RHINOSCRIPT | ✅ 已测试 | 成功执行 Rhino 脚本，返回正确结果 |
+| GETLASTCREATEDOBJECTS | ✅ 已测试 | 成功获取对象信息，数据库集成正常 |
+| SELECTOBJECTS | ✅ 已测试 | 成功选择多个对象，错误处理正常 |
+| GETANDSELECTLASTOBJECTS | ✅ 已测试 | 成功复合操作，获取并选择对象 |
 
-**测试状态**: ⏳ 待测试
-
----
-
-### 3. SELECTOBJECTS（待测试）
-
-**测试步骤**：
-1. 执行 RHINOSCRIPT 命令创建多个对象
-2. 执行 GETLASTCREATEDOBJECTS 获取对象ID
-3. 执行 SELECTOBJECTS 命令选择对象
-4. 在Rhino中验证对象是否被选中
-
-**请求示例**：
-```json
-{
-  "Name": "RHINO",
-  "Info": "选择对象",
-  "Value": {
-    "Command": "SELECTOBJECTS",
-    "Objects": "{guid1},{guid2},{guid3}"
-  }
-}
-```
-
-**预期响应**：
-```json
-{
-  "Name": "SelectObjects",
-  "Info": "选择对象",
-  "Value": {
-    "TotalRequested": "3",
-    "TotalSelected": "3",
-    "InvalidIdCount": "0",
-    "NotFoundCount": "0"
-  }
-}
-```
-
-**测试状态**: ⏳ 待测试
-
----
-
-### 4. GETANDSELECTLASTOBJECTS（待测试）
-
-**测试步骤**：
-1. 执行 RHINOSCRIPT 命令创建对象
-2. 执行 GETANDSELECTLASTOBJECTS 命令
-3. 验证返回的对象信息和选择结果
-4. 在Rhino中验证对象是否被选中
-
-**请求示例**：
-```json
-{
-  "Name": "RHINO",
-  "Info": "获取并选择最后创建的对象",
-  "Value": {
-    "Command": "GETANDSELECTLASTOBJECTS"
-  }
-}
-```
-
-**预期响应**：
-```json
-{
-  "Name": "GetAndSelectLastObjects",
-  "Info": "获取并选择最后创建的对象",
-  "Value": {
-    "Objects": {
-      "Object_0": {
-        "Id": "{guid}",
-        "Guid": "{guid}",
-        "Type": "Curve",
-        "Layer": "Default",
-        "Name": "",
-        "DatabaseRecordId": "1"
-      },
-      "Count": "1"
-    },
-    "Selection": {
-      "TotalRequested": "1",
-      "TotalSelected": "1",
-      "InvalidIdCount": "0",
-      "NotFoundCount": "0"
-    }
-  }
-}
-```
-
-**测试状态**: ⏳ 待测试
-
+### 测试覆盖范围
+- ✅ 连接测试：成功连接到 GrasshopperSever
+- ✅ 命令执行：所有 Rhino 命令正常工作
+- ✅ 对象创建：能够成功创建 Rhino 对象（点、圆、直线）
+- ✅ 对象获取：能够正确获取最后创建的对象信息
+- ✅ 对象选择：能够正确选择多个对象，错误处理正常
+- ✅ 复合操作：GETANDSELECTLASTOBJECTS 正常工作
+- ✅ 数据库集成：对象信息正确存储到数据库
+- ✅ 响应格式：返回格式符合 LJSON 规范
+- ✅ 错误处理：能够正确识别和处理无效对象 ID

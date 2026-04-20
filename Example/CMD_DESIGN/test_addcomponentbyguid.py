@@ -1,50 +1,12 @@
-"""
+﻿"""
 ADDCOMPONENTBYGUID 命令测试脚本
-测试端口: 9653
-测试日期: 2026-04-15
+测试端口：9653
+测试日期：2026-04-15
 """
-
-import socket
-import json
-from datetime import datetime
+from ghclient import GHClient
 import time
 
-HOST = '127.0.0.1'
 PORT = 9653
-
-def send_command(client, name, value):
-    """发送命令到 GrasshopperSever"""
-    data = {
-        'Name': name,
-        'Info': 'ADDCOMPONENTBYGUID测试',
-        'Time': datetime.now().isoformat(),
-        'Value': value
-    }
-    message = json.dumps(data, ensure_ascii=False)
-    print(f"\n发送: {message}")
-    client.sendall((message + '\n').encode('utf-8'))
-
-def receive_all(client, timeout=5):
-    """接收所有响应"""
-    client.settimeout(timeout)
-    total_response = b''
-    try:
-        while True:
-            chunk = client.recv(8192)
-            if not chunk:
-                break
-            total_response += chunk
-            if b'"Value"' in chunk and b'}' in chunk:
-                time.sleep(0.2)
-                break
-    except socket.timeout:
-        pass
-
-    if total_response:
-        response = total_response.decode('utf-8-sig')
-        messages = [msg for msg in response.split('\ufeff') if msg.strip()]
-        return [json.loads(msg.strip()) for msg in messages]
-    return []
 
 def get_test_components():
     """获取测试用的组件 GUID（直接指定）"""
@@ -77,7 +39,7 @@ def get_test_components():
         guids[comp['name']] = {
             'guid': comp['guid']
         }
-        print(f"✓ {comp['name']}: {comp['guid']}")
+        print(f"✔️ {comp['name']}: {comp['guid']}")
 
     return guids
 
@@ -86,23 +48,24 @@ def test_add_by_guid(client, component_guid, component_name, x, y, test_number):
     print(f"\n{'='*70}")
     print(f"测试 #{test_number}: {component_name}")
     print(f"GUID: {component_guid}")
-    print(f"位置: ({x}, {y})")
+    print(f"位置：({x}, {y})")
     print(f"{'='*70}")
 
     try:
         # 发送 ADDCOMPONENTBYGUID 命令
-        send_command(client, 'Design', {
-            'Command': 'AddComponentByGuid',
-            'ComponentGuid': component_guid,
-            'X': x,
-            'Y': y
-        })
-
-        # 接收响应
-        responses = receive_all(client)
+        responses = client.send_command(
+            name="Design",
+            info="ADDCOMPONENTBYGUID 测试",
+            value={
+                "Command": "AddComponentByGuid",
+                "ComponentGuid": component_guid,
+                "X": x,
+                "Y": y
+            }
+        )
 
         if responses:
-            print(f"\n✓ 收到 {len(responses)} 条响应:")
+            print(f"\n📨收到 {len(responses)} 条响应")
             for i, resp in enumerate(responses, 1):
                 name = resp.get('Name', 'N/A')
                 value = resp.get('Value', 'N/A')
@@ -116,7 +79,7 @@ def test_add_by_guid(client, component_guid, component_name, x, y, test_number):
                 'responses': responses
             }
         else:
-            print(f"\n✗ 未收到任何响应（超时）")
+            print(f"\n❌未收到任何响应（超时）")
             return {
                 'component': component_name,
                 'guid': component_guid,
@@ -125,7 +88,7 @@ def test_add_by_guid(client, component_guid, component_name, x, y, test_number):
             }
 
     except Exception as e:
-        print(f"\n✗ 错误: {e}")
+        print(f"\n❌错误：{e}")
         return {
             'component': component_name,
             'guid': component_guid,
@@ -139,8 +102,8 @@ def main():
     print("ADDCOMPONENTBYGUID 命令测试")
     print("="*70)
 
-    # 步骤1: 获取测试组件 GUID
-    print("\n步骤1: 获取测试组件 GUID")
+    # 步骤 1: 获取测试组件 GUID
+    print("\n步骤 1: 获取测试组件 GUID")
     print("-"*70)
     guids = get_test_components()
 
@@ -148,8 +111,8 @@ def main():
         print("\n未找到任何组件 GUID，测试终止")
         return
 
-    # 步骤2: 测试每个组件
-    print("\n\n步骤2: 测试 ADDCOMPONENTBYGUID")
+    # 步骤 2: 测试每个组件
+    print("\n\n步骤 2: 测试 ADDCOMPONENTBYGUID")
     print("="*70)
 
     results = []
@@ -161,37 +124,30 @@ def main():
         print(f"# 开始测试 #{test_number}: {component_name}")
         print(f"{'#'*70}")
 
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            client.connect((HOST, PORT))
-            print(f"✓ 已连接到 {HOST}:{PORT}")
+            with GHClient(port = PORT) as client:
+                print(f"✔️ 已连接到端口:{PORT}")
+                
+                time.sleep(0.5)
 
-            # 接收连接响应
-            init_responses = receive_all(client, timeout=2)
-            if init_responses:
-                print(f"连接响应: {init_responses}")
-
-            time.sleep(0.5)
-
-            # 测试组件添加
-            result = test_add_by_guid(
-                client,
-                info['guid'],
-                component_name,
-                100 + (test_number - 1) * 100,
-                100,
-                test_number
-            )
-            results.append(result)
-            test_number += 1
+                # 测试组件添加
+                result = test_add_by_guid(
+                    client,
+                    info['guid'],
+                    component_name,
+                    100 + (test_number - 1) * 100,
+                    100,
+                    test_number
+                )
+                results.append(result)
+                test_number += 1
 
         except ConnectionRefusedError:
-            print(f"\n✗ 无法连接到 {HOST}:{PORT}")
+            print(f"\n❌无法连接到端口:{PORT}")
             break
         except Exception as e:
-            print(f"\n✗ 错误: {e}")
+            print(f"\n❌错误：{e}")
         finally:
-            client.close()
             time.sleep(1)
 
     # 打印测试结果汇总
@@ -201,13 +157,13 @@ def main():
     print(f"{'#':<5} {'组件名称':<20} {'GUID':<40} {'状态':<10}")
     print(f"{'-'*70}")
     for i, result in enumerate(results, 1):
-        status = '✓ 成功' if result['success'] else '✗ 失败'
+        status = '✅成功' if result['success'] else '❌失败'
         guid_short = result['guid'][:36]
         print(f"{i:<5} {result['component']:<20} {guid_short:<40} {status:<10}")
 
     print(f"\n{'='*70}")
-    print(f"总计: {len(results)} 个测试, "
-          f"{sum(1 for r in results if r['success'])} 成功, "
+    print(f"总计：{len(results)} 个测试 "
+          f"{sum(1 for r in results if r['success'])} 成功，"
           f"{sum(1 for r in results if not r['success'])} 失败")
     print(f"{'='*70}")
 

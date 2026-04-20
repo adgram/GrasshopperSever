@@ -74,7 +74,7 @@ namespace GrasshopperSever.Components
                 return;
             }
 
-            Ljson queue = jsonGoo.Value;
+            Ljson json = jsonGoo.Value;
             TcpClient client = clientGoo.Value;
 
             // 创建或更新发送器
@@ -95,9 +95,9 @@ namespace GrasshopperSever.Components
                 }
 
                 // 将Ljson传递给ResponseSender，由它自己判断time标签
-                _sender.EnqueueLjson(queue);
+                _sender.EnqueueLjson(json);
 
-                DA.SetData(0, $"已发送数据 (时间: {queue.Time}, 数据项: {queue.Name})");
+                DA.SetData(0, $"已发送数据 (时间: {json.Time}, 数据项: {json.Name})");
             }
             catch (Exception ex)
             {

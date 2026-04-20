@@ -1,53 +1,91 @@
 # GrasshopperSever
 
-A plugin for Rhino Grasshopper providing TCP communication, data conversion, and component information query capabilities.
+Rhino Grasshopper plugin that provides bidirectional communication with Grasshopper/Rhino via TCP protocol, supporting AI client remote control of component layouts, script execution, and data queries.
 
-[中文文档](README.md) | English
+English | [中文](README.md)
 
-## Project Information
+## Project Structure
 
-- **Version**: 1.0
-- **Supported Frameworks**: .NET Framework 4.8, .NET 7.0, .NET 7.0-windows
-- **Plugin GUID**: 0171a275-7e22-4b2a-9f82-b80f07a08b08
+```
+GrasshopperSever/
+├── README_EN.md                      # This document
+├── AI_CLIENT_TUTORIAL.md             # AI Client Connection Tutorial
+├── design.md                         # Component Development Technical Documentation
+├── MainSectors.md                    # Main Features
+└── Example/
+    ├── tcp_test.md                   # TCP Communication Test Records
+    ├── test_report.md                # System Test Report
+    ├── CMD_COMPONENT/
+    │   └── commands_COMPONENT.md     # Component Commands Details
+    ├── CMD_DESIGN/
+    │   └── design_test.md            # Design Commands Test Report
+    ├── CMD_DOCUMENT/
+    │   └── gh_file_test_report.md    # Document Commands Test Report
+    ├── CMD_RHINO/
+    │   └── commands_RHINO.md         # Rhino Commands Details
+    └── SCRIPT&CMD_SCRIPT/
+        ├── commands_SCRIPT.md        # Script Commands Details
+        └── scripteditor_test.md      # ScriptEditor Test Documentation
+```
 
-## Features Overview
+## Feature Overview
 
-GrasshopperSever plugin provides the following core features for Grasshopper:
+| Feature | Description |
+|---------|-------------|
+| TCP Communication | GHReceiver/GHSender push mode, GHServer request-response mode |
+| Component Information Query | Query and fuzzy search components by name/GUID/category |
+| Design Layout Control | Add, remove, connect components, set parameter values |
+| Rhino Script Execution | Execute Rhino commands remotely, get and select objects |
+| GH Script Execution | Modify script components via ScriptEditor, or run C# scripts directly |
+| Document Operations | Save/Load Grasshopper documents |
+| Database | SQLite dual-layer architecture storing component info and operation history |
 
-1. **Data Communication**: Receive and send data via TCP protocol
-2. **Data Conversion**: Convert between JSON and Ljson formats
-3. **Component Information Query**: Query and search Grasshopper component information
-4. **Data Execution**: Execute received data commands
+## Grasshopper Components
 
-## Core Data Structures
+### Data Communication
 
-### Ljson
+| Component | Description |
+|-----------|-------------|
+| **GHReceiver** | Creates TCP connection by port and receives data, background thread reception, refreshes via `InvokeOnUiThread` |
+| **GHSender** | Sends data using TCP connection, triggers sending when Ljson.time updates |
+| **GHServer** | Creates TCP server by port, receives data, executes internally and responds, request-response mode |
 
-A unified data structure used to represent a single data item, containing name, info, time, and value.
+### Data Conversion
 
-- **Name**: Data name
-- **Info**: Data description
-- **Time**: Creation time, used for version identification
-- **Value**: Data value (JsonElement, can be object, array, or primitive value)
+| Component | Description |
+|-----------|-------------|
+| **Json2Ljson** | JSON string → Ljson object |
+| **Ljson2Json** | Ljson object → JSON string |
+| **DataTreeLjson** | Name + Info + Data Tree → Ljson |
+| **FindJdata** | Find values in Ljson by name |
 
-**Features**:
-- Supports JSON serialization and deserialization
-- Supports deep cloning
-- Implements IDisposable interface
-- Supports parameter getting, searching, and setting (supports object and array formats)
-- Provides static methods to create common types of Ljson (error, success, component info, etc.)
+### Information Query
 
-**LjsonHelper Utility Class**:
-- `SerializeLjsonArray`: Serialize Ljson array to JSON string
-- `ParseLjsonArray`: Deserialize JSON string to Ljson array
+| Component | Description |
+|-----------|-------------|
+| **AllComponents** | Output all registered component info (requires Refresh=True) |
+| **FindComponentsByGuid** | Query components by GUID |
+| **FindComponentsByName** | Query components by name |
+| **FindComponentsByCategory** | Query components by category |
+| **SearchComponentsByName** | Fuzzy search components |
+| **ComponentConnector** | Get component info through input connection |
+| **SearchDataBase** | Execute SQL queries on database |
 
-## TCP Communication Commands
+### Execution Components
 
-GrasshopperSever supports sending various commands via TCP protocol to control Grasshopper and Rhino.
+| Component | Description |
+|-----------|-------------|
+| **GHActuator** | Execute input Ljson data |
+| **ScriptEditor** | Modify script component code, supports C# and Python |
+| **RunScript** | Internally embedded Rhino8 C# component, executes C# scripts directly |
+| **RunScript2** | Internally embedded Rhino7 C# component, right-click to open code editor |
+| **CommandRhino** | Execute Rhino script commands |
 
-### Command Format
+> For detailed input/output parameters of each component, see [design.md](design.md).
 
-All commands use unified LJSON format:
+## TCP Commands
+
+All commands use Ljson format and are sent via TCP:
 
 ```json
 {
@@ -56,759 +94,105 @@ All commands use unified LJSON format:
   "Time": "2026-03-26T10:00:00",
   "Value": {
     "Command": "Specific Command Name",
-    "Parameter Name": "Parameter Value"
+    "parameter_name": "parameter_value"
   }
 }
 ```
 
-**Name Field (Command Types)**:
-- `COMPONENT` - Component-related commands
-- `DOCUMENT` - Document-related commands
-- `RHINO` - Rhino-related commands
-- `DESIGN` - Design layout commands (component addition, connection, etc.)
+**Name Field**: `COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGN`
 
-### Component Commands
+### Command Quick Reference
 
-#### GETALLCOMPONENTS
-Get all component information
+| Type | Command | Description |
+|------|---------|-------------|
+| COMPONENT | `GETALLCOMPONENTS` | Get all components |
+| COMPONENT | `FINDCOMPONENTBYGUID` | Find component by GUID |
+| COMPONENT | `FINDCOMPONENTBYNAME` | Find component by name |
+| COMPONENT | `FINDCOMPONENTBYCATEGORY` | Find component by category |
+| COMPONENT | `SEARCHCOMPONENTSBYNAME` | Fuzzy search components |
+| DOCUMENT | `SAVEDOCUMENT` | Save current document |
+| DOCUMENT | `LOADDOCUMENT` | Load document |
+| DOCUMENT | `DATABASEPATH` | Get database path |
+| RHINO | `RHINOSCRIPT` | Execute Rhino script commands |
+| RHINO | `GETLASTCREATEDOBJECTS` | Get last created Rhino objects |
+| RHINO | `SELECTOBJECTS` | Select Rhino objects |
+| RHINO | `GETANDSELECTLASTOBJECTS` | Get and select last created objects |
+| DESIGN | `ADDCOMPONENTBYGUID` | Add component by GUID |
+| DESIGN | `ADDCOMPONENTBYNAME` | Add component by name |
+| DESIGN | `ADDPARAMWITHVALUE` | Add parameter component and set value |
+| DESIGN | `REMOVECOMPONENT` | Remove component |
+| DESIGN | `SETPARAMVALUE` | Set parameter value |
+| DESIGN | `CONNECTCOMPONENTS` | Connect components |
+| DESIGN | `DISCONNECTCOMPONENTS` | Disconnect components |
+| SCRIPT |  | Unrealized methods |
 
-#### FINDCOMPONENTBYGUID
-Find component by GUID
+> For detailed parameters, examples and response formats of each command, see the respective documentation: [Component Commands](Example/CMD_COMPONENT/commands_COMPONENT.md), [Design Commands](Example/CMD_DESIGN/design_test.md), [Document Commands](Example/CMD_DOCUMENT/gh_file_test_report.md), [Rhino Commands](Example/CMD_RHINO/commands_RHINO.md), [Script Commands](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md).
+>
+> Warning: If you are an AI, please avoid getting all component information (`GETALLCOMPONENTS`) easily. Prioritize using category or name queries, searches, or database calls.
 
-#### FINDCOMPONENTBYNAME
-Find component by name
+## Communication Modes
 
-#### FINDCOMPONENTBYCATEGORY
-Find component by category
+### Push Mode (GHReceiver + GHSender)
 
-#### SEARCHCOMPONENTSBYNAME
-Search components by name (fuzzy search)
-
-### Document Commands
-
-#### SAVEDOCUMENT
-Save current document
-
-#### LOADDOCUMENT
-Load document
-
-#### DATABASEPATH
-Get database path
-
-### Rhino Commands
-
-#### RHINOSCRIPT
-Run Rhino script (e.g., `_-Line 0,0,0 10,10,0`)
-
-#### GETLASTCREATEDOBJECTS
-Get last created objects
-
-#### SELECTOBJECTS
-Select objects
-
-#### GETANDSELECTLASTOBJECTS
-Get and select last created objects (composite command)
-
-### Design Commands
-
-Design commands are used to control component layout operations such as adding, removing, connecting, and setting values.
-
-#### ADDCOMPONENTBYGUID
-Add component via GUID
-
-**Parameters**:
-- `ComponentGuid` - Component GUID
-- `X` - X coordinate (number)
-- `Y` - Y coordinate (number)
-
-**Example**:
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponentByGuid",
-  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
-  "X": 100,
-  "Y": 100
-}
+```
+AI Client ──TCP──> GHReceiver(Receive) ──> GH Processing ──> GHSender(Response) ──> AI Client
 ```
 
-#### ADDCOMPONENTBYNAME
-Add component via name
+### Request-Response Mode (GHServer)
 
-**Parameters**:
-- `ComponentName` - Component name
-- `X` - X coordinate (number)
-- `Y` - Y coordinate (number)
-
-**Example**:
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponentByName",
-  "ComponentName": "Addition",
-  "X": 100,
-  "Y": 100
-}
+```
+AI Client ──TCP──> GHServer(Receive+Execute+Response) ──> AI Client
 ```
 
-#### ADDPARAMWITHVALUE
-Add parameter component and set value
+> For detailed communication protocol and Python client code, see [AI_CLIENT_TUTORIAL.md](AI_CLIENT_TUTORIAL.md).
 
-**Parameters**:
-- `ParamName` - Parameter type name (required)
-- `X` - X coordinate (required)
-- `Y` - Y coordinate (required)
-- `Path` - Data path (optional, format like "{0;1;2}")
-- `Value` - Value to set (optional, can be single value or JSON array)
+## Database
 
-**Supported Parameter Types**:
-- `Number`/`num`/`param_number` - Number parameter
-- `Int`/`integer`/`param_int`/`param_integer` - Integer parameter
-- `Bool`/`boolean`/`param_bool`/`param_boolean` - Boolean parameter
-- `True`/`False` - Boolean switch
-- `Toggle` - Boolean toggle
-- `Button` - Button
-- `Slider`/`numberslider` - Number slider
-- `Panel`/`param_panel` - Panel
-- `Text`/`string`/`param_text`/`param_string` - Text parameter
-- `Point`/`pt`/`param_pt`/`param_point` - Point parameter
-- `Vector`/`vect`/`param_vect` - Vector parameter
-- `Color`/`colour`/`param_color`/`param_colour` - Color parameter
-- `Swatch` - Color swatch
-- `Plane`/`param_plane` - Plane parameter
-- `Param_line` - Line parameter
-- `Curve`/`crv`/`param_crv`/`param_curve` - Curve parameter
-- `Param_circle` - Circle parameter
+Uses SQLite dual-layer architecture:
 
-**Example 1**: Add simple number parameter
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "number",
-  "X": 100,
-  "Y": 100,
-  "Value": "42.5"
-}
+| Database | Location | Description |
+|----------|----------|-------------|
+| **Main Database** ComponentsInfo.db | `AppData\Roaming\Grasshopper\Libraries\GHserver\` | Global component info, shared across all documents |
+| **Document Database** `{name}_ghdata.db` | Same directory as gh file | Document-specific data (Rhino objects, script modification history, component operation history) |
+
+The main database contains ALLCOMPS (component info) and MetaInfo tables; the document database contains RhinoObjects, GHScriptModifyHistory, and ComponentExchangeHistory tables. Recommended for read-only access.
+
+> For complete table structure and query examples, see [Component Commands Documentation](Example/CMD_COMPONENT/commands_COMPONENT.md) and [Rhino Commands Documentation](Example/CMD_RHINO/commands_RHINO.md).
+
+## Quick Start
+
+1. Install the `.gha` plugin to the Grasshopper components directory
+2. Add `GHServer` component in Grasshopper, set `Enabled = true`, port default `6879`
+3. Use Python client to connect:
+
+```python
+from Example.ghclient import GHClient
+GHClient.test_command_document(6, "DOCUMENT", "get database path", {"Command": "DATABASEPATH"})
 ```
 
-**Example 2**: Add number slider with range
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "slider",
-  "X": 100,
-  "Y": 100,
-  "Value": "0.0 < 0.5 < 1.0"
-}
-```
-
-**Example 3**: Add text parameter with value
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "text",
-  "X": 100,
-  "Y": 100,
-  "Value": "Hello Grasshopper"
-}
-```
-
-**Example 4**: Add parameter with data path (set data tree)
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "number",
-  "X": 100,
-  "Y": 100,
-  "Path": "{0;1;2}",
-  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
-}
-```
-
-**Example 5**: Add boolean switch
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "true",
-  "X": 100,
-  "Y": 100
-}
-```
-
-#### REMOVECOMPONENT
-Remove component
-
-**Parameters**:
-- `InstanceGuid` - Component instance GUID
-
-**Example**:
-```json
-{
-  "Name": "Design",
-  "Command": "RemoveComponent",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx"
-}
-```
-
-#### SETPARAMVALUE
-Set parameter value
-
-**Parameters**:
-- `InstanceGuid` - Component instance GUID
-- `Path` - Data path (optional, format like "{0;1;2}")
-- `Value` - Value to set (can be single value or JSON array)
-
-**Example 1**: Set simple value
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "42"
-}
-```
-
-**Example 2**: Set data tree value
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Path": "{0;1;2}",
-  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
-}
-```
-
-**Example 3**: Set slider value
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "0.5"
-}
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "0.0 < 0.5 < 1.0"
-}
-```
-
-#### CONNECTCOMPONENTS
-Connect two component parameters
-
-**Parameters**:
-- `FromGuid` - Source component instance GUID
-- `FromParameter` - Source component output parameter name
-- `ToGuid` - Target component instance GUID
-- `ToParameter` - Target component input parameter name
-
-**Example**:
-```json
-{
-  "Name": "Design",
-  "Command": "ConnectComponents",
-  "FromGuid": "instance-guid-1",
-  "FromParameter": "Result",
-  "ToGuid": "instance-guid-2",
-  "ToParameter": "A"
-}
-```
-
-#### DISCONNECTCOMPONENTS
-Disconnect connection between two component parameters
-
-**Parameters**:
-- `FromGuid` - Source component instance GUID
-- `FromParameter` - Source component output parameter name
-- `ToGuid` - Target component instance GUID
-- `ToParameter` - Target component input parameter name
-
-**Example**:
-```json
-{
-  "Name": "Design",
-  "Command": "DisconnectComponents",
-  "FromGuid": "instance-guid-1",
-  "FromParameter": "Result",
-  "ToGuid": "instance-guid-2",
-  "ToParameter": "A"
-}
-```
-
-### OUTPUT Special Key
-
-When the Value field contains the `OUTPUT` key, its value will be output on the GHServer's Output port:
-
-```json
-{
-  "Name": "TestMessage",
-  "Info": "Test Message",
-  "Value": {
-    "OUTPUT": "Data to display on output port"
-  }
-}
-```
-
-### Data Communication Features
-
-- **TCP Long Connection Support**: Send multiple messages continuously
-- **Automatic Data Echo**: Server echoes received data
-- **UTF-8 BOM Marker**: Response contains UTF-8 BOM, decode with `utf-8-sig`
-- **Complete JSON Support**: Supports all JSON data types and nested structures
-- **Unicode Support**: Full support for Chinese and special characters
-
-## Components Description
-
-### Data Communication Components
-
-#### GHReceiver
-
-Creates a TCP connection based on port and receives data. Each port accepts only one connection.
-
-**Input Parameters**:
-- `Enabled` (Boolean): Whether to enable the server, default is false
-- `Port` (Integer): Listening port, default is 6879
-
-**Output Parameters**:
-- `Client` (TcpClientParam): Client connection object
-- `Ljson` (LjsonParam): Incoming data
-- `Status` (String): Status
-
-**Features**:
-- Receives data in background thread
-- Notifies GH battery refresh via `RhinoApp.InvokeOnUiThread`
-- Only receives data newer than the last received (based on time tag)
-
-#### GHSender
-
-Sends data using TCP connection, supports batch sending.
-
-**Input Parameters**:
-- `Client` (TcpClientParam): Client connection object
-- `Ljson` (LjsonParam): Data to send, sent in order
-
-**Output Parameters**:
-- `Status` (String): Sending status
-
-**Features**:
-- Only triggers sending when Ljson.time is updated
-- Automatically filters expired data
-
-#### GHServer
-
-Creates a TCP server based on port and receives data, executes internally and responds.
-
-**Input Parameters**:
-- `Enabled` (Boolean): Whether to enable the server, default is false
-- `Port` (Integer): Listening port, default is 6879
-
-**Output Parameters**:
-- `Status` (String): Response status
-- `OutPut` (Generic): Display output data
-
-### Data Conversion Components
-
-#### Json2Ljson
-
-Converts JSON format to Ljson.
-
-**Input Parameters**:
-- `String` (String): JSON format string
-
-**Output Parameters**:
-- `Ljson` (LjsonParam): Generated Ljson object
-
-#### Ljson2Json
-
-Converts Ljson to JSON format.
-
-**Input Parameters**:
-- `Ljson` (LjsonParam): Ljson object to convert
-
-**Output Parameters**:
-- `String` (String): JSON format string
-
-#### DataTreeLjson
-
-Constructs Ljson from Name, Info, and Data Tree. Each branch can only contain 1 or 2 elements: 1 element converts to list, 2 elements convert to dict.
-
-**Input Parameters**:
-- `Name` (String): Ljson name
-- `Info` (String): Ljson description
-- `Data Tree` (Data Tree): Data Tree data
-
-**Output Parameters**:
-- `Ljson` (LjsonParam): Generated Ljson object
-
-#### FindJdata
-
-Finds Jdata value by name.
-
-**Input Parameters**:
-- `Ljson` (LjsonParam): Ljson object to search
-- `Name` (String): Key value to find
-
-**Output Parameters**:
-- `Data` (Generic): Found value (primitive type or string)
-- `DataList` (List): Found value list (primitive type or string)
-
-### Information Query Components
-
-#### AllComponents
-
-Outputs information of all registered components.
-
-**Input Parameters**:
-- `Refresh` (Boolean): Refresh, value change refreshes time once
-
-**Output Parameters**:
-- `Ljson` (LjsonParam): Information of all components
-
-**Output Structure** (Ljson.Value):
-```json
-{
-  "categorys": "All categories",
-  "count": "Component count",
-  "components": "All registered components"
-}
-```
-
-#### FindComponentsByGuid
-
-Queries component information by GUID.
-
-**Input Parameters**:
-- `Guid` (String): Component GUID
-
-**Output Parameters**:
-- `ComponentInfo` (LjsonParam): Component information
-
-**Output Structure** (ComponentLjson - Ljson.Value):
-```json
-{
-  "ComponentGuid": "Component GUID",
-  "ComponentName": "Component name",
-  "NickName": "Component nickname",
-  "Description": "Component description",
-  "Category": "Main category",
-  "SubCategory": "Sub-category",
-  "Prototype": "funtion info"
-}
-```
-
-#### FindComponentsByName
-
-Queries component information by name.
-
-**Input Parameters**:
-- `Name` (String): Component name
-
-**Output Parameters**:
-- `ComponentInfo` (LjsonParam): Component information
-
-#### FindComponentsByCategory
-
-Queries component information by Category.
-
-**Input Parameters**:
-- `Category` (String): Main category name
-
-**Output Parameters**:
-- `ComponentInfo` (LjsonParam): Component information
-
-#### SearchComponentsByName
-
-Searches components by name, supports fuzzy matching.
-
-**Input Parameters**:
-- `Keyword` (String): Search keyword
-
-**Output Parameters**:
-- `ComponentInfo` (LjsonParam): Component information list
-
-#### ComponentConnector
-
-Retrieves information about the connected component via its input port.
-
-**Input Parameters**:
-- `Input` (Generic): Connect a component
-
-**Output Parameters**:
-- `Name` (String): Component name
-- `GUID` (String): Component GUID
-- `InsGUID` (String): Component object GUID
-- `Instance` (Generic): Component object
-
-#### SearchDataBase
-
-Queries database.
-
-**Input Parameters**:
-- `SQL` (String): Complete SQL query statement
-
-**Output Parameters**:
-- `Result` (String): Query result, returned in JSON format
-
-### Execution Components
-
-#### GHActuator
-
-Executes input data.
-
-**Input Parameters**:
-- `Ljson` (LjsonParam): Data to execute
-
-**Output Parameters**:
-- `Status` (String): Execution result
-- `Result` (LjsonParam): Processed Ljson result
-- `OutPut` (Generic): Display output data
-
-#### ScriptEditor
-
-Modifies a Script component via input code, supports C# and Python.
-
-**Input Parameters**:
-- `ScriptComponent` (Generic): Rhino8 Grasshopper script component, supports only one component
-- `Code` (String): Script code
-- `IntputParams` (String): Input parameter definitions
-- `OutputParams` (String): Output parameter definitions
-
-**Output Parameters**:
-- `Result` (String): Display runtime information
-- `ComponentType` (String): Display component information
-- `IsSDKMode` (Boolean): Whether code is SDK mode
-- `SourceCode` (String): Code
-- `InputParams` (String): Current input parameter information
-- `OutputParams` (String): Current output parameter information
-
-![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.png)
-
-![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test2.png)
-
-#### RunScript
-
-Runs C# script internally. This component is reserved for AI to execute scripts directly.
-
-**Input Parameters**:
-- `Code` (String): Script
-
-**Output Parameters**:
-- `Ljson` (LjsonParam): Data output
-- `Out` (String): Debug output
-
-#### CommandRhino
-
-Executes Rhino script.
-
-**Input Parameters**:
-- `Ljson` (LjsonParam): Rhino command Ljson data to execute, must contain Command field
-
-**Output Parameters**:
-- `Result` (LjsonParam): Ljson result after execution
-
-## Database Features
-
-The plugin uses SQLite database to store data with a dual-database architecture:
-
-### Database Architecture
-
-#### 1. Main Database (ComponentsInfo.db)
-- **Location**: Plugin directory
-- **Purpose**: Stores global component information, shared by all Grasshopper documents
-- **Tables**: ALLCOMPS, MetaInfo
-
-#### 2. Document Database ({_ghdata.db)
-- **Location**:
-  - If document is saved: Same directory as gh file, named `{document_name}_ghdata.db`
-  - If document is not saved: Plugin directory, named `TempDocument_{GUID}.db`
-- **Purpose**: Stores document-specific data, tightly associated with the document
-- **Tables**: GHScriptModifyHistory, RhinoObjects
-
-**Advantages**:
-- Global component information shared, improved performance
-- Document-specific data bound to document, easy to share and manage
-- Automatic cleanup of temporary data for unsaved documents
-
-### DatabaseManager
-
-Provides the following features:
-
-- Manage main database and document database
-- Automatic database initialization
-- Create and manage data tables
-- Track table update times (main database)
-- Provide database connection objects
-- Execute SQL commands with timestamp updates (main database)
-
-### Main Database Tables
-
-#### MetaInfo Table
-Used to track table update times in the main database, contains the following fields:
-
-| Field Name | Data Type | Constraint | Description |
-|------------|-----------|------------|-------------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
-| TableName | TEXT | NOT NULL UNIQUE | Table name |
-| LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Last update time |
-| Description | TEXT | - | Table description |
-
-#### ALLCOMPS Table
-Stores detailed information for all Grasshopper components (global cache).
-
-| Field Name | Data Type | Constraint | Description |
-|------------|-----------|------------|-------------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
-| ComponentGuid | TEXT | NOT NULL UNIQUE | Component GUID (unique identifier) |
-| ComponentName | TEXT | NOT NULL | Component name |
-| NickName | TEXT | - | Component nickname |
-| Description | TEXT | - | Component description |
-| Category | TEXT | NOT NULL | Main category |
-| SubCategory | TEXT | NOT NULL | Sub-category |
-| Prototype | TEXT | DEFAULT '' | Function signature containing input and output parameters (JSON format) |
-
-### Document Database Tables
-
-#### RhinoObjects Table
-Stores information about objects created in Rhino (document-specific).
-
-| Field Name | Data Type | Constraint | Description |
-|------------|-----------|------------|-------------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
-| ObjectId | TEXT | NOT NULL | Object ID (GUID string) |
-| ObjectType | TEXT | - | Object type (e.g., Curve, Surface, Mesh, etc.) |
-| LayerName | TEXT | - | Layer name |
-| ObjectName | TEXT | - | Object name |
-| CreateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Creation time |
-| DocumentSerialNumber | TEXT | - | Document serial number |
-| Description | TEXT | - | Description |
-
-#### GHScriptModifyHistory Table
-Stores modification history records for GHScript components (document-specific).
-
-| Field Name | Data Type | Constraint | Description |
-|------------|-----------|------------|-------------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
-| InstanceGuid | TEXT | NOT NULL | Component instance GUID |
-| ComponentGuid | TEXT | NOT NULL | Component type GUID |
-| ComponentName | TEXT | - | Component name |
-| ModifyType | TEXT | NOT NULL | Modification type (CODE_CHANGE or PARAM_CHANGE) |
-| ModifyContent | TEXT | - | Modification content (JSON format) |
-| Description | TEXT | - | Description |
-| ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Modification time |
-
-#### ComponentExchangeHistory Table
-Stores component exchange operation history (document-specific), including add, remove, connect, disconnect operations.
-
-| Field Name | Data Type | Constraint | Description |
-|------------|-----------|------------|-------------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | Primary key, auto-increment |
-| OperationType | TEXT | NOT NULL | Operation type (AddComponent, RemoveComponent, SetParamValue, ConnectComponents, DisconnectComponents) |
-| ComponentGuid | TEXT | - | Component GUID |
-| InstanceGuid | TEXT | - | Component instance GUID |
-| ComponentName | TEXT | - | Component name |
-| PositionX | REAL | - | X coordinate (when adding component) |
-| PositionY | REAL | - | Y coordinate (when adding component) |
-| Value | TEXT | - | Set value (when setting component value) |
-| FromInstanceGuid | TEXT | - | Source component instance GUID (for connect/disconnect operations) |
-| FromParameter | TEXT | - | Source parameter name (for connect/disconnect operations) |
-| ToInstanceGuid | TEXT | - | Target component instance GUID (for connect/disconnect operations) |
-| ToParameter | TEXT | - | Target parameter name (for connect/disconnect operations) |
-| OperationTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | Operation time |
-| Description | TEXT | - | Description |
-
-**Notes**:
-- Main database (ComponentsInfo.db) stores global component information, can be rebuilt at any time
-- Document database is in the same directory as gh file, easy to share and version control
-- Unsaved documents use temporary naming to avoid conflicts
-- Read-only operations are recommended, manual write operations are not advised
-- Can use SQL queries for component information and object information
-
-## Parameter Types
-
-### LjsonParam
-
-Parameter type used to pass Ljson data between Grasshopper batteries.
-
-### TcpClientParam
-
-Parameter type used to pass TCP client connection objects, uniquely created by GHReceiver based on port.
-
-## Build and Installation
-
-### Build Requirements
-
-- .NET Framework 4.8 or .NET 7.0 SDK
-- Grasshopper 8.29.26063.11001 or higher
-
-### Build Steps
-
-1. Open `GrasshopperSever.sln` with Visual Studio
-2. Select target framework (net4.8, net7.0, or net7.0-windows)
-3. Build the solution
-
-### Installation
-
-1. Copy the built `.gha` file to the Grasshopper components directory
-2. Restart Rhino/Grasshopper
-3. The plugin will be automatically loaded
-
-## Usage Examples
-
-### TCP Communication Example
-
-1. Create a `GHReceiver` component and set the port number (e.g., 6879)
-2. Set `Enabled` to `true` to start the receiver
-3. Send JSON data to the specified port via TCP client
-4. Data will be received and converted to Ljson format output
-
-### Component Query Example
-
-1. Use `AllComponents` to get all component lists
-2. Use `FindComponentsByName` to find specific components
-3. Use `SearchComponentsByName` for fuzzy search
-
-### Data Conversion Example
-
-1. Create a `Json2Ljson` component
-2. Input JSON string
-3. Get the converted Ljson object
-
-## Notes
-
-1. Each port can only create one TCP receiver
-2. Ljson's time tag is used for version control, only receives/sends updated data
-3. Database file is located in the plugin directory, ensure write permission
-4. TCP communication uses UTF-8 encoding
-5. Recommend using firewall rules to protect TCP ports
+> For complete client class and advanced usage, see [AI Client Tutorial](AI_CLIENT_TUTORIAL.md) and [Main Features](MainSectors.md).
+
+## Related Documentation
+
+- [Main Features](MainSectors.md) - Main Features
+- [AI Client Tutorial](AI_CLIENT_TUTORIAL.md) - Communication Protocol, Client Code and Troubleshooting
+- [Component Development Documentation](design.md) - Input/Output Parameters and Technical Details for Each Component
+- [TCP Communication Test](Example/tcp_test.md) - Communication Protocol Test Records
+- [System Test Report](Example/test_report.md) - Complete Functionality Test Report
+- [Component Commands](Example/CMD_COMPONENT/commands_COMPONENT.md) - Component Query Commands Details
+- [Design Commands](Example/CMD_DESIGN/design_test.md) - Design Layout Commands Details
+- [Document Commands](Example/CMD_DOCUMENT/gh_file_test_report.md) - Document Operation Commands Details
+- [Rhino Commands](Example/CMD_RHINO/commands_RHINO.md) - Rhino Script Commands Details
+- [Script Commands](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md) - Script Editor Commands Details
+- [ScriptEditor Test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.md) - ScriptEditor Functionality Test
+
+## Project Information
+
+- **Version**: 1.0
+- **Framework**: .NET 7.0 / .NET 7.0-windows / .NET 8.0 / .NET 8.0-windows
+- **Plugin GUID**: `0171a275-7e22-4b2a-9f82-b80f07a08b08`
 
 ## Dependencies
 
-- Grasshopper 8.29.26063.11001
-- Microsoft.Data.Sqlite 10.0.5
+- Rhino 8.29.26063.11001
 - System.Data.SQLite 1.0.119
-- System.Text.Json 10.0.5 (net4.8 only)
-- System.Resources.Extensions 10.0.5
-
-## License
-
-Please refer to the project license file.
-
-## Contributing
-
-Issues and pull requests are welcome.
-
-## Contact
-
-For questions or suggestions, please contact the plugin author.
-
-## Additional Documentation
-
-- [AI Client Tutorial](AI_CLIENT_TUTORIAL.md) - Guide for AI clients to connect and interact with the plugin
-- [插件开发文档](插件开发.md) - Plugin development documentation (Chinese)

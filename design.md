@@ -157,9 +157,7 @@ pManager.AddGenericParameter("DataList", "DL", "找到的值列表（基本类�
 
 ##### TcpClientParam
 
-一个`System.Net.Sockets.TcpClient`连接，用于接收和传输数据。该对象由GHReceiver根据端口唯一创建。
-
-- 默认为空。
+一个`System.Net.Sockets.TcpClient`连接，用于接收和传输数据。该对象由GHReceiver根据端口唯一创建。仅作为嵌入param。
 
 ##### GHReceiver
 
@@ -249,7 +247,7 @@ pManager.AddTextParameter("OutputParams", "OP", "当前输出端参数信息", G
 
 ##### RunScript
 
-在内部运行c#脚本。本组件预留给ai直接执行脚本。
+在内部运行c#脚本。本组件提供给ai直接执行脚本。内部嵌入一个rhino8 ghc#组件，第一次添加时加载时间较长。
 
 ```c#
 // 输入
@@ -258,8 +256,24 @@ pManager.AddTextParameter("Code", "C", "脚本", GH_ParamAccess.item, "");
 
 ```c#
 // 输出
-pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "数据输出", GH_ParamAccess.item);
 pManager.AddTextParameter("Out", "O", "调试输出", GH_ParamAccess.item);
+pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "数据输出", GH_ParamAccess.item);
+```
+
+##### RunScript2
+
+在内部运行c#脚本。本组件提供给ai直接执行脚本。内为rhino7 ghc#的继承，右键可打开代码编辑器，第一次添加时加载时间较短。
+
+```c#
+// 输入
+pManager.AddTextParameter("Code", "C", "添加脚本到C#的RunScript函数内", GH_ParamAccess.item);
+pManager.AddTextParameter("Using", "U", "添加Using语句", GH_ParamAccess.item, "");
+```
+
+```c#
+// 输出
+pManager.AddTextParameter("Out", "O", "调试输出", GH_ParamAccess.item);
+pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "数据输出", GH_ParamAccess.item);
 ```
 
 ##### CommandRhino
@@ -280,7 +294,7 @@ pManager.AddParameter(new LjsonParam(), "Result", "R", "执行后的Ljson结果"
 
 ##### AllComponents
 
-输出所有注册的组件。
+获取所有注册的组件。需要将Refresh设置为True才会运行。
 
 ```c#
 // 输入
@@ -372,3 +386,4 @@ pManager.AddTextParameter("Result", "R", "查询结果，以JSON格式返回", G
 ### 计划
 
 - 增加help
+

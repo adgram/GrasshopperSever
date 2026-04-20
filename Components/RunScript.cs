@@ -61,7 +61,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         public RunScript()
           : base("RunScript", "RunC#",
-              "一个对C#的包装器",
+              "一个对C#的包装器，输出端口为ljson",
                 "Maths", "Sever")
         {}
 

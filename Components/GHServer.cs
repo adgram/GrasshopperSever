@@ -247,12 +247,12 @@ namespace GrasshopperSever.Components
                 string outputData = null;
 
                 // 执行命令并获取响应
-                Ljson responseList = GHActuator.DoCommand(lst, ref outputData);
+                Ljson responseJson = GHActuator.DoCommand(lst, ref outputData);
                 _output_data = outputData;
 
                 // 将响应加入发送队列
-                _sender.EnqueueLjson(responseList);
-                AddLog($"GHServer: 已添加响应到发送队列 (时间: {responseList.Time}, 数据项: {responseList.Name})");
+                _sender.EnqueueLjson(responseJson);
+                AddLog($"GHServer: 已添加响应到发送队列 (时间: {responseJson.Time}, 数据项: {responseJson.Name})");
 
                 // 清空待处理数据
                 _pendingLjson = null;

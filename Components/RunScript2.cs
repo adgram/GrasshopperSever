@@ -16,7 +16,7 @@ namespace GrasshopperSever.Components
         {
             this.Name = "RunScript2";
             this.NickName = "RunC#2";
-            this.Description = "Run C# script from input";
+            this.Description = "继承自旧版C#Script，输出端口为LJ";
             this.Category = "Maths";
             this.SubCategory = "Sever";
         }
@@ -27,8 +27,8 @@ namespace GrasshopperSever.Components
 
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
-            pManager.AddScriptVariableParameter("Code", "C", "C# Script", GH_ParamAccess.item);
-            pManager.AddScriptVariableParameter("Using", "U", "Using to add", GH_ParamAccess.item);
+            pManager.AddScriptVariableParameter("Code", "C", "添加C#脚本到C#的RunScript函数内", GH_ParamAccess.item);
+            pManager.AddScriptVariableParameter("Using", "U", "为脚本添加Using语句", GH_ParamAccess.item);
             pManager[0].Optional = true;
             pManager[1].Optional = true;
         }
@@ -53,6 +53,7 @@ namespace GrasshopperSever.Components
 
             if (code != _cachedCode)
             {
+                ClearScriptAssemblyCache();
                 _cachedCode = code;
                 this.ScriptSource.ScriptCode = code;
                 var thisFile = Assembly.GetExecutingAssembly().Location;
@@ -60,16 +61,13 @@ namespace GrasshopperSever.Components
                 this.ScriptSource.References.Add(thisFile);
                 this.ScriptSource.References.Add(sqlFile);
                 this.ScriptSource.UsingCode = "using GrasshopperSever.Utils; using System.Data.SQLite;" + uusing;
-                ClearScriptAssemblyCache();
-                return;
             }
             base.SolveInstance(DA);
         }
         private void ClearScriptAssemblyCache()
         {
             var prop = typeof(Component_AbstractScript_Roslyn).GetProperty(
-                "ScriptAssembly",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+                "ScriptAssembly", BindingFlags.NonPublic | BindingFlags.Instance);
             prop?.SetValue(this, null);
         }
 

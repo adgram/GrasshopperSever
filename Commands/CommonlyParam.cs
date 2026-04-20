@@ -1,8 +1,10 @@
-﻿using Grasshopper;
+﻿using Eto.Forms;
+using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
+using Grasshopper.Kernel.Types;
 using GrasshopperSever.Utils;
 using Rhino;
 using System;
@@ -105,6 +107,22 @@ namespace GrasshopperSever.Commands
                     break;
                 case "param_circle":
                     component = new Param_Circle();
+                    break;
+                case "brep":
+                case "param_brep":
+                    component = new Param_Brep();
+                    break;
+                case "surface":
+                case "param_surface":
+                    component = new Param_Surface();
+                    break;
+                case "mesh":
+                case "param_mesh":
+                    component = new Param_Mesh();
+                    break;
+                case "guid":
+                case "param_guid":
+                    component = new Param_Guid();
                     break;
                 default:
                     return null;
@@ -228,7 +246,7 @@ namespace GrasshopperSever.Commands
             return SetParamList(item, pathp, dataList);
         }
         
-        public static string SetParamList(IGH_Param item, GH_Path path, IEnumerable datalist)
+        public static string SetParamList(IGH_Param item, GH_Path path, IEnumerable<string> datalist)
         {
             if (path.Length == 0)
             {
@@ -269,7 +287,72 @@ namespace GrasshopperSever.Commands
                 colorp.AddVolatileDataList(path, datalist);
                 return colorp.Name;
             }
+            if (item is Param_Surface surfp)
+            {
+                List<GH_Surface> gHs = new();
+                foreach (string str in datalist)
+                {
+
+                    gHs.Add(new GH_Surface(Guid.Parse(str)));
+                }
+                surfp.AddVolatileDataList(path, gHs);
+                return surfp.Name;
+            }
+            if (item is Param_Curve cuvp)
+            {
+                List<GH_Curve> gHs = new();
+                foreach (string str in datalist)
+                {
+
+                    gHs.Add(new GH_Curve(Guid.Parse(str)));
+                }
+                cuvp.AddVolatileDataList(path, gHs);
+                return cuvp.Name;
+            }
+            if (item is Param_Brep brep)
+            {
+                List<GH_Brep> gHs = new();
+                foreach (string str in datalist)
+                {
+
+                    gHs.Add(new GH_Brep(Guid.Parse(str)));
+                }
+                brep.AddVolatileDataList(path, gHs);
+                return brep.Name;
+            }
+            if (item is Param_Mesh msp)
+            {
+                List<GH_Mesh> gHs = new();
+                foreach (string str in datalist)
+                {
+
+                    gHs.Add(new GH_Mesh(Guid.Parse(str)));
+                }
+                msp.AddVolatileDataList(path, gHs);
+                return msp.Name;
+            }
+            if (item is Param_Guid idp)
+            {
+                List<Guid> gHs = new();
+                foreach (string str in datalist)
+                {
+
+                    gHs.Add(Guid.Parse(str));
+                }
+                idp.AddVolatileDataList(path, gHs);
+                return idp.Name;
+            }
             return null;
+        }
+
+        public static List<Guid> GuidFromString(IEnumerable<string> datalist)
+        {
+            List<Guid> guids = new();
+            foreach (string str in datalist)
+            {
+                guids.Add(Guid.Parse(str));  // 无效时会抛出 FormatException
+            }
+            return guids;
         }
     }
 }

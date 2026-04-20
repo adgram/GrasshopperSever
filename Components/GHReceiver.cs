@@ -26,13 +26,8 @@ namespace GrasshopperSever.Components
         {
         }
 
-        public override GH_Exposure Exposure
-        {
-            get
-            {
-                return GH_Exposure.primary;
-            }
-        }
+        public override GH_Exposure Exposure => GH_Exposure.primary; 
+
         /// <summary>
         /// 添加日志信息，集中管理输出
         /// </summary>
@@ -194,13 +189,13 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// 处理接收到的Ljson数据（在后台线程中调用）
         /// </summary>
-        private void OnLjsonReceivedHandler(Ljson queue)
+        private void OnLjsonReceivedHandler(Ljson json)
         {
-            if (queue == null) return;
+            if (json == null) return;
 
             // 更新最新数据
-            _latestData = queue;
-            AddLog($"GHServer: 接收到新数据 (时间: {queue.Time}, 数据项: {queue.Name})");
+            _latestData = json;
+            AddLog($"GHServer: 接收到新数据 (时间: {json.Time}, 数据项: {json.Name})");
             // 将响应加入发送队列
             _sender.EnqueueLjson(Ljson.CreateOKLjson("数据接收成功"));
             this.OnPingDocument()?.ScheduleSolution(5, (doc) => {

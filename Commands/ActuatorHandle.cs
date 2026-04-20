@@ -814,17 +814,17 @@ namespace GrasshopperSever.Commands
         /// 检测 Ljson 的类型
         /// 通过检查 Ljson 的 Name 属性来判断类型
         /// </summary>
-        /// <param name="queue">要检测的 Ljson</param>
+        /// <param name="json">要检测的 Ljson</param>
         /// <returns>LjsonType 枚举值</returns>
-        public static LjsonType DetectType(Ljson queue)
+        public static LjsonType DetectType(Ljson json)
         {
-            if (queue == null || string.IsNullOrWhiteSpace(queue.Name))
+            if (json == null || string.IsNullOrWhiteSpace(json.Name))
             {
                 return LjsonType.Other;
             }
 
             // 根据 Name 值判断类型（不区分大小写）
-            switch (queue.Name.ToUpperInvariant())
+            switch (json.Name.ToUpperInvariant())
             {
                 case "COMPONENT":
                     return LjsonType.Component;

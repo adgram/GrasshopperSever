@@ -354,23 +354,27 @@ for msg in messages:
 - ✓ Toggle - 切换按钮
 
 **支持的参数类型**:
-- `Number`/`num`/`param_number` - 数字参数
-- `Int`/`integer`/`param_int`/`param_integer` - 整数参数
-- `Bool`/`boolean`/`param_bool`/`param_boolean` - 布尔参数
-- `True`/`False` - 布尔开关
-- `Toggle` - 布尔切换
-- `Button` - 按钮
-- `Slider`/`numberslider` - 数字滑块
-- `Panel`/`param_panel` - 面板
-- `Text`/`string`/`param_text`/`param_string` - 文本参数
-- `Point`/`pt`/`param_pt`/`param_point` - 点参数
-- `Vector`/`vect`/`param_vect` - 向量参数
-- `Color`/`colour`/`param_color`/`param_colour` - 颜色参数
-- `Swatch` - 色板
-- `Plane`/`param_plane` - 平面参数
-- `Param_line` - 线参数
-- `Curve`/`crv`/`param_crv`/`param_curve` - 曲线参数
-- `Param_circle` - 圆参数
+- `number`/`num`/`param_number` - 数字参数
+- `int`/`integer`/`param_int`/`param_integer` - 整数参数
+- `bool`/`boolean`/`param_bool`/`param_boolean` - 布尔参数
+- `true`/`False` - 布尔开关
+- `toggle` - 布尔切换
+- `button` - 按钮
+- `slider`/`numberslider` - 数字滑块
+- `panel`/`param_panel` - 面板
+- `text`/`string`/`param_text`/`param_string` - 文本参数
+- `point`/`pt`/`param_pt`/`param_point` - 点参数
+- `vector`/`vect`/`param_vect` - 向量参数
+- `color`/`colour`/`param_color`/`param_colour` - 颜色参数
+- `swatch` - 色板
+- `plane`/`param_plane` - 平面参数
+- `param_line` - 线参数
+- `curve`/`crv`/`param_crv`/`param_curve` - 曲线参数
+- `param_circle` - 圆参数
+- brep/param_brep - Brep参数
+- surface/param_surface - 曲面参数
+- mesh/param_mesh - Mesh参数
+- guid/param_guid - guid参数
 
 **测试示例**:
 

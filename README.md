@@ -1,53 +1,90 @@
-# GrasshopperSever
+﻿﻿# GrasshopperSever
 
-一个用于Rhino Grasshopper的插件，提供TCP通信、数据转换和组件信息查询功能。
-
+Rhino Grasshopper 插件，通过 TCP 协议提供与 Grasshopper/Rhino 的双向通信，支持 AI 客户端远程控制组件布局、执行脚本和查询数据。
 中文 | [English](README_EN.md)
 
-## 项目信息
+## 项目结构
 
-- **版本**: 1.0
-- **支持的框架**: .NET Framework 4.8, .NET 7.0, .NET 7.0-windows
-- **插件GUID**: 0171a275-7e22-4b2a-9f82-b80f07a08b08
+```
+GrasshopperSever/
+├── README.md                         # 本文档
+├── AI_CLIENT_TUTORIAL.md             # AI 客户端连接教程
+├── design.md                         # 组件开发技术文档
+├── MainSectors.md                    # 主要功能
+└── Example/
+    ├── tcp_test.md                   # TCP 通信测试记录
+    ├── test_report.md                # 系统测试报告
+    ├── CMD_COMPONENT/
+    │   └── commands_COMPONENT.md     # Component 命令详解
+    ├── CMD_DESIGN/
+    │   └── design_test.md            # Design 命令测试报告
+    ├── CMD_DOCUMENT/
+    │   └── gh_file_test_report.md    # Document 命令测试报告
+    ├── CMD_RHINO/
+    │   └── commands_RHINO.md         # Rhino 命令详解
+    └── SCRIPT&CMD_SCRIPT/
+        ├── commands_SCRIPT.md        # Script 命令详解
+        └── scripteditor_test.md      # ScriptEditor 测试文档
+```
 
 ## 功能概述
 
-GrasshopperSever插件为Grasshopper提供了以下核心功能：
+| 功能 | 说明 |
+|------|------|
+| TCP 通信 | GHReceiver/GHSender 推送模式，GHServer 请求 - 响应模式 |
+| 组件信息查询 | 按名称/GUID/分类查询和模糊搜索组件 |
+| 设计布局控制 | 添加、移除、连接组件，设置参数值 |
+| Rhino 脚本执行 | 远程执行 Rhino 命令，获取和选择对象 |
+| GH 脚本执行 | 通过 ScriptEditor 修改脚本组件，或直接运行 C# 脚本 |
+| 文档操作 | 保存/加载 Grasshopper 文档 |
+| 数据库 | SQLite 双层架构存储组件信息和操作历史 |
 
-1. **数据通信**: 通过TCP协议接收和发送数据
-2. **数据转换**: JSON与Ljson格式互相转换
-3. **组件信息查询**: 查询和搜索Grasshopper组件信息
-4. **数据执行**: 执行接收到的数据命令
+## Grasshopper 组件
 
-## 核心数据结构
+### 数据通信
 
-### Ljson
+| 组件 | 说明 |
+|------|------|
+| **GHReceiver** | 按端口创建 TCP 连接并接收数据，后台线程接收，通过 `InvokeOnUiThread` 刷新 |
+| **GHSender** | 使用 TCP 连接发送数据，Ljson.time 更新时触发发送 |
+| **GHServer** | 按端口创建 TCP 服务端，接收数据后内部执行并响应，请求 - 响应模式 |
 
-统一的数据结构，用于表示单个数据项，包含名称、说明、时间和值。
+### 数据转换
 
-- **Name**: 数据名称
-- **Info**: 数据说明
-- **Time**: 创建时间，用于标识数据版本
-- **Value**: 数据值（JsonElement，可以是对象、数组或原始值）
+| 组件 | 说明 |
+|------|------|
+| **Json2Ljson** | JSON 字符串→Ljson 对象 |
+| **Ljson2Json** | Ljson 对象→JSON 字符串 |
+| **DataTreeLjson** | Name + Info + Data Tree→Ljson |
+| **FindJdata** | 按名称查找 Ljson 中的值 |
 
-**特性**:
-- 支持JSON序列化和反序列化
-- 支持深度克隆
-- 实现IDisposable接口
-- 支持参数的获取、搜索和设置（支持对象和数组格式）
-- 提供静态方法创建常用类型的Ljson（错误、成功、组件信息等）
+### 信息查询
 
-**LjsonHelper工具类**:
-- `SerializeLjsonArray`: 序列化Ljson数组为JSON字符串
-- `ParseLjsonArray`: 从JSON字符串反序列化为Ljson数组
+| 组件 | 说明 |
+|------|------|
+| **AllComponents** | 输出所有注册组件信息（需 Refresh=True） |
+| **FindComponentsByGuid** | 按 GUID 查询组件 |
+| **FindComponentsByName** | 按名称查询组件 |
+| **FindComponentsByCategory** | 按分类查询组件 |
+| **SearchComponentsByName** | 模糊搜索组件 |
+| **ComponentConnector** | 通过连接输入端获取组件信息 |
+| **SearchDataBase** | 执行 SQL 查询数据库 |
 
-## TCP通信命令
+### 执行组件
 
-GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rhino。
+| 组件 | 说明 |
+|------|------|
+| **GHActuator** | 执行输入的 Ljson 数据 |
+| **ScriptEditor** | 修改脚本组件代码，支持 C# 和 Python |
+| **RunScript** | 内部嵌入 Rhino8 C# 组件，直接执行 C# 脚本 |
+| **RunScript2** | 内部嵌入 Rhino7 C# 组件，右键可打开代码编辑器 |
+| **CommandRhino** | 执行 Rhino 脚本命令 |
 
-### 命令格式
+> 组件的详细输入输出参数见 [design.md](design.md)。
 
-所有命令使用统一的LJSON格式：
+## TCP 命令
+
+所有命令使用 Ljson 格式，通过 TCP 发送：
 
 ```json
 {
@@ -61,766 +98,97 @@ GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rh
 }
 ```
 
-**Name字段（命令类型）**：
-- `COMPONENT` - 组件相关命令
-- `DOCUMENT` - 文档相关命令
-- `RHINO` - Rhino相关命令
-- `DESIGN` - 设计布局命令（组件添加、连接等）
+**Name 字段**：`COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGN`
 
-### Component命令
+### 命令速览
 
-#### GETALLCOMPONENTS
-获取所有组件信息
+| 类型 | 命令 | 说明 |
+|------|------|------|
+| COMPONENT | `GETALLCOMPONENTS` | 获取所有组件 |
+| COMPONENT | `FINDCOMPONENTBYGUID` | 按 GUID 查找组件 |
+| COMPONENT | `FINDCOMPONENTBYNAME` | 按名称查找组件 |
+| COMPONENT | `FINDCOMPONENTBYCATEGORY` | 按分类查找组件 |
+| COMPONENT | `SEARCHCOMPONENTSBYNAME` | 模糊搜索组件 |
+| DOCUMENT | `SAVEDOCUMENT` | 保存当前文档 |
+| DOCUMENT | `LOADDOCUMENT` | 加载文档 |
+| DOCUMENT | `DATABASEPATH` | 获取数据库路径 |
+| RHINO | `RHINOSCRIPT` | 运行 Rhino 脚本命令 |
+| RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的 Rhino 对象 |
+| RHINO | `SELECTOBJECTS` | 选择 Rhino 对象 |
+| RHINO | `GETANDSELECTLASTOBJECTS` | 获取并选择最后创建的对象 |
+| DESIGN | `ADDCOMPONENTBYGUID` | 通过 GUID 添加组件 |
+| DESIGN | `ADDCOMPONENTBYNAME` | 通过名称添加组件 |
+| DESIGN | `ADDPARAMWITHVALUE` | 添加参数组件并设置值 |
+| DESIGN | `REMOVECOMPONENT` | 移除组件 |
+| DESIGN | `SETPARAMVALUE` | 设置参数值 |
+| DESIGN | `CONNECTCOMPONENTS` | 连接组件 |
+| DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 |
+| SCRIPT |                     | 未实现的命令，改为 RunScript 组件 |
 
-#### FINDCOMPONENTBYGUID
-通过GUID查找组件
+> 各命令的详细参数、示例和响应格式见对应文档：[Component 命令](Example/CMD_COMPONENT/commands_COMPONENT.md)、[Design 命令](Example/CMD_DESIGN/design_test.md)、[Document 命令](Example/CMD_DOCUMENT/gh_file_test_report.md)、[Rhino 命令](Example/CMD_RHINO/commands_RHINO.md)、[Script 命令](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md)。
 
-#### FINDCOMPONENTBYNAME
-通过名称查找组件
+> 警告：如果你是 ai，请不要轻易获取所有组件信息 (`GETALLCOMPONENTS`)，优先使用分组或名称查询、检索，或者调用数据库。
 
-#### FINDCOMPONENTBYCATEGORY
-通过分类查找组件
+## 通信模式
 
-#### SEARCHCOMPONENTSBYNAME
-通过名称搜索组件（模糊搜索）
-
-### Document命令
-
-#### SAVEDOCUMENT
-保存当前文档
-
-#### LOADDOCUMENT
-加载文档
-
-#### DATABASEPATH
-获取数据库路径
-
-### Rhino命令
-
-#### RHINOSCRIPT
-运行Rhino脚本（如：`_-Line 0,0,0 10,10,0`）
-
-#### GETLASTCREATEDOBJECTS
-获取最后创建的对象
-
-#### SELECTOBJECTS
-选择对象
-
-#### GETANDSELECTLASTOBJECTS
-获取并选择最后创建的对象（复合命令）
-
-### Design命令
-
-Design 命令用于控制组件的添加、移除、连接和值设置等布局相关操作。
-
-#### ADDCOMPONENTBYGUID
-
-通过 GUID 添加组件
-
-**参数**：
-- `ComponentGuid` - 组件 GUID
-- `X` - X 坐标（数字）
-- `Y` - Y 坐标（数字）
-
-**示例**：
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponentByGuid",
-  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
-  "X": 100,
-  "Y": 100
-}
+### 推送模式（GHReceiver + GHSender）
+```
+AI 客户端──TCP──> GHReceiver(接收)──> GH 处理 ──> GHSender(响应) ──> AI 客户端
 ```
 
-#### ADDCOMPONENTBYNAME
-通过名称添加组件
-
-**参数**：
-- `ComponentName` - 组件名称
-- `X` - X 坐标（数字）
-- `Y` - Y 坐标（数字）
-
-**示例**：
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponentByName",
-  "ComponentName": "Addition",
-  "X": 100,
-  "Y": 100
-}
+### 请求 - 响应模式（GHServer）
+```
+AI 客户端──TCP──> GHServer(接收 + 执行 + 响应) ──> AI 客户端
 ```
 
-#### ADDPARAMWITHVALUE
-添加参数组件并设置值
+> 详细通信协议和 Python 客户端代码见 [AI_CLIENT_TUTORIAL.md](AI_CLIENT_TUTORIAL.md)。
 
-**参数**：
-- `ParamName` - 参数类型名称（必需）
-- `X` - X 坐标（必需）
-- `Y` - Y 坐标（必需）
-- `Path` - 数据路径（可选，格式如 "{0;1;2}"）
-- `Value` - 要设置的值（可选，可以是单个值或JSON数组）
+## 数据库
 
-**支持的参数类型**：
-- `Number`/`num`/`param_number` - 数字参数
-- `Int`/`integer`/`param_int`/`param_integer` - 整数参数
-- `Bool`/`boolean`/`param_bool`/`param_boolean` - 布尔参数
-- `True`/`False` - 布尔开关
-- `Toggle` - 布尔切换
-- `Button` - 按钮
-- `Slider`/`numberslider` - 数字滑块
-- `Panel`/`param_panel` - 面板
-- `Text`/`string`/`param_text`/`param_string` - 文本参数
-- `Point`/`pt`/`param_pt`/`param_point` - 点参数
-- `Vector`/`vect`/`param_vect` - 向量参数
-- `Color`/`colour`/`param_color`/`param_colour` - 颜色参数
-- `Swatch` - 色板
-- `Plane`/`param_plane` - 平面参数
-- `Param_line` - 线参数
-- `Curve`/`crv`/`param_crv`/`param_curve` - 曲线参数
-- `Param_circle` - 圆参数
+采用 SQLite 双层架构：
 
-**示例 1**：添加简单的数字参数
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "number",
-  "X": 100,
-  "Y": 100,
-  "Value": "42.5"
-}
+| 数据库 | 位置 | 说明 |
+|--------|------|------|
+| **主数据库** ComponentsInfo.db | `AppData\Roaming\Grasshopper\Libraries\GHserver\` | 全局组件信息，所有文档共享 |
+| **文档数据库** `{名字}_ghdata.db` | 与 gh 文件同目录 | 文档特定数据（Rhino 对象、脚本修改历史、组件操作历史） |
+
+主数据库包含 ALLCOMPS（组件信息）和 MetaInfo（元信息）表；文档数据库包含 RhinoObjects、GHScriptModifyHistory、ComponentExchangeHistory 表。建议只读访问。
+
+> 完整表结构和查询示例见 [Component 命令文档](Example/CMD_COMPONENT/commands_COMPONENT.md) 和 [Rhino 命令文档](Example/CMD_RHINO/commands_RHINO.md)。
+
+## 快速开始
+
+1. 安装 `.gha` 插件到 Grasshopper 组件目录
+2. 在 Grasshopper 中添加 `GHServer` 组件，设置 `Enabled = true`，端口默认 `6879`
+3. 使用 Python 客户端连接：
+
+```python
+from Example.ghclient import GHClient
+GHClient.test_command_document(6879, "DOCUMENT", "获取数据库路径", {"Command": "DATABASEPATH"})
 ```
 
-**示例 2**：添加数字滑块并设置范围
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "slider",
-  "X": 100,
-  "Y": 100,
-  "Value": "0.0 < 0.5 < 1.0"
-}
-```
-
-**示例 3**：添加文本参数并设置值
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "text",
-  "X": 100,
-  "Y": 100,
-  "Value": "Hello Grasshopper"
-}
-```
-
-**示例 4**：添加带数据路径的参数（设置数据树）
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "number",
-  "X": 100,
-  "Y": 100,
-  "Path": "{0;1;2}",
-  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
-}
-```
-
-**示例 5**：添加布尔开关
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "true",
-  "X": 100,
-  "Y": 100
-}
-```
-
-#### REMOVECOMPONENT
-移除组件
-
-**参数**：
-- `InstanceGuid` - 组件实例 GUID
-
-**示例**：
-```json
-{
-  "Name": "Design",
-  "Command": "RemoveComponent",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx"
-}
-```
-
-#### SETPARAMVALUE
-设置参数值
-
-**参数**：
-- `InstanceGuid` - 组件实例 GUID
-- `Path` - 数据路径（可选，格式如 "{0;1;2}"）
-- `Value` - 要设置的值（可以是单个值或JSON数组）
-
-**示例 1**：设置简单值
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "42"
-}
-```
-
-**示例 2**：设置数据树值
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Path": "{0;1;2}",
-  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
-}
-```
-
-**示例 3**：设置滑块值
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "0.5"
-}
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "0.0 < 0.5 < 1.0"
-}
-```
-
-#### CONNECTCOMPONENTS
-连接两个组件的参数
-
-**参数**：
-- `FromGuid` - 源组件实例 GUID
-- `FromParameter` - 源组件输出参数名称
-- `ToGuid` - 目标组件实例 GUID
-- `ToParameter` - 目标组件输入参数名称
-
-**示例**：
-```json
-{
-  "Name": "Design",
-  "Command": "ConnectComponents",
-  "FromGuid": "instance-guid-1",
-  "FromParameter": "Result",
-  "ToGuid": "instance-guid-2",
-  "ToParameter": "A"
-}
-```
-
-#### DISCONNECTCOMPONENTS
-断开两个组件参数之间的连接
-
-**参数**：
-- `FromGuid` - 源组件实例 GUID
-- `FromParameter` - 源组件输出参数名称
-- `ToGuid` - 目标组件实例 GUID
-- `ToParameter` - 目标组件输入参数名称
-
-**示例**：
-```json
-{
-  "Name": "Design",
-  "Command": "DisconnectComponents",
-  "FromGuid": "instance-guid-1",
-  "FromParameter": "Result",
-  "ToGuid": "instance-guid-2",
-  "ToParameter": "A"
-}
-```
-
-### OUTPUT 特殊键
-
-当 Value 字段中包含 `OUTPUT` 键时，其值会在 GHServer 的 Output 端口输出：
-
-```json
-{
-  "Name": "TestMessage",
-  "Info": "测试消息",
-  "Value": {
-    "OUTPUT": "要在输出端口显示的数据"
-  }
-}
-```
-
-### 数据通信特性
-
-- **支持TCP长连接**：可连续发送多条消息
-- **自动回送数据**：服务器会回送接收到的数据
-- **UTF-8 BOM标记**：响应包含UTF-8 BOM，解码时需使用 `utf-8-sig`
-- **完整JSON支持**：支持所有JSON数据类型和嵌套结构
-- **Unicode支持**：完全支持中文和特殊字符
-
-## 组件说明
-
-### 数据通信组件
-
-#### GHReceiver
-
-根据端口创建TCP连接并接收数据，每个端口只接受一个连接。
-
-**输入参数**:
-- `Enabled` (Boolean): 是否启用服务器，默认为 false
-- `Port` (Integer): 监听的端口，默认为 6879
-
-**输出参数**:
-- `Client` (TcpClientParam): Client连接对象
-- `Ljson` (LjsonParam): 传入的数据
-- `Status` (String): 状态
-
-**特性**:
-- 在后台线程接收数据
-- 通过 `RhinoApp.InvokeOnUiThread` 通知GH电池刷新
-- 只接收比上次更新的数据（基于time标签）
-
-#### GHSender
-
-使用TCP连接发送数据，支持批量发送。
-
-**输入参数**:
-- `Client` (TcpClientParam): Client连接对象
-- `Ljson` (LjsonParam): 发送数据，按顺序发送
-
-**输出参数**:
-- `Status` (String): 发送状态
-
-**特性**:
-- 只有Ljson.time更新时才会触发发送
-- 自动过滤过期数据
-
-#### GHServer
-
-根据端口创建TCP服务器并接收数据，接收到数据后在内部执行并作出响应。
-
-**输入参数**:
-- `Enabled` (Boolean): 是否启用服务器，默认为 false
-- `Port` (Integer): 监听的端口，默认为 6879
-
-**输出参数**:
-- `Status` (String): 回复状态
-- `OutPut` (Generic): 显示输出数据
-
-### 数据转换组件
-
-#### Json2Ljson
-
-将JSON格式转换为Ljson。
-
-**输入参数**:
-- `String` (String): JSON格式字符串
-
-**输出参数**:
-- `Ljson` (LjsonParam): 生成的Ljson对象
-
-#### Ljson2Json
-
-将Ljson转换为JSON格式。
-
-**输入参数**:
-- `Ljson` (LjsonParam): 需要转换的Ljson对象
-
-**输出参数**:
-- `String` (String): JSON格式字符串
-
-#### DataTreeLjson
-
-将 Name, Info 和 Data Tree 构造为 Ljson。每个 branch 只能包含 1 个或 2 个元素：1 个元素转为 list，2 个元素转为 dict。
-
-**输入参数**:
-- `Name` (String): Ljson 的名称
-- `Info` (String): Ljson 的说明
-- `Data Tree` (Data Tree): Data Tree 数据
-
-**输出参数**:
-- `Ljson` (LjsonParam): 生成的Ljson对象
-
-#### FindJdata
-
-通过名称查找Jdata的值。
-
-**输入参数**:
-- `Ljson` (LjsonParam): 需要查找的Ljson对象
-- `Name` (String): 需要查找的键值
-
-**输出参数**:
-- `Data` (Generic): 找到的值（基本类型或字符串）
-- `DataList` (List): 找到的值列表（基本类型或字符串）
-
-将 Name, Info 和 Data Tree 构造为 Ljson。每个 branch 只能包含 1 个或 2 个元素：1 个元素转为 list，2 个元素转为 dict。
-
-**输入参数**:
-- `Name` (String): Ljson 的名称
-- `Info` (String): Ljson 的说明
-- `Data Tree` (Data Tree): Data Tree 数据
-
-**输出参数**:
-- `Ljson` (LjsonParam): 生成的Ljson对象
-
-### 信息查询组件
-
-#### AllComponents
-
-输出所有注册的组件信息。
-
-**输入参数**:
-- `Refresh` (Boolean): 刷新，值改变就刷新一次time
-
-**输出参数**:
-- `Ljson` (LjsonParam): 所有组件的信息
-
-**输出结构** (Ljson.Value):
-```json
-{
-  "categorys": "所有分类",
-  "count": "组件数量",
-  "components": "所有注册的组件"
-}
-```
-
-#### FindComponentsByGuid
-
-通过GUID查询组件信息。
-
-**输入参数**:
-- `Guid` (String): 组件的GUID
-
-**输出参数**:
-- `ComponentInfo` (LjsonParam): 组件信息
-
-**输出结构** (Ljson.Value):
-```json
-{
-  "ComponentGuid": "组件GUID",
-  "ComponentName": "组件名称",
-  "NickName": "组件昵称",
-  "Description": "组件描述",
-  "Category": "主分类",
-  "SubCategory": "子分类",
-  "Prototype": "函数签名"
-}
-```
-
-#### FindComponentsByName
-
-通过名称查询组件信息。
-
-**输入参数**:
-- `Name` (String): 组件名称
-
-**输出参数**:
-- `ComponentInfo` (LjsonParam): 组件信息
-
-#### FindComponentsByCategory
-
-通过Category查询组件信息。
-
-**输入参数**:
-- `Category` (String): 主分类名称
-
-**输出参数**:
-- `ComponentInfo` (LjsonParam): 组件信息
-
-#### SearchComponentsByName
-
-通过名称搜索组件，支持模糊匹配。
-
-**输入参数**:
-- `Keyword` (String): 搜索关键词
-
-**输出参数**:
-- `ComponentInfo` (LjsonParam): 组件信息列表
-
-#### ComponentConnector
-
-通过连接输入端，获取连接的组件的信息。
-
-**输入参数**:
-- `Input` (Generic): 连接一个组件
-
-**输出参数**:
-- `Name` (String): 组件名字
-- `GUID` (String): 组件的GUID
-- `InsGUID` (String): 组件对象的GUID
-- `Instance` (Generic): 组件对象
-
-#### SearchDataBase
-
-查询数据库。
-
-**输入参数**:
-- `SQL` (String): 完整的SQL查询语句
-
-**输出参数**:
-- `Result` (String): 查询结果，以JSON格式返回
-
-### 执行组件
-
-#### GHActuator
-
-对输入的数据进行执行。
-
-**输入参数**:
-- `Ljson` (LjsonParam): 需要执行的数据
-
-**输出参数**:
-- `Status` (String): 执行结果
-- `Result` (LjsonParam): 处理后的Ljson结果
-- `OutPut` (Generic): 显示输出数据
-
-#### ScriptEditor
-
-通过输入的代码修改Script组件，支持c#、python。
-
-**输入参数**:
-- `ScriptComponent` (Generic): Rhino8 Grasshopper 的脚本组件，仅支持操作一个组件
-- `Code` (String): 脚本代码
-- `IntputParams` (String): 输入端参数定义
-- `OutputParams` (String): 输出端参数定义
-
-**输出参数**:
-- `Result` (String): 显示运行信息
-- `ComponentType` (String): 显示组件信息
-- `IsSDKMode` (Boolean): 代码是否是SDK模式
-- `SourceCode` (String): 代码code
-- `InputParams` (String): 当前输入端参数信息
-- `OutputParams` (String): 当前输出端参数信息
-
-![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.png)
-
-![scripteditor_test](Example/SCRIPT&CMD_SCRIPT/scripteditor_test2.png)
-
-#### RunScript
-
-在内部运行c#脚本。本组件预留给ai直接执行脚本。
-
-**输入参数**:
-- `Code` (String): 脚本
-
-**输出参数**:
-- `Ljson` (LjsonParam): 数据输出
-- `Out` (String): 调试输出
-
-#### CommandRhino
-
-执行rhino脚本。
-
-**输入参数**:
-- `Ljson` (LjsonParam): 要执行的Rhino命令Ljson数据，必须包含Command字段
-
-**输出参数**:
-- `Result` (LjsonParam): 执行后的Ljson结果
-
-## 数据库功能
-
-插件使用SQLite数据库存储数据，采用双层数据库架构：
-
-### 数据库架构
-
-#### 1. 主数据库（ComponentsInfo.db）
-- **位置**：插件目录
-- **用途**：存储全局组件信息，所有Grasshopper文档共享
-- **数据表**：ALLCOMPS, MetaInfo
-
-#### 2. 文档数据库（{_ghdata.db）
-- **位置**：
-  - 如果文档已保存：与gh文件同目录，命名为 `{文档名}_ghdata.db`
-  - 如果文档未保存：插件目录，命名为 `TempDocument_{GUID}.db`
-- **用途**：存储文档特定的数据，与文档紧密关联
-- **数据表**：GHScriptModifyHistory, RhinoObjects
-
-**优势**：
-- 全局组件信息共享，提高性能
-- 文档特定数据与文档绑定，便于分享和管理
-- 自动清理未保存文档的临时数据
-
-### DatabaseManager
-
-提供以下功能：
-
-- 管理主数据库和文档数据库
-- 自动初始化数据库
-- 创建和管理数据表
-- 跟踪表的更新时间（主数据库）
-- 提供数据库连接对象
-- 执行带时间戳更新的SQL命令（主数据库）
-
-### 主数据库表结构
-
-#### MetaInfo表
-用于跟踪主数据库中表的更新时间，包含以下字段：
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| TableName | TEXT | NOT NULL UNIQUE | 表名 |
-| LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
-| Description | TEXT | - | 表描述 |
-
-#### ALLCOMPS表
-存储所有Grasshopper组件的详细信息（全局缓存）。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| ComponentGuid | TEXT | NOT NULL UNIQUE | 组件的GUID（唯一标识） |
-| ComponentName | TEXT | NOT NULL | 组件名称 |
-| NickName | TEXT | - | 组件昵称 |
-| Description | TEXT | - | 组件描述 |
-| Category | TEXT | NOT NULL | 主分类 |
-| SubCategory | TEXT | NOT NULL | 子分类 |
-| Prototype | TEXT | DEFAULT '' | 包含输入输出的函数签名（JSON格式） |
-
-### 文档数据库表结构
-
-#### RhinoObjects表
-存储Rhino中创建的对象信息（文档特定）。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| ObjectId | TEXT | NOT NULL | 对象ID（GUID字符串） |
-| ObjectType | TEXT | - | 对象类型（如：Curve, Surface, Mesh等） |
-| LayerName | TEXT | - | 图层名称 |
-| ObjectName | TEXT | - | 对象名称 |
-| CreateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| DocumentSerialNumber | TEXT | - | 文档序列号 |
-| Description | TEXT | - | 描述信息 |
-
-#### GHScriptModifyHistory表
-存储GHScript组件的修改历史记录（文档特定）。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| InstanceGuid | TEXT | NOT NULL | 组件实例GUID |
-| ComponentGuid | TEXT | NOT NULL | 组件类型GUID |
-| ComponentName | TEXT | - | 组件名称 |
-| ModifyType | TEXT | NOT NULL | 修改类型（CODE_CHANGE或PARAM_CHANGE） |
-| ModifyContent | TEXT | - | 修改内容（JSON格式） |
-| Description | TEXT | - | 描述信息 |
-| ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 修改时间 |
-
-#### ComponentExchangeHistory表
-存储组件交换操作的历史记录（文档特定），包括添加、删除、连接、断开等操作。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| OperationType | TEXT | NOT NULL | 操作类型（AddComponent, RemoveComponent, SetParamValue, ConnectComponents, DisconnectComponents） |
-| ComponentGuid | TEXT | - | 组件GUID |
-| InstanceGuid | TEXT | - | 组件实例GUID |
-| ComponentName | TEXT | - | 组件名称 |
-| PositionX | REAL | - | X坐标（添加组件时） |
-| PositionY | REAL | - | Y坐标（添加组件时） |
-| Value | TEXT | - | 设置的值（设置组件值时） |
-| FromInstanceGuid | TEXT | - | 源组件实例GUID（连接/断开操作时） |
-| FromParameter | TEXT | - | 源参数名称（连接/断开操作时） |
-| ToInstanceGuid | TEXT | - | 目标组件实例GUID（连接/断开操作时） |
-| ToParameter | TEXT | - | 目标参数名称（连接/断开操作时） |
-| OperationTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 操作时间 |
-| Description | TEXT | - | 描述信息 |
-
-**注意事项**：
-- 主数据库（ComponentsInfo.db）存储全局组件信息，可随时重建
-- 文档数据库与gh文件同目录，便于分享和版本控制
-- 未保存文档使用临时命名，避免冲突
-- 建议只读操作，不建议手动写入数据
-- 可以使用SQL查询组件信息和对象信息
-
-## 参数类型
-
-### LjsonParam
-
-用于在Grasshopper电池之间传递Ljson数据的参数类型。
-
-### TcpClientParam
-
-用于传递TCP客户端连接对象的参数类型，由GHReceiver根据端口唯一创建。
-
-## 构建和安装
-
-### 构建要求
-
-- .NET Framework 4.8 或 .NET 7.0 SDK
-- Grasshopper 8.29.26063.11001 或更高版本
-
-### 构建步骤
-
-1. 使用Visual Studio打开 `GrasshopperSever.sln`
-2. 选择目标框架（net4.8, net7.0, 或 net7.0-windows）
-3. 构建解决方案
-
-### 安装
-
-1. 将构建生成的 `.gha` 文件复制到Grasshopper组件目录
-2. 重启Rhino/Grasshopper
-3. 插件将自动加载
-
-## 使用示例
-
-### TCP通信示例
-
-1. 创建一个 `GHReceiver` 组件，设置端口号（例如6879）
-2. 将 `Enabled` 设置为 `true` 启动接收器
-3. 通过TCP客户端发送JSON数据到指定端口
-4. 数据将被接收并转换为Ljson格式输出
-
-### 组件查询示例
-
-1. 使用 `AllComponents` 获取所有组件列表
-2. 使用 `FindComponentsByName` 查找特定组件
-3. 使用 `SearchComponentsByName` 进行模糊搜索
-
-### 数据转换示例
-
-1. 创建 `Json2Ljson` 组件
-2. 输入JSON字符串
-3. 获取转换后的Ljson对象
-
-## 注意事项
-
-1. 每个端口只能创建一个TCP接收器
-2. Ljson的time标签用于版本控制，只接收/发送更新的数据
-3. 数据库文件位于插件目录，确保有写入权限
-4. TCP通信使用UTF-8编码
-5. 建议使用防火墙规则保护TCP端口
-
-## 依赖项
-
-- Grasshopper 8.29.26063.11001
-- Microsoft.Data.Sqlite 10.0.5
-- System.Data.SQLite 1.0.119
-- System.Text.Json 10.0.5（仅net4.8）
-- System.Resources.Extensions 10.0.5
-
-## 许可证
-
-请查看项目许可证文件。
-
-## 贡献
-
-欢迎提交问题和拉取请求。
-
-## 联系方式
-
-如有问题或建议，请联系插件作者。
+> 更完整的客户端类和高级用法见 [AI 客户端教程](AI_CLIENT_TUTORIAL.md) 和 [主要功能](MainSectors.md)。
 
 ## 相关文档
 
-- [English Documentation](README_EN.md) - 英文版文档
-- [AI客户端教程](AI_CLIENT_TUTORIAL.md) - AI客户端连接和交互指南
-- [插件开发文档](design.md) - 插件开发技术文档
+- [主要功能](MainSectors.md) - 主要功能
+- [AI 客户端教程](AI_CLIENT_TUTORIAL.md) - 通信协议、客户端代码和故障排除
+- [组件开发文档](design.md) - 各组件的输入输出参数和技术细节
+- [TCP 通信测试](Example/tcp_test.md) - 通信协议测试记录
+- [系统测试报告](Example/test_report.md) - 完整功能测试报告
+- [Component 命令](Example/CMD_COMPONENT/commands_COMPONENT.md) - 组件查询命令详解
+- [Design 命令](Example/CMD_DESIGN/design_test.md) - 设计布局命令详解
+- [Document 命令](Example/CMD_DOCUMENT/gh_file_test_report.md) - 文档操作命令详解
+- [Rhino 命令](Example/CMD_RHINO/commands_RHINO.md) - Rhino 脚本命令详解
+- [Script 命令](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md) - 脚本编辑命令详解
+- [ScriptEditor 测试](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.md) - ScriptEditor 功能测试
+
+## 项目信息
+
+- **版本**: 1.0
+- **框架**: .NET 7.0 / .NET 7.0-windows/ .NET 8.0 / .NET 8.0-windows
+- **插件 GUID**: `0171a275-7e22-4b2a-9f82-b80f07a08b08`
+
+## 依赖项
+- Rhino 8.29.26063.11001
+- System.Data.SQLite 1.0.119

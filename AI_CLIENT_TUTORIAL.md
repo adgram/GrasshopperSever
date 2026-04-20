@@ -1,40 +1,21 @@
-# AI客户端教程 - 连接GrasshopperSever服务
+# AI 客户端教程 - 连接 GrasshopperSever
 
-本教程指导AI客户端如何通过TCP协议连接到GrasshopperSever插件，实现与Grasshopper的双向通信。
+本教程指导 AI 客户端如何通过 TCP 协议连接到 GrasshopperSever，实现与 Grasshopper 的双向通信。
 
 ## 目录
 
-- [服务概述](#服务概述)
 - [通信协议](#通信协议)
-- [命令列表](#命令列表)
-- [数据库说明](#数据库说明)
+- [命令速览](#命令速览)
 - [快速开始](#快速开始)
-- [Python客户端示例](#python客户端示例)
-- [高级功能](#高级功能)
-- [常见用例](#常见用例)
+- [GHClient 类](#grasshopperclient-类)
+- [数据库访问](#数据库访问)
 - [故障排除](#故障排除)
-
-## 服务概述
-
-GrasshopperSever提供TCP服务，允许外部客户端（如AI程序）与Grasshopper进行双向通信。
-
-### 默认配置
-
-- **默认端口**: 6879
-- **通信协议**: TCP
-- **数据格式**: JSON
-- **编码**: UTF-8
-
-### 连接模式
-
-1. **客户端模式**: AI作为客户端，GHReceiver接收数据，GHSender发送响应
-2. **服务模式**: AI作为客户端，连接到GHServer，请求-响应模式
 
 ## 通信协议
 
-### Ljson数据结构
+### Ljson 数据结构
 
-所有通信使用Ljson格式，**必须使用单个LJSON对象**（不是批量格式）：
+所有通信使用 Ljson 格式（单个 JSON 对象）：
 
 ```json
 {
@@ -45,1328 +26,239 @@ GrasshopperSever提供TCP服务，允许外部客户端（如AI程序）与Grass
 }
 ```
 
-**重要说明**：
-- 发送数据必须使用单个LJSON对象格式
-- **不要使用**批量格式（Items数组）
-- 发送命令时，Name字段应为命令类型（COMPONENT/DOCUMENT/RHINO等）
-- Value.Command字段存放具体命令名称
+- `Name` 字段对应命令类型（`COMPONENT` / `DOCUMENT` / `RHINO` / `SCRIPT` / `DESIGN`）
+- `Value` 中通过 `Command` 字段指定具体命令
+- `Value` 支持所有 JSON 数据类型（数字、字符串、布尔、数组、对象、嵌套）
 
-**OUTPUT 特殊键**：
-- 当 Value 字段中包含 `OUTPUT` 键时，其值会在 GHServer 的 Output 端口输出
-- 这是用于向 GHServer 的输出端口发送数据的特殊机制
-- 示例：
-```json
-{
-  "Name": "TestMessage",
-  "Info": "测试消息",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "OUTPUT": "要在输出端口显示的数据"
-  }
-}
-```
+### 通信模式
 
-### 通信流程
-
-#### 推送模式（GHReceiver + GHSender）
+**推送模式（GHReceiver + GHSender）**：
 
 ```
-AI客户端                    Grasshopper
-    |                            |
-    |-------- TCP连接 ---------->|
-    |                            |
-    |----- 发送Ljson数据 ------>|  GHReceiver接收
-    |                            |
-    |<----- 发送响应Ljson ------|  GHSender发送
-    |                            |
+AI ──TCP──> GHReceiver(接收) ──> GH处理 ──> GHSender(响应) ──> AI
 ```
 
-#### 请求-响应模式（GHServer）
+**请求-响应模式（GHServer）**：
 
 ```
-AI客户端                    Grasshopper
-    |                            |
-    |-------- TCP连接 ---------->|
-    |                            |
-    |----- 发送请求Ljson ------>|  GHServer接收并执行
-    |                            |
-    |<----- 返回结果Ljson ------|  返回执行结果
-    |                            |
+AI ──TCP──> GHServer(接收+执行+响应) ──> AI
 ```
 
-## 命令列表
+### 注意事项
 
-GrasshopperSever支持通过TCP协议发送各种命令来控制Grasshopper和Rhino。
+- 响应包含 UTF-8 BOM，解码时使用 `utf-8-sig`
 
-### 命令格式
+- 服务器会回送接收到的数据
 
-所有命令使用统一的LJSON格式：
+- `Value` 中包含 `OUTPUT` 键时，其值在 GHServer 的 Output 端口输出
 
-```json
-{
-  "Name": "命令类型",
-  "Info": "命令描述",
-  "Time": "2026-03-26T10:00:00",
-  "Value": {
-    "Command": "具体命令名称",
-    "参数名": "参数值"
-  }
-}
-```
+- 使用单个 Ljson 对象，不要使用批量格式（Items 数组）
 
-**Name字段（命令类型）**：
-- `COMPONENT` - 组件相关命令
-- `DOCUMENT` - 文档相关命令
-- `RHINO` - Rhino相关命令
-- `SCRIPT` - 脚本相关命令
-- `DESIGN` - 设计相关命令
+- 接收和发送消息，都是采用StreamReader.ReadLineAsync(stream, Encoding.UTF8)和StreamWriter.WriteLineAsync(stream, Encoding.UTF8)。
 
-### Component命令（5个）
+    1、连接成功，服务器会自动发送已连接的响应。
 
-#### GETALLCOMPONENTS
+    2、服务器收到消息，会自动发送数据接收成功的响应。
 
-获取所有组件信息
+    3、Command相关操作，会自动回复一条消息。
 
-警告：不要轻易获取所有组件信息，优先使用分组或名称查询、检索，或者调用数据库。
+    客户端一次沟通，根据情况最多只需要按照顺序接收三条消息。
 
-**请求**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "获取所有组件",
-  "Value": {
-    "Command": "GETALLCOMPONENTS"
-  }
-}
-```
+- 一般情况发送和接收消息，请使用标准模板[ghclient](Example/ghclient.py)类。
 
-#### FINDCOMPONENTBYGUID
-通过GUID查找组件
+## 命令速览
 
-**请求**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过GUID查找组件",
-  "Value": {
-    "Command": "FINDCOMPONENTBYGUID",
-    "Guid": "组件的GUID字符串"
-  }
-}
-```
+| 类型 | 命令 | 说明 | 详细文档 |
+|------|------|------|----------|
+| COMPONENT | `GETALLCOMPONENTS` | 获取所有组件 | [链接](Example/CMD_COMPONENT/commands_COMPONENT.md) |
+| COMPONENT | `FINDCOMPONENTBYGUID` | 按 GUID 查找组件 | 同上 |
+| COMPONENT | `FINDCOMPONENTBYNAME` | 按名称查找组件 | 同上 |
+| COMPONENT | `FINDCOMPONENTBYCATEGORY` | 按分类查找组件 | 同上 |
+| COMPONENT | `SEARCHCOMPONENTSBYNAME` | 模糊搜索组件 | 同上 |
+| DOCUMENT | `SAVEDOCUMENT` | 保存文档 | [链接](Example/CMD_DOCUMENT/gh_file_test_report.md) |
+| DOCUMENT | `LOADDOCUMENT` | 加载文档 | 同上 |
+| DOCUMENT | `DATABASEPATH` | 获取数据库路径 | 同上 |
+| RHINO | `RHINOSCRIPT` | 运行 Rhino 脚本 | [链接](Example/CMD_RHINO/commands_RHINO.md) |
+| RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的对象 | 同上 |
+| RHINO | `SELECTOBJECTS` | 选择对象 | 同上 |
+| RHINO | `GETANDSELECTLASTOBJECTS` | 获取并选择对象 | 同上 |
+| DESIGN | `ADDCOMPONENTBYGUID` | 通过 GUID 添加组件 | [链接](Example/CMD_DESIGN/design_test.md) |
+| DESIGN | `ADDCOMPONENTBYNAME` | 通过名称添加组件 | 同上 |
+| DESIGN | `ADDPARAMWITHVALUE` | 添加参数组件并设置值 | 同上 |
+| DESIGN | `REMOVECOMPONENT` | 移除组件 | 同上 |
+| DESIGN | `SETPARAMVALUE` | 设置参数值 | 同上 |
+| DESIGN | `CONNECTCOMPONENTS` | 连接组件 | 同上 |
+| DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 | 同上 |
+| SCRIPT |  | 未实现的命令，改为RunScript组件 |  |
 
-#### FINDCOMPONENTBYNAME
-通过名称查找组件
-
-**请求**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过名称查找组件",
-  "Value": {
-    "Command": "FINDCOMPONENTBYNAME",
-    "Name": "组件名称"
-  }
-}
-```
-
-#### FINDCOMPONENTBYCATEGORY
-通过分类查找组件
-
-**请求**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过分类查找组件",
-  "Value": {
-    "Command": "FINDCOMPONENTBYCATEGORY",
-    "Category": "主分类（可选）",
-    "SubCategory": "子分类（可选）",
-    "Name": "组件名称（可选）"
-  }
-}
-```
-
-**说明**：至少需要提供Category、SubCategory或Name中的一个参数
-
-#### SEARCHCOMPONENTSBYNAME
-通过名称搜索组件（模糊搜索）
-
-**请求**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "搜索组件",
-  "Value": {
-    "Command": "SEARCHCOMPONENTSBYNAME",
-    "Name": "搜索关键词"
-  }
-}
-```
-
-### Document命令（3个）
-
-#### SAVEDOCUMENT
-保存当前文档
-
-**请求**：
-```json
-{
-  "Name": "DOCUMENT",
-  "Info": "保存文档",
-  "Value": {
-    "Command": "SAVEDOCUMENT",
-    "FilePath": "文件路径（可选）"
-  }
-}
-```
-
-**注意**：如果文档未保存过，必须提供FilePath参数
-
-#### LOADDOCUMENT
-加载文档
-
-**请求**：
-```json
-{
-  "Name": "DOCUMENT",
-  "Info": "加载文档",
-  "Value": {
-    "Command": "LOADDOCUMENT",
-    "FilePath": "文件路径（必需）"
-  }
-}
-```
-
-#### DATABASEPATH
-获取数据库路径
-
-**请求**：
-```json
-{
-  "Name": "DOCUMENT",
-  "Info": "获取数据库路径",
-  "Value": {
-    "Command": "DATABASEPATH"
-  }
-}
-```
-
-**响应示例**：
-```json
-{
-  "Name": "DatabasePath",
-  "Info": "获取数据库路径",
-  "Value": {
-    "DatabasePath": "C:\\Users\\[用户名]\\AppData\\Roaming\\Grasshopper\\Libraries\\GHserver\\ComponentsInfo.db"
-  }
-}
-```
-
-### Rhino命令（4个）
-
-#### RHINOSCRIPT
-运行Rhino脚本
-
-**请求**：
-```json
-{
-  "Name": "RHINO",
-  "Info": "执行Rhino脚本",
-  "Value": {
-    "Command": "RHINOSCRIPT",
-    "Script": "_-Line 0,0,0 10,10,0"
-  }
-}
-```
-
-**响应示例**：
-```json
-{
-  "Name": "RunScript",
-  "Info": "执行Rhino脚本成功",
-  "Value": {
-    "Result": "True",
-    "Script": "_-Line 0,0,0 10,10,0"
-  }
-}
-```
-
-#### GETLASTCREATEDOBJECTS
-获取最后创建的对象
-
-**请求**：
-```json
-{
-  "Name": "RHINO",
-  "Info": "获取最后创建的对象",
-  "Value": {
-    "Command": "GETLASTCREATEDOBJECTS"
-  }
-}
-```
-
-**响应示例**：
-```json
-{
-  "Name": "GetLastCreatedObjects",
-  "Info": "获取最后创建的对象",
-  "Value": {
-    "Object_0": {
-      "Id": "{guid}",
-      "Guid": "{guid}",
-      "Type": "Curve",
-      "Layer": "Default",
-      "Name": "",
-      "DatabaseRecordId": "1"
-    },
-    "Count": "1"
-  }
-}
-```
-
-#### SELECTOBJECTS
-选择对象
-
-**请求**：
-```json
-{
-  "Name": "RHINO",
-  "Info": "选择对象",
-  "Value": {
-    "Command": "SELECTOBJECTS",
-    "Objects": "guid1,guid2,guid3"
-  }
-}
-```
-
-**参数说明**：Objects字段支持逗号、分号或空格分隔的多个对象ID
-
-**响应示例**：
-```json
-{
-  "Name": "SelectObjects",
-  "Info": "选择对象",
-  "Value": {
-    "TotalRequested": "3",
-    "TotalSelected": "2",
-    "InvalidIdCount": "0",
-    "NotFoundCount": "1",
-    "Message": "部分对象选择成功（成功: 2, 无效ID: 0, 未找到: 1）"
-  }
-}
-```
-
-#### GETANDSELECTLASTOBJECTS
-获取并选择最后创建的对象（复合命令）
-
-**请求**：
-```json
-{
-  "Name": "RHINO",
-  "Info": "获取并选择最后创建的对象",
-  "Value": {
-    "Command": "GETANDSELECTLASTOBJECTS"
-  }
-}
-```
-
-**响应示例**：
-```json
-{
-  "Name": "GetAndSelectLastObjects",
-  "Info": "获取并选择最后创建的对象",
-  "Value": {
-    "Objects": {
-      "Object_0": {
-        "Id": "{guid}",
-        "Guid": "{guid}",
-        "Type": "Curve",
-        "Layer": "Default",
-        "Name": "",
-        "DatabaseRecordId": "1"
-      },
-      "Count": "1"
-    },
-    "Selection": {
-      "TotalRequested": "1",
-      "TotalSelected": "1",
-      "InvalidIdCount": "0",
-      "NotFoundCount": "0"
-    }
-  }
-}
-```
-
-### Design命令
-
-Design 命令用于控制组件的添加、移除、连接和值设置等布局相关操作。
-
-#### ADDCOMPONENTBYGUID
-
-通过 GUID 添加组件
-
-**参数**：
-
-- `ComponentGuid` - 组件 GUID
-- `X` - X 坐标（数字）
-- `Y` - Y 坐标（数字）
-
-**示例**：
-
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponentByGuid",
-  "ComponentGuid": "c5b7583d-7958-49f1-ae16-6272dfb9452a",
-  "X": 100,
-  "Y": 100
-}
-```
-
-#### ADDCOMPONENTBYNAME
-
-通过名称添加组件
-
-**参数**：
-
-- `ComponentName` - 组件名称
-- `X` - X 坐标（数字）
-- `Y` - Y 坐标（数字）
-
-**示例**：
-
-```json
-{
-  "Name": "Design",
-  "Command": "AddComponentByName",
-  "ComponentName": "Addition",
-  "X": 100,
-  "Y": 100
-}
-```
-
-#### ADDPARAMWITHVALUE
-
-添加参数组件并设置值
-
-**参数**：
-
-- `ParamName` - 参数类型名称（必需）
-- `X` - X 坐标（必需）
-- `Y` - Y 坐标（必需）
-- `Path` - 数据路径（可选，格式如 "{0;1;2}"）
-- `Value` - 要设置的值（可选，可以是单个值或JSON数组）
-
-**支持的参数类型**：
-
-- `Number`/`num`/`param_number` - 数字参数
-- `Int`/`integer`/`param_int`/`param_integer` - 整数参数
-- `Bool`/`boolean`/`param_bool`/`param_boolean` - 布尔参数
-- `True`/`False` - 布尔开关
-- `Toggle` - 布尔切换
-- `Button` - 按钮
-- `Slider`/`numberslider` - 数字滑块
-- `Panel`/`param_panel` - 面板
-- `Text`/`string`/`param_text`/`param_string` - 文本参数
-- `Point`/`pt`/`param_pt`/`param_point` - 点参数
-- `Vector`/`vect`/`param_vect` - 向量参数
-- `Color`/`colour`/`param_color`/`param_colour` - 颜色参数
-- `Swatch` - 色板
-- `Plane`/`param_plane` - 平面参数
-- `Param_line` - 线参数
-- `Curve`/`crv`/`param_crv`/`param_curve` - 曲线参数
-- `Param_circle` - 圆参数
-
-**示例 1**：添加简单的数字参数
-
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "number",
-  "X": 100,
-  "Y": 100,
-  "Value": "42.5"
-}
-```
-
-**示例 2**：添加数字滑块并设置范围
-
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "slider",
-  "X": 100,
-  "Y": 100,
-  "Value": "0.0 < 0.5 < 1.0"
-}
-```
-
-**示例 3**：添加文本参数并设置值
-
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "text",
-  "X": 100,
-  "Y": 100,
-  "Value": "Hello Grasshopper"
-}
-```
-
-**示例 4**：添加带数据路径的参数（设置数据树）
-
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "number",
-  "X": 100,
-  "Y": 100,
-  "Path": "{0;1;2}",
-  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
-}
-```
-
-**示例 5**：添加布尔开关
-
-```json
-{
-  "Name": "Design",
-  "Command": "AddParamWithValue",
-  "ParamName": "true",
-  "X": 100,
-  "Y": 100
-}
-```
-
-**说明**：
-- `Value` 参数对于简单类型（布尔、滑块、面板、色板）可以是简单的字符串
-- 对于需要设置数据树的情况，`Value` 应该是 JSON 数组格式的字符串
-- `Path` 参数用于指定数据树中的路径，格式为 `{索引1;索引2;索引3}`
-- 某些参数类型（如 Button）不需要 Value 参数
-
-#### REMOVECOMPONENT
-
-移除组件
-
-**参数**：
-
-- `InstanceGuid` - 组件实例 GUID
-
-**示例**：
-
-```json
-{
-  "Name": "Design",
-  "Command": "RemoveComponent",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx"
-}
-```
-
-#### SETPARAMVALUE
-
-设置参数值
-
-**参数**：
-
-- `InstanceGuid` - 组件实例 GUID
-- `Path` - 数据路径（可选，格式如 "{0;1;2}"）
-- `Value` - 要设置的值（可以是单个值或JSON数组）
-
-**示例 1**：设置简单值
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "42"
-}
-```
-
-**示例 2**：设置数据树值
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Path": "{0;1;2}",
-  "Value": "[1.0, 2.0, 3.0, 4.0, 5.0]"
-}
-```
-
-**示例 3**：设置滑块值
-```json
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "0.5"
-}
-{
-  "Name": "Design",
-  "Command": "SetParamValue",
-  "InstanceGuid": "xxxx-xxxx-xxxx-xxxx",
-  "Value": "0.0 < 0.5 < 1.0"
-}
-```
-
-#### CONNECTCOMPONENTS
-
-连接两个组件的参数
-
-**参数**：
-
-- `FromGuid` - 源组件实例 GUID
-- `FromParameter` - 源组件输出参数名称
-- `ToGuid` - 目标组件实例 GUID
-- `ToParameter` - 目标组件输入参数名称
-
-**示例**：
-
-```json
-{
-  "Name": "Design",
-  "Command": "ConnectComponents",
-  "FromGuid": "instance-guid-1",
-  "FromParameter": "Result",
-  "ToGuid": "instance-guid-2",
-  "ToParameter": "A"
-}
-```
-
-#### DISCONNECTCOMPONENTS
-
-断开两个组件参数之间的连接
-
-**参数**：
-
-- `FromGuid` - 源组件实例 GUID
-- `FromParameter` - 源组件输出参数名称
-- `ToGuid` - 目标组件实例 GUID
-- `ToParameter` - 目标组件输入参数名称
-
-**示例**：
-
-```json
-{
-  "Name": "Design",
-  "Command": "DisconnectComponents",
-  "FromGuid": "instance-guid-1",
-  "FromParameter": "Result",
-  "ToGuid": "instance-guid-2",
-  "ToParameter": "A"
-}
-```
-
-## 数据库说明
-
-GrasshopperSever使用SQLite数据库存储组件信息和对象信息，采用**双层架构**。
-
-### 数据库架构
-
-#### 1. 主数据库（ComponentsInfo.db）
-- **位置**：插件目录
-- **用途**：存储全局组件信息，所有Grasshopper文档共享
-- **数据表**：
-  - MetaInfo - 元信息表
-  - ALLCOMPS - 组件信息表
-
-#### 2. 文档数据库（{_ghdata.db）
-- **位置**：
-  - 如果文档已保存：与gh文件同目录，命名为 `{文档名}_ghdata.db`
-  - 如果文档未保存：插件目录，命名为 `TempDocument_{GUID}.db`
-- **用途**：存储文档特定的数据，与文档紧密关联
-- **数据表**：
-  - RhinoObjects - Rhino对象信息表
-  - GHScriptModifyHistory - GHScript修改历史表
-  - ComponentExchangeHistory - 组件交换操作历史表
-
-**优势**：
-- 全局组件信息共享，提高性能
-- 文档特定数据与文档绑定，便于分享和管理
-- 自动清理未保存文档的临时数据
-
-### 数据库位置
-
-**主数据库路径**：`C:\Users\[用户名]\AppData\Roaming\Grasshopper\Libraries\GHserver\ComponentsInfo.db`
-
-**文档数据库路径**：
-- 已保存文档：`{文档路径目录}\{文档名}_ghdata.db`
-- 未保存文档：`{插件目录}\TempDocument_{GUID}.db`
-
-**获取方式**：使用`DATABASEPATH`命令获取主数据库路径
-
-### 数据库表结构
-
-#### 主数据库表
-
-##### 1. MetaInfo表（元信息表）
-
-用于跟踪主数据库中表的更新时间和描述信息。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| TableName | TEXT | NOT NULL UNIQUE | 表名 |
-| LastUpdateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 最后更新时间 |
-| Description | TEXT | - | 表描述 |
-
-**示例查询**：
-```sql
--- 查看所有表及其最后更新时间
-SELECT TableName, LastUpdateTime, Description FROM MetaInfo;
-```
-
-##### 2. ALLCOMPS表（组件信息表）
-
-存储所有Grasshopper组件的详细信息（全局缓存）。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| ComponentGuid | TEXT | NOT NULL UNIQUE | 组件的GUID（唯一标识） |
-| ComponentName | TEXT | NOT NULL | 组件名称 |
-| NickName | TEXT | - | 组件昵称 |
-| Description | TEXT | - | 组件描述 |
-| Category | TEXT | NOT NULL | 主分类 |
-| SubCategory | TEXT | NOT NULL | 子分类 |
-| Prototype | TEXT | DEFAULT '' | 包含输入输出的函数签名（JSON格式） |
-
-**示例查询**：
-```sql
--- 查询所有组件
-SELECT ComponentGuid, ComponentName, NickName, Category, SubCategory FROM ALLCOMPS;
-
--- 按分类查询组件
-SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE Category = 'Curve';
-
--- 模糊搜索组件
-SELECT ComponentName, NickName, Description FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%';
-
--- 统计组件数量
-SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category;
-```
-
-#### 文档数据库表
-
-##### 3. RhinoObjects表（Rhino对象信息表）
-
-存储Rhino中创建的对象信息（文档特定）。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| ObjectId | TEXT | NOT NULL | 对象ID（GUID字符串） |
-| ObjectType | TEXT | - | 对象类型（如：Curve, Surface, Mesh等） |
-| LayerName | TEXT | - | 图层名称 |
-| ObjectName | TEXT | - | 对象名称 |
-| CreateTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| DocumentSerialNumber | TEXT | - | 文档序列号 |
-| Description | TEXT | - | 描述信息 |
-
-**示例查询**：
-```sql
--- 查询所有对象
-SELECT ObjectId, ObjectType, LayerName, ObjectName, CreateTime FROM RhinoObjects;
-
--- 按类型查询对象
-SELECT ObjectId, LayerName FROM RhinoObjects WHERE ObjectType = 'Curve';
-
--- 查询最近创建的对象
-SELECT * FROM RhinoObjects ORDER BY CreateTime DESC LIMIT 10;
-
--- 按图层统计对象数量
-SELECT LayerName, COUNT(*) as Count FROM RhinoObjects GROUP BY LayerName;
-```
-
-##### 4. GHScriptModifyHistory表（GHScript组件修改历史表）
-
-存储GHScript组件的修改历史记录（文档特定）。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| InstanceGuid | TEXT | NOT NULL | 组件实例GUID |
-| ComponentGuid | TEXT | NOT NULL | 组件类型GUID |
-| ComponentName | TEXT | - | 组件名称 |
-| ModifyType | TEXT | NOT NULL | 修改类型（CODE_CHANGE或PARAM_CHANGE） |
-| ModifyContent | TEXT | - | 修改内容（JSON格式） |
-| Description | TEXT | - | 描述信息 |
-| ModifyTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 修改时间 |
-
-**示例查询**：
-```sql
--- 查询所有修改历史
-SELECT * FROM GHScriptModifyHistory ORDER BY ModifyTime DESC;
-
--- 查询特定实例的修改历史
-SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER BY ModifyTime DESC;
-
--- 查询代码修改历史
-SELECT * FROM GHScriptModifyHistory WHERE ModifyType = 'CODE_CHANGE' ORDER BY ModifyTime DESC;
-```
-
-##### 5. ComponentExchangeHistory表（组件交换操作历史表）
-
-存储组件交换操作的历史记录（文档特定），包括添加、删除、连接、断开等操作。
-
-| 字段名 | 数据类型 | 约束 | 说明 |
-|--------|----------|------|------|
-| Id | INTEGER | PRIMARY KEY AUTOINCREMENT | 主键，自增 |
-| OperationType | TEXT | NOT NULL | 操作类型（AddComponent, RemoveComponent, SetParamValue, ConnectComponents, DisconnectComponents） |
-| ComponentGuid | TEXT | - | 组件GUID |
-| InstanceGuid | TEXT | - | 组件实例GUID |
-| ComponentName | TEXT | - | 组件名称 |
-| PositionX | REAL | - | X坐标（添加组件时） |
-| PositionY | REAL | - | Y坐标（添加组件时） |
-| Value | TEXT | - | 设置的值（设置组件值时） |
-| FromInstanceGuid | TEXT | - | 源组件实例GUID（连接/断开操作时） |
-| FromParameter | TEXT | - | 源参数名称（连接/断开操作时） |
-| ToInstanceGuid | TEXT | - | 目标组件实例GUID（连接/断开操作时） |
-| ToParameter | TEXT | - | 目标参数名称（连接/断开操作时） |
-| OperationTime | DATETIME | DEFAULT CURRENT_TIMESTAMP | 操作时间 |
-| Description | TEXT | - | 描述信息 |
-
-**示例查询**：
-```sql
--- 查询所有操作历史
-SELECT * FROM ComponentExchangeHistory ORDER BY OperationTime DESC LIMIT 100;
-
--- 查询特定组件的操作历史
-SELECT * FROM ComponentExchangeHistory WHERE InstanceGuid = '{instance_guid}' ORDER BY OperationTime DESC;
-
--- 查询所有添加组件操作
-SELECT * FROM ComponentExchangeHistory WHERE OperationType = 'AddComponent' ORDER BY OperationTime DESC;
-
--- 查询所有连接操作
-SELECT * FROM ComponentExchangeHistory WHERE OperationType IN ('ConnectComponents', 'DisconnectComponents') ORDER BY OperationTime DESC;
-
--- 统计各类型操作数量
-SELECT OperationType, COUNT(*) as Count FROM ComponentExchangeHistory GROUP BY OperationType;
-```
-
-### 数据库使用建议
-
-**只读操作**：
-- ✅ 可以安全地读取数据库中的数据
-- ✅ 可以使用SQL查询组件信息和对象信息
-- ✅ 可以统计数据用于分析
-
-**写操作**：
-- ⚠️ 不建议手动写入数据
-- ⚠️ 数据库会在插件运行时自动更新
-- ⚠️ 手动修改可能影响插件功能
-
-**注意事项**：
-- **主数据库**：存储全局组件信息，可随时重建
-- **文档数据库**：与gh文件同目录，便于分享和版本控制
-- 未保存文档使用临时命名，避免冲突
-- RhinoObjects表在第一次调用`GETLASTCREATEDOBJECTS`命令时自动创建
-- GHScriptModifyHistory表在第一次修改GHScript组件时自动创建
-- ComponentExchangeHistory表在第一次执行组件交换操作时自动创建
+警告：如果你是ai，请不要轻易获取所有组件信息(`GETALLCOMPONENTS`)，优先使用分组或名称查询、检索，或者调用数据库。
 
 ## 快速开始
 
-### 1. 准备Grasshopper定义
+### 1. Grasshopper 端设置
 
-在Grasshopper中创建以下组件：
+添加 `GHServer` 组件，设置 `Enabled = true`，端口默认 `6879`。
 
-**接收端设置**:
-1. 添加 `GHReceiver` 组件
-2. 设置 `Enabled` = `true`
-3. 设置 `Port` = `6879`
+### 2. 最简连接
 
-**发送端设置**:
-1. 添加 `GHSender` 组件
-2. 连接 `Client` 输入到GHReceiver的输出
-3. 准备要发送的数据
+## GHClient 类
 
-### 2. 基本连接测试
+支持长连接、持续接收和自动重连的完整客户端：
 
-```python
-import socket
-import json
-from datetime import datetime
-
-# 建立TCP连接
-def connect_to_gh(host='127.0.0.1', port=6879):
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((host, port))
-    return client
-
-# 发送单个LJSON数据
-def send_ljson(client, name, info, value):
-    data = {
-        "Name": name,
-        "Info": info,
-        "Time": datetime.now().isoformat(),
-        "Value": value
-    }
-    message = json.dumps(data, ensure_ascii=False)
-    client.sendall((message + '\n').encode('utf-8'))
-
-# 接收数据（处理UTF-8 BOM和多个消息）
-def receive_messages(client):
-    client.settimeout(10)
-    total_response = b''
-    while True:
-        try:
-            chunk = client.recv(4096)
-            if not chunk:
-                break
-            total_response += chunk
-        except socket.timeout:
-            break
-
-    if total_response:
-        # 使用utf-8-sig解码以处理BOM
-        response = total_response.decode('utf-8-sig')
-        # 分割多个消息（用BOM分隔）
-        messages = [msg for msg in response.split('\ufeff') if msg.strip()]
-        return [json.loads(msg.strip()) for msg in messages]
-    return []
-
-# 使用示例
-client = connect_to_gh()
-
-# 发送测试数据（单个LJSON）
-send_ljson(client, "TestMessage", "测试消息", "Hello from AI!")
-
-# 接收响应
-responses = receive_messages(client)
-for response in responses:
-    print(f"响应: {response['Name']} - {response['Value']}")
-
-client.close()
-```
-
-## Python客户端示例
-
-### 完整的客户端类
-
-```python
-import socket
-import json
-import threading
-from datetime import datetime
-from typing import Optional, Callable, List, Dict, Any
-
-class GrasshopperClient:
-    """GrasshopperSever客户端"""
-
-    def __init__(self, host='127.0.0.1', port=6879):
-        self.host = host
-        self.port = port
-        self.client: Optional[socket.socket] = None
-        self.connected = False
-        self.receive_thread: Optional[threading.Thread] = None
-        self.receive_callback: Optional[Callable[[Dict], None]] = None
-
-    def connect(self) -> bool:
-        """连接到Grasshopper服务器"""
-        try:
-            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client.connect((self.host, self.port))
-            self.connected = True
-            print(f"已连接到Grasshopper服务器 {self.host}:{self.port}")
-            return True
-        except Exception as e:
-            print(f"连接失败: {e}")
-            return False
-
-    def disconnect(self):
-        """断开连接"""
-        if self.receive_thread:
-            self.receive_thread = None
-        if self.client:
-            self.client.close()
-            self.client = None
-        self.connected = False
-        print("已断开连接")
-
-    def send(self, name: str, info: str, value: Any) -> bool:
-        """发送单个LJSON数据到Grasshopper"""
-        if not self.connected or not self.client:
-            print("未连接到服务器")
-            return False
-
-        try:
-            data = {
-                "Name": name,
-                "Info": info,
-                "Time": datetime.now().isoformat(),
-                "Value": value
-            }
-            message = json.dumps(data, ensure_ascii=False)
-            self.client.sendall((message + '\n').encode('utf-8'))
-            return True
-        except Exception as e:
-            print(f"发送失败: {e}")
-            return False
-
-    def send_command(self, ljson_type: str, command_name: str, params: Dict) -> bool:
-        """发送命令到Grasshopper
-
-        Args:
-            ljson_type: 命令类型 (COMPONENT/DOCUMENT/RHINO/SCRIPT/DESIGN)
-            command_name: 具体命令名称
-            params: 命令参数
-        """
-        return self.send(ljson_type, f"执行{command_name}", {
-            "Command": command_name,
-            **params
-        })
-
-    def receive(self) -> List[Dict]:
-        """接收来自Grasshopper的数据（阻塞）"""
-        if not self.connected or not self.client:
-            return []
-
-        try:
-            self.client.settimeout(10)
-            total_response = b''
-            while True:
-                try:
-                    chunk = self.client.recv(8192)
-                    if not chunk:
-                        break
-                    total_response += chunk
-                except socket.timeout:
-                    break
-
-            if total_response:
-                # 使用utf-8-sig解码以处理BOM
-                response = total_response.decode('utf-8-sig')
-                # 分割多个消息
-                messages = [msg for msg in response.split('\ufeff') if msg.strip()]
-                return [json.loads(msg.strip()) for msg in messages]
-        except Exception as e:
-            print(f"接收失败: {e}")
-        return []
-
-    def start_receive_thread(self, callback: Callable[[Dict], None]):
-        """启动接收线程，持续接收数据"""
-        self.receive_callback = callback
-
-        def receive_loop():
-            while self.connected and self.client:
-                responses = self.receive()
-                for response in responses:
-                    if self.receive_callback:
-                        self.receive_callback(response)
-
-        self.receive_thread = threading.Thread(target=receive_loop, daemon=True)
-        self.receive_thread.start()
-        print("接收线程已启动")
-
-    def __enter__(self):
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disconnect()
-```
+见 [GHClient 类](Example/ghclient.py)
 
 ### 使用示例
 
-```python
-# 示例1: 基本发送和接收
-with GrasshopperClient() as gh:
-    # 发送数据（单个LJSON）
-    gh.send("Point", "点坐标", {"x": 10, "y": 20, "z": 30})
-
-    # 接收响应
-    responses = gh.receive()
-    for response in responses:
-        print(f"收到响应: {response['Name']} - {response['Value']}")
-
-# 示例2: 持续接收数据
-def on_receive(data):
-    print(f"收到数据: {data['Name']}")
-    # 处理接收到的数据
-    print(f"  值: {data['Value']}")
-
-gh = GrasshopperClient()
-gh.connect()
-gh.start_receive_thread(on_receive)
-
-# 继续发送数据...
-gh.send("Radius", "半径", 5.0)
-gh.send("Height", "高度", 10.0)
-
-# 示例3: 发送几何数据
-with GrasshopperClient() as gh:
-    # 发送线段
-    gh.send("Line", "线段", {
-        "type": "Line",
-        "start": [0, 0, 0],
-        "end": [10, 10, 10]
-    })
-
-    # 发送圆
-    gh.send("Circle", "圆", {
-        "type": "Circle",
-        "center": [5, 5, 0],
-        "radius": 3.0
-    })
-```
-
-## 高级功能
-
-### 1. 发送命令
-
-AI可以发送各种命令到GrasshopperSever：
+见 [tcp测试](Example/tcp_test.py)
 
 ```python
-# 获取数据库路径
-with GrasshopperClient() as gh:
-    gh.send_command("DOCUMENT", "DATABASEPATH", {})
-    responses = gh.receive()
-    for response in responses:
-        if response['Name'] == 'DatabasePath':
-            db_path = response['Value']['DatabasePath']
-            print(f"数据库路径: {db_path}")
-
-# 搜索组件
-with GrasshopperClient() as gh:
-    gh.send_command("COMPONENT", "SEARCHCOMPONENTSBYNAME", {"Name": "Circle"})
-    responses = gh.receive()
-    for response in responses:
-        if response['Name'] == 'SearchComponentsByName':
-            count = response['Value']['Count']
-            print(f"找到 {count} 个Circle组件")
-
-# 获取最后创建的Rhino对象
-with GrasshopperClient() as gh:
-    gh.send_command("RHINO", "GETLASTCREATEDOBJECTS", {})
-    responses = gh.receive()
-    for response in responses:
-        if response['Name'] == 'GetLastCreatedObjects':
-            print(f"最后创建的对象: {response['Value']}")
-```
-
-### 2. 批量操作
-
-批量发送多个数据（通过多次send调用）：
-
-```python
-def batch_send(gh: GrasshopperClient, operations: List[Dict]):
-    """批量发送操作"""
-    for op in operations:
-        gh.send(
-            op.get("name", "Operation"),
-            op.get("description", ""),
-            op.get("data", {})
+# 基本用法
+def test_command_document(port):
+    responses = []
+    with GHClient(port = port) as client:
+        responses = client.send_command(
+            name="DOCUMENT",
+            info="获取数据库路径",
+            value={"Command": "DATABASEPATH"}
         )
-
-# 使用示例
-operations = [
-    {
-        "name": "CreatePoint",
-        "description": "创建点",
-        "data": {"x": 10, "y": 20, "z": 0}
-    },
-    {
-        "name": "CreateCircle",
-        "description": "创建圆",
-        "data": {"center": [10, 20, 0], "radius": 5}
-    },
-    {
-        "name": "Extrude",
-        "description": "拉伸",
-        "data": {"distance": 10}
-    }
-]
-
-with GrasshopperClient() as gh:
-    batch_send(gh, operations)
+        print(responses)
+    return len(responses) == 2
 ```
+
+### Design 命令典型流程
+
+```python
+import re
+
+def extract_guid(response_text):
+    """从响应中提取 InstanceGuid"""
+    matches = re.findall(r'\\"InstanceGuid\\":\s*\\"([^"]+)\\"', response_text)
+    if matches: return matches[-1]
+    matches = re.findall(r'"InstanceGuid"\s*:\s*"([^"]+)"', response_text)
+    return matches[-1] if matches else None
+
+# 1. 添加组件
+with GHClient(port=6879) as gh:
+    gh.send_command("DESIGN", "ADDCOMPONENTBYNAME", {"ComponentName": "Addition", "X": 100, "Y": 100})
+    responses = gh.receive()
+    instance_guid = None
+    for r in responses:
+        if 'InstanceGuid' in str(r):
+            instance_guid = extract_guid(json.dumps(r))
+
+# 2. 设置参数值（建议重新连接）
+with GHClient(port=6879) as gh:
+    gh.send_command("DESIGN", "SETPARAMVALUE", {"InstanceGuid": instance_guid, "Value": "42"})
+
+# 3. 连接组件
+with GHClient(port=6879) as gh:
+    gh.send_command("DESIGN", "CONNECTCOMPONENTS", {
+        "FromGuid": "source-guid", "FromParameter": "Result",
+        "ToGuid": "target-guid", "ToParameter": "A"
+    })
+```
+
+> Design 命令的完整参数和示例见 [design_test.md](Example/CMD_DESIGN/design_test.md)。
+
+## 数据库访问
+
+通过 `DATABASEPATH` 命令获取主数据库路径后可直接查询：
+
+```python
+import sqlite3
+
+# 获取路径
+with GHClient(port=6879) as gh:
+    responses = client.send_command(
+        name="DOCUMENT",
+        info="获取数据库路径",
+        value={"Command": "DATABASEPATH"}
+    )
+    if responses.get('Name') == 'DatabasePath':
+        db_path = r['Value']['DatabasePath']
+
+# 查询组件
+conn = sqlite3.connect(db_path)
+cursor = conn.cursor()
+cursor.execute("SELECT ComponentGuid, ComponentName, Category FROM ALLCOMPS WHERE ComponentName LIKE '%Circle%'")
+for row in cursor.fetchall():
+    print(row)
+conn.close()
+```
+
+### 双层架构
+
+| 数据库 | 位置 | 表 |
+|--------|------|----|
+| 主数据库 ComponentsInfo.db | 插件目录 | ALLCOMPS, MetaInfo |
+| 文档数据库 `{名}_ghdata.db` | gh 文件同目录 | RhinoObjects, GHScriptModifyHistory, ComponentExchangeHistory |
+
+- 主数据库存储全局组件信息，可随时重建
+- 文档数据库存储文档特定数据，建议只读访问
+- 未保存文档使用临时命名 `TempDocument_{GUID}.db`
+
+> 完整表结构和 SQL 示例见 [Component 命令文档](Example/CMD_COMPONENT/commands_COMPONENT.md) 和 [Rhino 命令文档](Example/CMD_RHINO/commands_RHINO.md)。
 
 ## 故障排除
 
-### 常见问题
+### 连接失败
 
-#### 1. 连接失败
+- 确认 Grasshopper 正在运行
+- 确认 GHReceiver/GHServer 的 `Enabled` 为 `true`
+- 确认端口号正确（默认 6879）
+- 检查防火墙是否阻止端口
 
-**问题**: 无法连接到Grasshopper服务器
+### 数据格式错误
 
-**解决方案**:
-- 确认Grasshopper正在运行
-- 检查GHReceiver的 `Enabled` 是否为 `true`
-- 验证端口号是否正确（默认6879）
-- 检查防火墙设置
+- 使用单个 Ljson 对象，不要使用 Items 数组
+- 确保包含 `Name`, `Info`, `Time`, `Value` 四个字段
+- 命令类型必须是 `COMPONENT` / `DOCUMENT` / `RHINO` / `SCRIPT` / `DESIGN` 之一
 
-```python
-# 测试连接
-def test_connection(host='127.0.0.1', port=6879):
-    try:
-        test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        test_socket.settimeout(5)
-        test_socket.connect((host, port))
-        test_socket.close()
-        print(f"端口 {port} 可访问")
-        return True
-    except Exception as e:
-        print(f"端口 {port} 不可访问: {e}")
-        return False
+### 响应解析
 
-test_connection()
-```
+- 使用 `utf-8-sig` 解码响应（处理 BOM）
+- 用 `\ufeff` 分割多条消息
+- 设置合理的超时时间（建议 10-30 秒）
 
-#### 2. 数据格式错误
+### Design 命令注意
 
-**问题**: 发送的数据无法被正确解析
+- `SETPARAMVALUE`、`REMOVECOMPONENT`、`CONNECTCOMPONENTS` 等需要 `InstanceGuid`（组件实例 GUID），不是 `ComponentGuid`（组件类型 GUID）
+- 建议每次命令都重新连接，避免缓冲区问题
+- `ADDPARAMWITHVALUE` 中列表值使用字符串数组格式，如 `"[\"1.0\", \"2.0\"]"`
 
-**解决方案**:
-- 确保使用单个LJSON对象格式（不是Items数组）
-- 检查Name、Info、Time、Value字段是否存在
-- 发送命令时使用正确的格式（Name=命令类型，Value.Command=具体命令）
+### 验证工具
 
 ```python
-def validate_ljson(data):
-    """验证Ljson数据格式"""
-    if not isinstance(data, dict):
-        return False
-    # 单个LJSON对象必须有这4个字段
-    required_fields = ["Name", "Info", "Time", "Value"]
-    if not all(key in data for key in required_fields):
-        return False
+def validate_ljson(data: dict) -> bool:
+    """验证 Ljson 格式"""
+    required = ["Name", "Info", "Time", "Value"]
+    if not all(k in data for k in required): return False
+    if isinstance(data["Value"], dict) and "Command" in data["Value"]:
+        if data["Name"] not in ["COMPONENT", "DOCUMENT", "RHINO", "SCRIPT", "DESIGN"]: return False
     return True
 
-# 使用示例
-data = {
-    "Name": "TestMessage",
-    "Info": "测试消息",
-    "Time": datetime.now().isoformat(),
-    "Value": "Hello"
-}
-if validate_ljson(data):
-    print("数据格式正确")
-```
-
-#### 3. 接收超时
-
-**问题**: 等待响应超时
-
-**解决方案**:
-- 添加超时处理
-- 检查Grasshopper定义是否正确计算
-- 确认GHSender已连接到GHReceiver
-
-```python
-def receive_with_timeout(gh: GrasshopperClient, timeout=5.0):
-    """带超时的接收"""
-    gh.client.settimeout(timeout)
+def test_connection(host='127.0.0.1', port=6879) -> bool:
+    """测试端口连通性"""
     try:
-        return gh.receive()
-    except socket.timeout:
-        print("接收超时")
-        return None
-    finally:
-        gh.client.settimeout(None)  # 重置超时
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(5)
+        s.connect((host, port))
+        s.close()
+        return True
+    except: return False
 ```
 
-#### 4. 编码问题
+## 相关文档
 
-**问题**: 中文字符显示乱码
+- [主文档](README.md) - 项目概述、组件介绍、命令速览
+- [主要功能](MainSectors.md) - 主要功能
+- [组件开发文档](design.md) - 各组件的输入输出参数
+- [TCP 通信测试](Example/tcp_test.md) - 通信协议测试记录
+- [系统测试报告](Example/test_report.md) - 完整功能测试报告
+- [Component 命令](Example/CMD_COMPONENT/commands_COMPONENT.md) - 组件查询命令详解
+- [Design 命令](Example/CMD_DESIGN/design_test.md) - 设计布局命令详解
+- [Document 命令](Example/CMD_DOCUMENT/gh_file_test_report.md) - 文档操作命令详解
+- [Rhino 命令](Example/CMD_RHINO/commands_RHINO.md) - Rhino 脚本命令详解
+- [Script 命令](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md) - 脚本编辑命令详解
+- [ScriptEditor 测试](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.md) - ScriptEditor 功能测试
 
-**解决方案**:
-- 确保使用UTF-8编码
-- 在JSON序列化时使用 `ensure_ascii=False`
-- **重要**: 解码响应时使用 `utf-8-sig` 以处理UTF-8 BOM标记
-
-```python
-# 正确的中文处理（发送）
-message = json.dumps(data, ensure_ascii=False)
-encoded_message = message.encode('utf-8')
-
-# 正确的解码（接收）- 使用utf-8-sig处理BOM
-decoded_message = data.decode('utf-8-sig')
-
-# 示例
-total_response = b''
-while True:
-    chunk = client.recv(4096)
-    if not chunk:
-        break
-    total_response += chunk
-
-# 使用utf-8-sig解码
-response = total_response.decode('utf-8-sig')
-```
-
-### 调试技巧
-
-#### 启用详细日志
-
-```python
-import logging
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
-class DebugGrasshopperClient(GrasshopperClient):
-    def send(self, name, info, value):
-        logging.debug(f"发送数据: Name={name}, Info={info}, Value={value}")
-        result = super().send(name, info, value)
-        logging.debug(f"发送结果: {result}")
-        return result
-
-    def receive(self):
-        data = super().receive()
-        logging.debug(f"接收数据: {len(data)} 条消息")
-        for i, msg in enumerate(data):
-            logging.debug(f"  消息{i}: {msg['Name']}")
-        return data
-```
-
-#### 数据包监控
-
-```python
-def monitor_traffic(gh: GrasshopperClient):
-    """监控网络流量"""
-    sent_count = 0
-    received_count = 0
-
-    def wrapped_send(name, info, value):
-        nonlocal sent_count
-        sent_count += 1
-        print(f"[发送 #{sent_count}] Name={name}")
-        return gh.send(name, info, value)
-
-    def wrapped_receive():
-        nonlocal received_count
-        data = gh.receive()
-        if data:
-            received_count += 1
-            print(f"[接收 #{received_count}] {len(data)} 条消息")
-        return data
-
-    gh.send = wrapped_send
-    gh.receive = wrapped_receive
-```
-
-## 最佳实践
-
-1. **错误处理**: 始终包含适当的错误处理
-2. **资源管理**: 使用上下文管理器确保连接正确关闭
-3. **超时设置**: 为所有网络操作设置合理的超时
-4. **数据验证**: 在发送前验证数据格式
-5. **日志记录**: 记录所有通信以便调试
-6. **重连机制**: 实现自动重连以应对连接丢失
-
-## 扩展阅读
-
-- [GrasshopperSever主文档](./README.md)
-- [Ljson数据结构详解](./design.md)
-- [Grasshopper API文档](https://developer.rhino3d.com/guides/grasshopper/)
-
-## 支持
-
-如有问题，请查阅故障排除部分或联系插件开发者。

@@ -21,13 +21,8 @@ namespace GrasshopperSever.Components
         {
         }
 
-        public override GH_Exposure Exposure
-        {
-            get
-            {
-                return GH_Exposure.primary;
-            }
-        }
+        public override GH_Exposure Exposure => GH_Exposure.primary;
+
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
@@ -103,9 +98,9 @@ namespace GrasshopperSever.Components
         public static Ljson DoCommand(Ljson lst, ref string out_data)
         {
             var h_type = LjsonTypeDetector.DetectType(lst);
+            out_data = lst.GetParameterString("OUTPUT");
 
             // 根据 Value 值判断类型（不区分大小写）
-            out_data = lst.GetParameterString("OUTPUT");
             switch (h_type)
             {
                 case LjsonType.Component:
