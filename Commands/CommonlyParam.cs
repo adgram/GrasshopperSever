@@ -125,10 +125,14 @@ namespace GrasshopperSever.Commands
                     component = new Param_Guid();
                     break;
                 default:
-                    return null;
+                    return ComponentExchange.AddComponentByName(name, point);
             }
-            SetParamValue(component, path, value);
-            return ComponentExchange.AddComponent(component, point);
+            var tag = SetParamValue(component, path, value);
+            var lj = ComponentExchange.AddComponent(component, point);
+            string ipt = "不包含自定义值";
+            if (tag) ipt = "包含自定义值";
+            lj.SetParameter("input", JsonSerializer.SerializeToElement(ipt));
+            return lj;
         }
         
         
@@ -138,6 +142,7 @@ namespace GrasshopperSever.Commands
         {
             Exception caughtException = null;
             string componentName = null;
+            bool tag = false;
 
             RhinoApp.InvokeOnUiThread(new Action(() =>
             {
@@ -152,7 +157,8 @@ namespace GrasshopperSever.Commands
                     {
                         if (component is IGH_Param item)
                         {
-                            componentName = SetParamValue(item, path, value);
+                            componentName = item.Name;
+                            tag = SetParamValue(item, path, value);
                         }
                     }
                     else
@@ -172,7 +178,7 @@ namespace GrasshopperSever.Commands
             }
 
             // 记录设置组件值操作到数据库
-            if (!string.IsNullOrEmpty(componentName))
+            if (tag)
             {
                 ComponentExchangeDB.RecordSetComponentValue(
                     instanceGuid: guid,
@@ -186,29 +192,29 @@ namespace GrasshopperSever.Commands
             return false;
         }
 
-        public static string SetParamValue(IGH_Param item, string path, string value)
+        public static bool SetParamValue(IGH_Param item, string path, string value)
         {
             if (item is GH_BooleanToggle togglep)
             {
                 togglep.LoadState(value);
-                return togglep.Name;
+                return true;
             }
             if (item is GH_NumberSlider slider)
             {
                 // 样式： "0.0 < 0.5 < 1.0"
                 slider.SetInitCode(value);
-                return slider.Name;
+                return true;
             }
             if (item is GH_Panel panelp)
             {
                 // 支持换行，但是默认值只能是item，不能是list
                 panelp.SetUserText(value);
-                return panelp.Name;
+                return true;
             }
             if (item is GH_ColourSwatch swatch)
             {
                 swatch.LoadState(value);
-                return swatch.Name;
+                return true;
             }
             /*
             // 示例数据结构
@@ -246,7 +252,7 @@ namespace GrasshopperSever.Commands
             return SetParamList(item, pathp, dataList);
         }
         
-        public static string SetParamList(IGH_Param item, GH_Path path, IEnumerable<string> datalist)
+        public static bool SetParamList(IGH_Param item, GH_Path path, IEnumerable<string> datalist)
         {
             if (path.Length == 0)
             {
@@ -255,37 +261,37 @@ namespace GrasshopperSever.Commands
             if (item is Param_Number nump)
             {
                 nump.AddVolatileDataList(path, datalist);
-                return nump.Name;
+                return true;
             }
             if (item is Param_Integer intp)
             {
                 intp.AddVolatileDataList(path, datalist);
-                return intp.Name;
+                return true;
             }
             if (item is Param_Boolean boolp)
             {
                 boolp.AddVolatileDataList(path, datalist);
-                return boolp.Name;
+                return true;
             }
             if (item is Param_String textp)
             {
                 textp.AddVolatileDataList(path, datalist);
-                return textp.Name;
+                return true;
             }
             if (item is Param_Point pointp)
             {
                 pointp.AddVolatileDataList(path, datalist);
-                return pointp.Name;
+                return true;
             }
             if (item is Param_Vector vectp)
             {
                 vectp.AddVolatileDataList(path, datalist);
-                return vectp.Name;
+                return true;
             }
             if (item is Param_Colour colorp)
             {
                 colorp.AddVolatileDataList(path, datalist);
-                return colorp.Name;
+                return true;
             }
             if (item is Param_Surface surfp)
             {
@@ -296,7 +302,7 @@ namespace GrasshopperSever.Commands
                     gHs.Add(new GH_Surface(Guid.Parse(str)));
                 }
                 surfp.AddVolatileDataList(path, gHs);
-                return surfp.Name;
+                return true;
             }
             if (item is Param_Curve cuvp)
             {
@@ -307,7 +313,7 @@ namespace GrasshopperSever.Commands
                     gHs.Add(new GH_Curve(Guid.Parse(str)));
                 }
                 cuvp.AddVolatileDataList(path, gHs);
-                return cuvp.Name;
+                return true;
             }
             if (item is Param_Brep brep)
             {
@@ -318,7 +324,7 @@ namespace GrasshopperSever.Commands
                     gHs.Add(new GH_Brep(Guid.Parse(str)));
                 }
                 brep.AddVolatileDataList(path, gHs);
-                return brep.Name;
+                return true;
             }
             if (item is Param_Mesh msp)
             {
@@ -329,7 +335,7 @@ namespace GrasshopperSever.Commands
                     gHs.Add(new GH_Mesh(Guid.Parse(str)));
                 }
                 msp.AddVolatileDataList(path, gHs);
-                return msp.Name;
+                return true;
             }
             if (item is Param_Guid idp)
             {
@@ -340,9 +346,9 @@ namespace GrasshopperSever.Commands
                     gHs.Add(Guid.Parse(str));
                 }
                 idp.AddVolatileDataList(path, gHs);
-                return idp.Name;
+                return true;
             }
-            return null;
+            return false;
         }
 
         public static List<Guid> GuidFromString(IEnumerable<string> datalist)

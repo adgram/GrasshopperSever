@@ -14,8 +14,6 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 **内置的处理命令**组件有两个，分别是GHServer和GHActuator，它们两个可以接收到命令是相同的，区别是前者只能从客户端接收数据，且处理完可以自动返回。
 
-详细的命令列表请见 [AI_CLIENT_TUTORIAL.md](AI_CLIENT_TUTORIAL.md)。
-
 ### 1 创建连接
 
 在grasshopper中，添加一个GHServer组件，Enabled端口为True，Port端口为5695。
@@ -27,28 +25,58 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 ### 2 连接测试
 
 ```
-> @AI_CLIENT_TUTORIAL.md，我已经创建了一个连接，端口5695，请尝试连接。可以用shell调用python工具。
+> 这个项目是一个grasshopper的tcp服务项目，你可以作为客户端使用shell工具进行连接并执行相关命令。我已经创建了一个服务，端口5695，请阅读相关文件并尝试连接。
 ```
 
 ```
 Shell python -c " import socket import json from datetime import datetime  HOST = '127.0.0.1' PORT = 5695  t…
      成功连接到 127.0.0.1 : 5695
      发送测试数据: TestMessage
-     收到 3 条响应:
+     收到 2 条响应:
        [1] Name: OK , Value: 客户端已连接
        [2] Name: OK , Value: 数据接收成功
-       [3] Name: OK , Value: ok
      连接已关闭
 ```
 
 ### 3 内置命令
+
+详细的命令列表请见 [CLIENT_TUTORIAL.md](CLIENT_TUTORIAL.md)。内置命令目的是提供ai工具自动获取一些信息和执行一些基本功能。
 
 ```
 > 尝试使用相关工具，查询“Find similar member”组件的信息，给我介绍一下这个组件怎么使用。
 ```
 
 ```
-
+✦ 成功连接到5695端口并获取了"Find similar member"组件的详细信息！以下是该组件的完整介绍：
+  "Find similar member" 组件详细信息
+  基本信息
+   - 组件名称: Find similar member
+   - 昵称: FSim
+   - 分类: Sets > Sets
+   - 组件GUID: b4d4235f-14ff-4d4e-a29a-b358dcd2baf4
+   - 描述: Find the most similar member in a set. (在一个集合中找到最相似的成员)
+  函数原型
+   输入参数:
+   - Data: Generic Data [item]     - 要查找的目标数据项
+   - Set: Generic Data [list]     - 包含多个数据项的集合
+   输出参数:
+   - Hit: Generic Data [item]      - 找到的最相似成员
+   - Index: Integer [item]        - 该成员在集合中的索引位置
+  组件功能
+  这个组件的核心功能是在一个数据集合中找到与给定数据项最相似的那个成员。它通过比较算法分析数据项之间的相似性，返回
+  最匹配的结果。
+  使用场景
+   1. 数据匹配: 在大量数据中查找最相似的项目
+   2. 推荐系统: 基于用户偏好找到最相似的产品或内容
+   3. 模式识别: 在数据集中找到与目标模式最接近的样本
+   4. 聚类分析: 帮助确定数据点所属的类别
+  示例应用
+  假设你有一个包含多个几何形状的集合，想要找到与特定形状最相似的形状：
+   - Data: 目标几何形状
+   - Set: 几何形状集合
+   - 输出: 最相似的形状及其在集合中的索引位置
+   
+✦ 这个组件非常适合需要相似度匹配的Grasshopper工作流，特别是在数据分析和几何处理方面。
 ```
 
 ## 三、rhino命令
@@ -60,12 +88,30 @@ Shell python -c " import socket import json from datetime import datetime  HOST 
 详见[Rhino 命令](Example/CMD_RHINO/commands_RHINO.md) - Rhino 脚本命令详解。
 
 ```
-> 尝试创建一个环状体，获取guid，并创建一个brep拾取它。
+> 尝试在rhino中创建一个环状体，获取其guid，并在gh中创建一个brep拾取它。
 ```
 
 ```
-
+已成功完成所有任务：
+1. **创建环状体** - 在Rhino中创建了一个中心在(0,0,0)，半径10，管半径2的环状体
+   执行脚本: _-Torus 0,0,0 10 2
+2. **获取GUID** - 成功获取环状体的GUID
+   GUID: 95f18744-90ac-4ba1-8d67-caf016c758df
+   类型: Brep
+   图层: 默认值
+3. **在Grasshopper中拾取** - 成功在位置(100, 100)创建brep参数并拾取该环状体
+   组件GUID: 919e146f-30ae-4aae-be34-4d72f555e7da
+   实例GUID: 98de1a2c-6f06-42b6-ab03-4fa2c80230db
+   组件名称: Brep
+相关命令:
+1. RHINOSCRIPT - 执行Rhino脚本命令
+2. GETLASTCREATEDOBJECTS - 获取最后创建的对象
+3. AddParamWithValue - 添加参数组件并设置值
 ```
+
+![image-20260421172046241](Example/SECTORS/image-20260421172046241.png)
+
+rhino命令和相关param命令，可以完成rhino建模到gh拾取之间的操作。
 
 ## 四、gh脚本注入
 

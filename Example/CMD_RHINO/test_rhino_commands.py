@@ -1,8 +1,6 @@
 import sys
 sys.path.append('..')
 from ghclient import GHClient
-import json
-
 
 def send_command(port, ljson_type, command_name, params):
     """发送命令到GrasshopperSever"""

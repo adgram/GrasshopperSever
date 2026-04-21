@@ -183,20 +183,6 @@ conn.close()
     Enabled: True   Enabled: True
 ```
 
-### Python 连接代码
-
-```python
-import socket
-import json
-from datetime import datetime
-
-HOST = '127.0.0.1'
-PORT = 9653
-
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect((HOST, PORT))
-```
-
 ---
 
 # 详细测试记录
@@ -291,28 +277,15 @@ client.connect((HOST, PORT))
 - 需要正确处理响应中的嵌套 JSON（"组件添加成功{"..."}" 格式）
 
 **获取 InstanceGuid 的方法**:
+
 ```python
-import re
+from ghclient import GHClient
 
-# 从响应中提取 InstanceGuid
-response = '{"Name":"OK","Value":"组件添加成功{\"ComponentGuid\":\"...\",\"InstanceGuid\":\"9e2f18ed-0d94-4648-a81b-14084b528863\",...}"}'
-
-# 方法1: 使用正则表达式
-match = re.search(r'\\"InstanceGuid\\":\s*\\"([^"]+)\\"', response)
-if match:
-    instance_guid = match.group(1)
-
-# 方法2: 分割响应并解析 JSON
-messages = response.split('\ufeff')
-for msg in messages:
-    if 'InstanceGuid' in msg:
-        # 找到第一个 '{' 的位置
-        json_start = msg.find('{')
-        if json_start != -1:
-            json_str = msg[json_start:]
-            data = json.loads(json_str)
-            instance_guid = data.get('InstanceGuid')
-            break
+# 1. 添加组件
+with GHClient(port=6879) as gh:
+    value = {"Command": "AddComponentByName", "ComponentName": "Addition", "X": 200, "Y": 100}
+    p = gh.send_command("DESIGN", "", value)
+    print(gh.extract_guid(p))
 ```
 
 ---
@@ -528,95 +501,6 @@ for msg in messages:
 ```
 
 **测试结果**: ✓ 功能可用
-
----
-
-## 完整测试脚本
-
-### 测试添加组件并设置值
-
-```python
-import socket
-import json
-import re
-from datetime import datetime
-
-HOST = '127.0.0.1'
-PORT = 9653
-
-def send_and_receive(command_dict, timeout=10):
-    """发送命令并接收响应，每次都重新连接"""
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.settimeout(5)
-    
-    try:
-        client.connect((HOST, PORT))
-        time.sleep(0.5)
-        
-        # 发送
-        data = {
-            'Name': 'Design',
-            'Info': 'SETPARAMVALUE 测试',
-            'Time': datetime.now().isoformat(),
-            'Value': command_dict
-        }
-        message = json.dumps(data, ensure_ascii=False)
-        client.sendall((message + '\n').encode('utf-8'))
-        
-        # 接收
-        client.settimeout(timeout)
-        total = b''
-        start = time.time()
-        while time.time() - start < timeout:
-            try:
-                chunk = client.recv(8192)
-                if not chunk:
-                    break
-                total += chunk
-                time.sleep(0.1)
-            except socket.timeout:
-                break
-        
-        if total:
-            return total.decode('utf-8-sig')
-        return ""
-    finally:
-        client.close()
-
-def extract_guid(response):
-    """从响应中提取 InstanceGuid"""
-    if not response:
-        return None
-    
-    # 查找转义的 InstanceGuid
-    matches_escaped = re.findall(r'\\"InstanceGuid\\":\s*\\"([^"]+)\\"', response)
-    if matches_escaped:
-        return matches_escaped[-1]
-    
-    # 查找未转义的
-    matches = re.findall(r'"InstanceGuid"\s*:\s*"([^"]+)"', response)
-    if matches:
-        return matches[-1]
-    
-    return None
-
-# 步骤1: 添加 Number Slider
-r1 = send_and_receive({
-    'Command': 'ADDCOMPONENTBYGUID',
-    'ComponentGuid': '57da07bd-ecab-415d-9d86-af36d7073abc',
-    'X': 500,
-    'Y': 100
-})
-
-guid = extract_guid(r1)
-
-# 步骤2: 设置值
-r2 = send_and_receive({
-    'Command': 'SETPARAMVALUE',
-    'InstanceGuid': guid,
-    'Value': '0.75'
-})
-```
 
 ---
 

@@ -9,7 +9,7 @@ English | [中文](README.md)
 ```
 GrasshopperSever/
 ├── README_EN.md                      # This document
-├── AI_CLIENT_TUTORIAL.md             # AI Client Connection Tutorial
+├── CLIENT_TUTORIAL.md             # AI Client Connection Tutorial
 ├── design.md                         # Component Development Technical Documentation
 ├── MainSectors.md                    # Main Features
 └── Example/
@@ -144,7 +144,7 @@ AI Client ──TCP──> GHReceiver(Receive) ──> GH Processing ──> GHS
 AI Client ──TCP──> GHServer(Receive+Execute+Response) ──> AI Client
 ```
 
-> For detailed communication protocol and Python client code, see [AI_CLIENT_TUTORIAL.md](AI_CLIENT_TUTORIAL.md).
+> For detailed communication protocol and Python client code, see [CLIENT_TUTORIAL.md](CLIENT_TUTORIAL.md).
 
 ## Database
 
@@ -166,16 +166,23 @@ The main database contains ALLCOMPS (component info) and MetaInfo tables; the do
 3. Use Python client to connect:
 
 ```python
-from Example.ghclient import GHClient
-GHClient.test_command_document(6, "DOCUMENT", "get database path", {"Command": "DATABASEPATH"})
+from ghclient import GHClient
+
+with GHClient(port = 6879) as client:
+    responses = client.send_command(
+        name="DOCUMENT",
+        info="get database path",
+        value={"Command": "DATABASEPATH"}
+    )
+    print(responses)
 ```
 
-> For complete client class and advanced usage, see [AI Client Tutorial](AI_CLIENT_TUTORIAL.md) and [Main Features](MainSectors.md).
+> For complete client class and advanced usage, see [AI Client Tutorial](CLIENT_TUTORIAL.md) and [Main Features](MainSectors.md).
 
 ## Related Documentation
 
 - [Main Features](MainSectors.md) - Main Features
-- [AI Client Tutorial](AI_CLIENT_TUTORIAL.md) - Communication Protocol, Client Code and Troubleshooting
+- [AI Client Tutorial](CLIENT_TUTORIAL.md) - Communication Protocol, Client Code and Troubleshooting
 - [Component Development Documentation](design.md) - Input/Output Parameters and Technical Details for Each Component
 - [TCP Communication Test](Example/tcp_test.md) - Communication Protocol Test Records
 - [System Test Report](Example/test_report.md) - Complete Functionality Test Report

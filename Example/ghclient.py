@@ -4,6 +4,8 @@ TCP 客户端标准方式
 import socket, json, threading, time
 from datetime import datetime
 from typing import Optional, Callable, Any
+import re
+
 
 
 class GHClient:
@@ -147,6 +149,20 @@ class GHClient:
 
     def __exit__(self, *args):
         self.disconnect()
+
+    @staticmethod
+    def extract_guid(response_text):
+        """从响应中提取 InstanceGuid"""
+        for r in response_text:
+            if 'Value' not in r: continue
+            value = r['Value']
+            if 'InstanceGuid' in value:
+                matches = re.findall(r'\\"InstanceGuid\\":\s*\\"([^"]+)\\"', value)
+                if matches: return matches[-1]
+                matches = re.findall(r'"InstanceGuid"\s*:\s*"([^"]+)"', value)
+                return matches[-1] if matches else None
+        return None
+
 
 
 

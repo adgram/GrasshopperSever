@@ -249,9 +249,13 @@ namespace GrasshopperSever.Utils
             // 支持对象格式（字典）
             if (Value.ValueKind == JsonValueKind.Object)
             {
-                if (Value.TryGetProperty(paramName, out var valueElement))
+                // 修改为大小写不敏感的搜索
+                foreach (var property in Value.EnumerateObject())
                 {
-                    return valueElement.Clone();
+                    if (property.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return property.Value.Clone();
+                    }
                 }
                 return null;
             }
@@ -301,12 +305,16 @@ namespace GrasshopperSever.Utils
                 return result.ToArray();
             }
 
-            // 支持对象格式（字典）- 精确匹配键名
+            // 支持对象格式（字典）- 精确匹配键名，大小写不敏感
             if (Value.ValueKind == JsonValueKind.Object)
             {
-                if (Value.TryGetProperty(paramName, out var valueElement))
+                // 遍历对象的所有属性，进行大小写不敏感的比较
+                foreach (var property in Value.EnumerateObject())
                 {
-                    result.Add(valueElement.Clone());
+                    if (property.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result.Add(property.Value.Clone());
+                    }
                 }
                 return result.ToArray();
             }

@@ -20,7 +20,7 @@
   "Info": "测试GHPython3代码执行",
   "Time": "2026-03-26T16:32:42",
   "Value": {
-    "Code": "import Rhino.Geometry as rg\nimport math\n\n# 创建一个点\nx = 10.0\ny = 20.0\nz = 30.0\n\npoint = rg.Point3d(x, y, z)\n\n# 返回点\na = point"
+    "output": "import Rhino.Geometry as rg\nimport math\n\n# 创建一个点\nx = 10.0\ny = 20.0\nz = 30.0\n\npoint = rg.Point3d(x, y, z)\n\n# 返回点\na = point"
   }
 }
 ```
@@ -41,7 +41,7 @@
   "Name": "SCRIPTRESULT",
   "Info": "SCRIPTRESULT",
   "Value": [{
-    "Code": "# GH_COMPONENT_IO_START\n# INPUT_PARAMS: {...}\n# OUTPUT_PARAMS: {...}\n# GH_COMPONENT_IO_END\r\nimport Rhino.Geometry as rg\nimport math\n\n# 创建一个点\nx = 10.0\ny = 20.0\nz = 30.0\n\npoint = rg.Point3d(x, y, z)\n\n# 返回点\na = point"
+    "output": "# GH_COMPONENT_IO_START\n# INPUT_PARAMS: {...}\n# OUTPUT_PARAMS: {...}\n# GH_COMPONENT_IO_END\r\nimport Rhino.Geometry as rg\nimport math\n\n# 创建一个点\nx = 10.0\ny = 20.0\nz = 30.0\n\npoint = rg.Point3d(x, y, z)\n\n# 返回点\na = point"
   }]
 }
 ```
@@ -74,62 +74,6 @@
 #### 响应4-5: SCRIPTRESULT（重复返回）
 - 服务器会多次返回相同的SCRIPTRESULT
 - 通常返回3次
-
-### 3. Python测试代码
-
-```python
-import socket
-import json
-from datetime import datetime
-
-def send_data(port):
-    """发送ScriptEditor数据"""
-    data = {
-        "Name": "ScriptEditor",
-        "Info": "测试GHPython3代码执行",
-        "Time": datetime.now().isoformat(),
-        "Value": {
-            "Code": "import Rhino.Geometry as rg\nimport math\n\n# 创建一个点\nx = 10.0\ny = 20.0\nz = 30.0\n\npoint = rg.Point3d(x, y, z)\n\n# 返回点\na = point"
-        }
-    }
-
-    try:
-        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client.connect(('127.0.0.1', port))
-        message = json.dumps(data, ensure_ascii=False)
-        client.sendall((message + '\n').encode('utf-8'))
-
-        # 接收响应
-        client.settimeout(10)
-        total_response = b''
-        while True:
-            try:
-                chunk = client.recv(4096)
-                if not chunk:
-                    break
-                total_response += chunk
-            except socket.timeout:
-                break
-
-        client.close()
-
-        # 解析响应（使用utf-8-sig处理BOM）
-        if total_response:
-            response = total_response.decode('utf-8-sig')
-            messages = [msg for msg in response.split('\ufeff') if msg.strip()]
-            results = [json.loads(msg.strip()) for msg in messages]
-            return results
-        return []
-
-    except Exception as e:
-        print(f"连接失败: {e}")
-        return []
-
-# 使用示例
-results = send_data(6895)
-for i, result in enumerate(results):
-    print(f"响应{i+1}: {result.get('Name')} - {result.get('Value')}")
-```
 
 ## C# Script测试
 
@@ -191,7 +135,7 @@ public class Script_Instance : GH_ScriptInstance
   "Info": "测试C#代码执行",
   "Time": "2026-03-26T16:49:43",
   "Value": {
-    "Code": "// Grasshopper Script Instance\n..."
+    "output": "// Grasshopper Script Instance\n..."
   }
 }
 ```

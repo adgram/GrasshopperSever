@@ -146,14 +146,16 @@ namespace GrasshopperSever.Commands
                 description: $"添加组件 {component.Name}"
             );
 
-            Ljson inputsJson = null;
-            Ljson outputsJson = null;
+            string inputsJson = "";
+            string outputsJson = "";
             if (component is IGH_Component cominst)
             {
-                inputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Input);
-                outputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Output);
+                inputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Input).ToString();
+                outputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Output).ToString();
+            }else if(component is IGH_Param parins)
+            {
+                inputsJson = "不包含自定义值";
             }
-
             // 返回 InstanceLjson
             return InstanceLjson(
                 componentGuid: component.ComponentGuid.ToString(),
@@ -161,8 +163,8 @@ namespace GrasshopperSever.Commands
                 name: component.Name,
                 position: point,
                 state: "",
-                input: inputsJson?.ToString() ?? "",
-                output: outputsJson?.ToString() ?? ""
+                input: inputsJson,
+                output: outputsJson
             );
         }
 
@@ -234,7 +236,27 @@ namespace GrasshopperSever.Commands
             return success;
         }
 
-        /// <summary>
+        public static IGH_Param FindParam(GH_Document doc, string guid, string name, bool isIn)
+        {
+            if (!Guid.TryParse(guid, out Guid uid)){
+                throw new ArgumentException("Invalid component ID format");
+            }
+            var p = doc.FindParameter(uid);
+            if (p != null) return p;
+
+            var c = doc.FindComponent(uid) ?? throw new ArgumentException($"Source or target {uid} not found");
+            List<IGH_Param> ps = c.Params.Output;
+            if (isIn) ps = c.Params.Input;
+            
+            foreach (var param in ps)
+            {
+                if (param.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return param;
+                }
+            }
+            throw new ArgumentException($"Source or target {name} not found");
+        }
 
         /// <summary>
         /// 连接两个组件的参数
@@ -246,8 +268,7 @@ namespace GrasshopperSever.Commands
         /// <returns>连接是否成功</returns>
         public static bool ConnectComponents(string fromGuid, string fromParameter, string toGuid, string toParameter)
         {
-            if (string.IsNullOrEmpty(fromGuid) || string.IsNullOrEmpty(fromParameter) ||
-                string.IsNullOrEmpty(toGuid) || string.IsNullOrEmpty(toParameter))
+            if (string.IsNullOrEmpty(fromGuid) || string.IsNullOrEmpty(toGuid))
             {
                 throw new ArgumentException("Source and target component information are required");
             }
@@ -261,41 +282,8 @@ namespace GrasshopperSever.Commands
                 {
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
 
-                    if (!Guid.TryParse(fromGuid, out Guid fromId) || !Guid.TryParse(toGuid, out Guid toId))
-                    {
-                        throw new ArgumentException("Invalid component ID format");
-                    }
-
-                    if (doc.FindComponent(fromId) is not IGH_Component fromComponent ||
-                        doc.FindComponent(toId) is not IGH_Component toComponent)
-                    {
-                        throw new ArgumentException("Source or target component not found");
-                    }
-
-                    IGH_Param fromParam = null;
-                    foreach (var param in fromComponent.Params.Output)
-                    {
-                        if (param.Name.Equals(fromParameter, StringComparison.OrdinalIgnoreCase))
-                        {
-                            fromParam = param;
-                            break;
-                        }
-                    }
-
-                    IGH_Param toParam = null;
-                    foreach (var param in toComponent.Params.Input)
-                    {
-                        if (param.Name.Equals(toParameter, StringComparison.OrdinalIgnoreCase))
-                        {
-                            toParam = param;
-                            break;
-                        }
-                    }
-
-                    if (fromParam == null || toParam == null)
-                    {
-                        throw new ArgumentException("Source or target parameter not found");
-                    }
+                    var fromParam = FindParam(doc, fromGuid, fromParameter, false);
+                    var toParam = FindParam(doc, toGuid, toParameter, true);
 
                     toParam.AddSource(fromParam);
                     doc.NewSolution(false);
@@ -353,41 +341,9 @@ namespace GrasshopperSever.Commands
                 {
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
 
-                    if (!Guid.TryParse(fromGuid, out Guid fromId) || !Guid.TryParse(toGuid, out Guid toId))
-                    {
-                        throw new ArgumentException("Invalid component ID format");
-                    }
 
-                    if (doc.FindComponent(fromId) is not IGH_Component fromComponent ||
-                        doc.FindComponent(toId) is not IGH_Component toComponent)
-                    {
-                        throw new ArgumentException("Source or target component not found");
-                    }
-
-                    IGH_Param fromParam = null;
-                    foreach (var param in fromComponent.Params.Output)
-                    {
-                        if (param.Name.Equals(fromParameter, StringComparison.OrdinalIgnoreCase))
-                        {
-                            fromParam = param;
-                            break;
-                        }
-                    }
-
-                    IGH_Param toParam = null;
-                    foreach (var param in toComponent.Params.Input)
-                    {
-                        if (param.Name.Equals(toParameter, StringComparison.OrdinalIgnoreCase))
-                        {
-                            toParam = param;
-                            break;
-                        }
-                    }
-
-                    if (fromParam == null || toParam == null)
-                    {
-                        throw new ArgumentException("Source or target parameter not found");
-                    }
+                    var fromParam = FindParam(doc, fromGuid, fromParameter, false);
+                    var toParam = FindParam(doc, toGuid, toParameter, true);
 
                     // 检查是否存在连接
                     if (!toParam.Sources.Contains(fromParam))

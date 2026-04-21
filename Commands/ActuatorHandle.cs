@@ -395,10 +395,9 @@ namespace GrasshopperSever.Commands
                 var toGuid = data.GetParameterString("ToGuid");
                 var toParameter = data.GetParameterString("ToParameter");
 
-                if (string.IsNullOrWhiteSpace(fromGuid) || string.IsNullOrWhiteSpace(fromParameter) ||
-                    string.IsNullOrWhiteSpace(toGuid) || string.IsNullOrWhiteSpace(toParameter))
+                if (string.IsNullOrWhiteSpace(fromGuid)|| string.IsNullOrWhiteSpace(toGuid))
                 {
-                    return Ljson.CreateErrorLjson("缺少必要参数（FromGuid, FromParameter, ToGuid, ToParameter）");
+                    return Ljson.CreateErrorLjson("缺少必要参数（FromGuid, ToGuid）");
                 }
 
                 var result = ComponentExchange.ConnectComponents(fromGuid, fromParameter, toGuid, toParameter);

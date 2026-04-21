@@ -1,6 +1,6 @@
-# AI 客户端教程 - 连接 GrasshopperSever
+# 客户端教程 - 连接 GrasshopperSever
 
-本教程指导 AI 客户端如何通过 TCP 协议连接到 GrasshopperSever，实现与 Grasshopper 的双向通信。
+本教程指导 客户端如何通过 TCP 协议连接到 GrasshopperSever，实现与 Grasshopper 的双向通信。
 
 ## 目录
 
@@ -78,7 +78,7 @@ AI ──TCP──> GHServer(接收+执行+响应) ──> AI
 | DOCUMENT | `SAVEDOCUMENT` | 保存文档 | [链接](Example/CMD_DOCUMENT/gh_file_test_report.md) |
 | DOCUMENT | `LOADDOCUMENT` | 加载文档 | 同上 |
 | DOCUMENT | `DATABASEPATH` | 获取数据库路径 | 同上 |
-| RHINO | `RHINOSCRIPT` | 运行 Rhino 脚本 | [链接](Example/CMD_RHINO/commands_RHINO.md) |
+| RHINO | `RHINOSCRIPT` | 执行 Rhino 命令 | [链接](Example/CMD_RHINO/commands_RHINO.md) |
 | RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的对象 | 同上 |
 | RHINO | `SELECTOBJECTS` | 选择对象 | 同上 |
 | RHINO | `GETANDSELECTLASTOBJECTS` | 获取并选择对象 | 同上 |
@@ -113,7 +113,7 @@ AI ──TCP──> GHServer(接收+执行+响应) ──> AI
 
 ```python
 # 基本用法
-def test_command_document(port):
+def send_command(port):
     responses = []
     with GHClient(port = port) as client:
         responses = client.send_command(
@@ -128,34 +128,36 @@ def test_command_document(port):
 ### Design 命令典型流程
 
 ```python
-import re
+from ghclient import GHClient
 
-def extract_guid(response_text):
-    """从响应中提取 InstanceGuid"""
-    matches = re.findall(r'\\"InstanceGuid\\":\s*\\"([^"]+)\\"', response_text)
-    if matches: return matches[-1]
-    matches = re.findall(r'"InstanceGuid"\s*:\s*"([^"]+)"', response_text)
-    return matches[-1] if matches else None
+target_guid = None
+source_guid = None
 
 # 1. 添加组件
 with GHClient(port=6879) as gh:
-    gh.send_command("DESIGN", "ADDCOMPONENTBYNAME", {"ComponentName": "Addition", "X": 100, "Y": 100})
-    responses = gh.receive()
-    instance_guid = None
-    for r in responses:
-        if 'InstanceGuid' in str(r):
-            instance_guid = extract_guid(json.dumps(r))
+    value = {"Command": "AddComponentByName", "ComponentName": "Addition", "X": 200, "Y": 100}
+    p = gh.send_command("DESIGN", "", value)
+    target_guid = gh.extract_guid(p)
+    print(p)
 
-# 2. 设置参数值（建议重新连接）
+# 2. 设置参数值
 with GHClient(port=6879) as gh:
-    gh.send_command("DESIGN", "SETPARAMVALUE", {"InstanceGuid": instance_guid, "Value": "42"})
+    value = {"Command": "ADDPARAMWITHVALUE", 'ParamName': "int", "Value": 42, "X": 50, "Y": 100}
+    p = gh.send_command("DESIGN", "", value)
+    source_guid = gh.extract_guid(p)
+    print(p)
 
 # 3. 连接组件
 with GHClient(port=6879) as gh:
-    gh.send_command("DESIGN", "CONNECTCOMPONENTS", {
-        "FromGuid": "source-guid", "FromParameter": "Result",
-        "ToGuid": "target-guid", "ToParameter": "A"
-    })
+    value={
+        "Command": "CONNECTCOMPONENTS",
+        "FromGuid": source_guid,
+        "FromParameter": "",
+        "ToGuid": target_guid,
+        "ToParameter": "A"
+    }
+    p = gh.send_command("DESIGN", "", value)
+    print(p)
 ```
 
 > Design 命令的完整参数和示例见 [design_test.md](Example/CMD_DESIGN/design_test.md)。
@@ -166,16 +168,18 @@ with GHClient(port=6879) as gh:
 
 ```python
 import sqlite3
+from ghclient import GHClient
 
 # 获取路径
 with GHClient(port=6879) as gh:
-    responses = client.send_command(
+    responses = gh.send_command(
         name="DOCUMENT",
         info="获取数据库路径",
         value={"Command": "DATABASEPATH"}
     )
-    if responses.get('Name') == 'DatabasePath':
-        db_path = r['Value']['DatabasePath']
+    for res in responses:
+        if res.get('Name') == 'DatabasePath':
+            db_path = res['Value']['DatabasePath']
 
 # 查询组件
 conn = sqlite3.connect(db_path)
@@ -225,28 +229,6 @@ conn.close()
 - `SETPARAMVALUE`、`REMOVECOMPONENT`、`CONNECTCOMPONENTS` 等需要 `InstanceGuid`（组件实例 GUID），不是 `ComponentGuid`（组件类型 GUID）
 - 建议每次命令都重新连接，避免缓冲区问题
 - `ADDPARAMWITHVALUE` 中列表值使用字符串数组格式，如 `"[\"1.0\", \"2.0\"]"`
-
-### 验证工具
-
-```python
-def validate_ljson(data: dict) -> bool:
-    """验证 Ljson 格式"""
-    required = ["Name", "Info", "Time", "Value"]
-    if not all(k in data for k in required): return False
-    if isinstance(data["Value"], dict) and "Command" in data["Value"]:
-        if data["Name"] not in ["COMPONENT", "DOCUMENT", "RHINO", "SCRIPT", "DESIGN"]: return False
-    return True
-
-def test_connection(host='127.0.0.1', port=6879) -> bool:
-    """测试端口连通性"""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(5)
-        s.connect((host, port))
-        s.close()
-        return True
-    except: return False
-```
 
 ## 相关文档
 

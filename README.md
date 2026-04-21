@@ -1,4 +1,4 @@
-﻿﻿# GrasshopperSever
+﻿﻿﻿# GrasshopperSever
 
 Rhino Grasshopper 插件，通过 TCP 协议提供与 Grasshopper/Rhino 的双向通信，支持 AI 客户端远程控制组件布局、执行脚本和查询数据。
 中文 | [English](README_EN.md)
@@ -8,7 +8,7 @@ Rhino Grasshopper 插件，通过 TCP 协议提供与 Grasshopper/Rhino 的双�
 ```
 GrasshopperSever/
 ├── README.md                         # 本文档
-├── AI_CLIENT_TUTORIAL.md             # AI 客户端连接教程
+├── CLIENT_TUTORIAL.md                # 客户端连接教程
 ├── design.md                         # 组件开发技术文档
 ├── MainSectors.md                    # 主要功能
 └── Example/
@@ -112,7 +112,7 @@ GrasshopperSever/
 | DOCUMENT | `SAVEDOCUMENT` | 保存当前文档 |
 | DOCUMENT | `LOADDOCUMENT` | 加载文档 |
 | DOCUMENT | `DATABASEPATH` | 获取数据库路径 |
-| RHINO | `RHINOSCRIPT` | 运行 Rhino 脚本命令 |
+| RHINO | `RHINOSCRIPT` | 执行 Rhino 命令命令 |
 | RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的 Rhino 对象 |
 | RHINO | `SELECTOBJECTS` | 选择 Rhino 对象 |
 | RHINO | `GETANDSELECTLASTOBJECTS` | 获取并选择最后创建的对象 |
@@ -133,15 +133,15 @@ GrasshopperSever/
 
 ### 推送模式（GHReceiver + GHSender）
 ```
-AI 客户端──TCP──> GHReceiver(接收)──> GH 处理 ──> GHSender(响应) ──> AI 客户端
+客户端──TCP──> GHReceiver(接收)──> GH 处理 ──> GHSender(响应) ──> 客户端
 ```
 
 ### 请求 - 响应模式（GHServer）
 ```
-AI 客户端──TCP──> GHServer(接收 + 执行 + 响应) ──> AI 客户端
+客户端──TCP──> GHServer(接收 + 执行 + 响应) ──> 客户端
 ```
 
-> 详细通信协议和 Python 客户端代码见 [AI_CLIENT_TUTORIAL.md](AI_CLIENT_TUTORIAL.md)。
+> 详细通信协议和 Python 客户端代码见 [CLIENT_TUTORIAL.md](CLIENT_TUTORIAL.md)。
 
 ## 数据库
 
@@ -163,16 +163,23 @@ AI 客户端──TCP──> GHServer(接收 + 执行 + 响应) ──> AI 客�
 3. 使用 Python 客户端连接：
 
 ```python
-from Example.ghclient import GHClient
-GHClient.test_command_document(6879, "DOCUMENT", "获取数据库路径", {"Command": "DATABASEPATH"})
+from ghclient import GHClient
+
+with GHClient(port = 6879) as client:
+    responses = client.send_command(
+        name="DOCUMENT",
+        info="获取数据库路径",
+        value={"Command": "DATABASEPATH"}
+    )
+    print(responses)
 ```
 
-> 更完整的客户端类和高级用法见 [AI 客户端教程](AI_CLIENT_TUTORIAL.md) 和 [主要功能](MainSectors.md)。
+> 更完整的客户端类和高级用法见 [客户端教程](CLIENT_TUTORIAL.md) 和 [主要功能](MainSectors.md)。
 
 ## 相关文档
 
 - [主要功能](MainSectors.md) - 主要功能
-- [AI 客户端教程](AI_CLIENT_TUTORIAL.md) - 通信协议、客户端代码和故障排除
+- [客户端教程](CLIENT_TUTORIAL.md) - 通信协议、客户端代码和故障排除
 - [组件开发文档](design.md) - 各组件的输入输出参数和技术细节
 - [TCP 通信测试](Example/tcp_test.md) - 通信协议测试记录
 - [系统测试报告](Example/test_report.md) - 完整功能测试报告
