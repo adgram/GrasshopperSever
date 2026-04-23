@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Diagnostics;
 using Grasshopper;
 using Grasshopper.Kernel;
+using System.Collections.Generic;
 
 namespace GrasshopperSever.Utils
 {
@@ -376,7 +377,7 @@ namespace GrasshopperSever.Utils
         /// <param name="sql">SQL语句</param>
         /// <param name="parameters">参数字典</param>
         /// <returns>影响的行数</returns>
-        public static int ExecuteCommandWithTimestamp(string tableName, string sql, System.Collections.Generic.Dictionary<string, object> parameters = null)
+        public static int ExecuteCommandWithTimestamp(string tableName, string sql, Dictionary<string, object> parameters = null)
         {
             try
             {

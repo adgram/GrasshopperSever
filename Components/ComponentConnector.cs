@@ -74,7 +74,7 @@ namespace GrasshopperSever.Components
 
         private List<IGH_DocumentObject> GetConnectedComponents()
         {
-            List<IGH_DocumentObject> connectedComponents = new List<IGH_DocumentObject>();
+            List<IGH_DocumentObject> connectedComponents = new();
             foreach (var source in Params.Input[0].Sources)
             {
                 IGH_DocumentObject sourceComponent = null;

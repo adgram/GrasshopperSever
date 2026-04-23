@@ -1,7 +1,11 @@
-﻿using Grasshopper;
+﻿using Eto.Forms;
+using Grasshopper;
 using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
+using Rhino;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.Json;
 
 namespace GrasshopperSever.Commands
@@ -52,7 +56,7 @@ namespace GrasshopperSever.Commands
                 if (success)
                 {
                     doc.IsModified = false;
-                    var data = new System.Collections.Generic.Dictionary<string, object>
+                    var data = new Dictionary<string, object>
                     {
                         { "FilePath", savePath },
                         { "Message", "文档保存成功" }
@@ -116,7 +120,7 @@ namespace GrasshopperSever.Commands
                 // 这步非常关键，否则文件只在内存里，不会显示在UI上
                 Instances.ActiveCanvas.Document = newDoc;
 
-                var data = new System.Collections.Generic.Dictionary<string, object>
+                var data = new Dictionary<string, object>
                 {
                     { "FilePath", filePath },
                     { "DocumentId", newDoc.DocumentID.ToString() },
@@ -146,13 +150,13 @@ namespace GrasshopperSever.Commands
                 }
 
                 // 2. 收集所有对象信息
-                var objectsList = new System.Collections.Generic.List<object>();
+                var objectsList = new List<object>();
                 int componentCount = 0;
                 int paramCount = 0;
 
                 foreach (IGH_DocumentObject obj in doc.Objects)
                 {
-                    var objInfo = new System.Collections.Generic.Dictionary<string, object>
+                    var objInfo = new Dictionary<string, object>
                     {
                         { "InstanceGuid", obj.InstanceGuid.ToString() },
                         { "Name", obj.Name },
@@ -184,15 +188,15 @@ namespace GrasshopperSever.Commands
                     {
                         objInfo["Position"] = new
                         {
-                            X = obj.Attributes.Pivot.X,
-                            Y = obj.Attributes.Pivot.Y
+                            obj.Attributes.Pivot.X,
+                            obj.Attributes.Pivot.Y
                         };
                         objInfo["Bounds"] = new
                         {
-                            X = obj.Attributes.Bounds.X,
-                            Y = obj.Attributes.Bounds.Y,
-                            Width = obj.Attributes.Bounds.Width,
-                            Height = obj.Attributes.Bounds.Height
+                            obj.Attributes.Bounds.X,
+                            obj.Attributes.Bounds.Y,
+                            obj.Attributes.Bounds.Width,
+                            obj.Attributes.Bounds.Height
                         };
                     }
 
@@ -200,7 +204,7 @@ namespace GrasshopperSever.Commands
                 }
 
                 // 3. 封装结果
-                var data = new System.Collections.Generic.Dictionary<string, object>
+                var data = new Dictionary<string, object>
                 {
                     { "DocumentId", doc.DocumentID.ToString() },
                     { "TotalCount", doc.ObjectCount },
@@ -216,5 +220,76 @@ namespace GrasshopperSever.Commands
                 return Ljson.CreateErrorLjson($"获取文档对象时出错: {ex.Message}");
             }
         }
+
+        public static Ljson GetObject(string guid)
+        {
+            Exception caughtException = null;
+            IGH_DocumentObject obj = null;
+
+            RhinoApp.InvokeOnUiThread(new Action(() =>
+            {
+                try
+                {
+                    var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
+                    // 查找组件
+                    obj = doc.FindObject(new Guid(guid), false);
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            }));
+
+            if (caughtException != null)
+            {
+                return Ljson.CreateErrorLjson($"获取对象失败{caughtException}");
+            }
+            if (obj == null) return Ljson.CreateErrorLjson($"获取对象失败");
+
+            var objInfo = new Dictionary<string, object>
+            {
+                { "InstanceGuid", obj.InstanceGuid.ToString() },
+                { "Name", obj.Name },
+                { "NickName", obj.NickName }
+            };
+
+            // 获取对象类型
+            if (obj is IGH_Component component)
+            {
+                objInfo["Type"] = "Component";
+                objInfo["ComponentGuid"] = component.ComponentGuid.ToString();
+                objInfo["Category"] = component.Category;
+                objInfo["SubCategory"] = component.SubCategory;
+            }
+            else if (obj is IGH_Param param)
+            {
+                objInfo["Type"] = "Param";
+                objInfo["ParamType"] = param.TypeName;
+            }
+            else
+            {
+                objInfo["Type"] = obj.GetType().Name;
+            }
+
+            // 获取位置信息
+            if (obj.Attributes != null)
+            {
+                objInfo["Position"] = new
+                {
+                    obj.Attributes.Pivot.X,
+                    obj.Attributes.Pivot.Y
+                };
+                objInfo["Bounds"] = new
+                {
+                    obj.Attributes.Bounds.X,
+                    obj.Attributes.Bounds.Y,
+                    obj.Attributes.Bounds.Width,
+                    obj.Attributes.Bounds.Height
+                };
+            }
+
+            return new Ljson("Objects", "查找的实例对象", JsonSerializer.SerializeToElement(objInfo));
+        }
+
     }
 }

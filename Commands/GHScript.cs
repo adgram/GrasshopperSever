@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace GrasshopperSever.Commands
 {
@@ -164,7 +165,7 @@ namespace GrasshopperSever.Commands
                 pattern = @"// GH_COMPONENT_IO_START\s*// INPUT_PARAMS: (.*?)\s*// OUTPUT_PARAMS: (.*?)\s*// GH_COMPONENT_IO_END";
             }
 
-            var match = System.Text.RegularExpressions.Regex.Match(code, pattern, System.Text.RegularExpressions.RegexOptions.Singleline);
+            var match = Regex.Match(code, pattern, RegexOptions.Singleline);
 
             if (!match.Success)
             {
@@ -229,10 +230,14 @@ namespace GrasshopperSever.Commands
                 newCommentBlock = $"// GH_COMPONENT_IO_START\n// INPUT_PARAMS: {newInput}\n// OUTPUT_PARAMS: {newOutput}\n// GH_COMPONENT_IO_END";
             }
 
-            return System.Text.RegularExpressions.Regex.Replace(code, pattern, newCommentBlock,
-                System.Text.RegularExpressions.RegexOptions.Singleline);
+            return Regex.Replace(code, pattern, newCommentBlock, RegexOptions.Singleline);
         }
 
+        /// <summary>
+        /// 提取出代码标记字段
+        /// </summary>
+        /// <param name="code"></param>
+        /// <returns></returns>
         public static (string, string) GetParametersFromScript(string code)
         {
             if (string.IsNullOrEmpty(code))
@@ -246,13 +251,13 @@ namespace GrasshopperSever.Commands
             {
                 // 首先尝试匹配C#格式的注释
                 string csharpPattern = @"// GH_COMPONENT_IO_START\s*// INPUT_PARAMS: (.*?)\s*// OUTPUT_PARAMS: (.*?)\s*// GH_COMPONENT_IO_END";
-                var match = System.Text.RegularExpressions.Regex.Match(code, csharpPattern, System.Text.RegularExpressions.RegexOptions.Singleline);
+                var match = Regex.Match(code, csharpPattern, RegexOptions.Singleline);
 
                 // 如果没有匹配到C#格式，尝试Python格式
                 if (!match.Success)
                 {
                     string pythonPattern = @"# GH_COMPONENT_IO_START\s*# INPUT_PARAMS: (.*?)\s*# OUTPUT_PARAMS: (.*?)\s*# GH_COMPONENT_IO_END";
-                    match = System.Text.RegularExpressions.Regex.Match(code, pythonPattern, System.Text.RegularExpressions.RegexOptions.Singleline);
+                    match = Regex.Match(code, pythonPattern, RegexOptions.Singleline);
                 }
 
                 if (match.Success)

@@ -1,5 +1,6 @@
 ﻿using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
+using Rhino.Runtime.Code.Execution;
 using RhinoCodePlatform.GH;
 using RhinoCodePlatform.Rhino3D.Languages.GH1;
 using RhinoCodePlatform.Rhino3D.Languages.GH1.Converters;
@@ -14,7 +15,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 
-
 namespace GrasshopperSever.Commands
 {
     /// <summary>
@@ -22,95 +22,145 @@ namespace GrasshopperSever.Commands
     /// </summary>
     public class ScriptVariableParamData
     {
-        [JsonPropertyName("typeHintID")]
-        public Guid TypeHintID { get; set; }
-
         [JsonPropertyName("typeHintName")]
-        public string TypeHintName { get; set; }
+        public string TypeHintName { get; set; } = "No Type Hint";
 
         [JsonPropertyName("showTypeHints")]
-        public bool ShowTypeHints { get; set; }
+        public bool ShowTypeHints { get; set; } = true;
 
         [JsonPropertyName("allowTreeAccess")]
-        public bool AllowTreeAccess { get; set; }
+        public bool AllowTreeAccess { get; set; } = true;
 
         [JsonPropertyName("toolTip")]
-        public string ToolTip { get; set; }
+        public string ToolTip { get; set; } = string.Empty;
 
         [JsonPropertyName("scriptParamAccess")]
-        public int ScriptParamAccess { get; set; }
+        public int ScriptParamAccess { get; set; } = 0;
 
         [JsonPropertyName("variableName")]
         public string VariableName { get; set; }
 
-        [JsonPropertyName("prettyName")]
-        public string PrettyName { get; set; }
-
         [JsonPropertyName("optional")]
-        public bool Optional { get; set; }
+        public bool Optional { get; set; } = false;
 
         [JsonPropertyName("hidden")]
-        public bool Hidden { get; set; }
+        public bool Hidden { get; set; } = false;
 
         [JsonPropertyName("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         [JsonPropertyName("castTargetType")]
-        public string CastTargetType { get; set; }
+        public string CastTargetType { get; set; } = string.Empty;
 
+        public static ScriptVariableParamData FromParam(ScriptVariableParam param)
+        {
+            var converter = ((IScriptParameter)param).Converter;
+            var pd = new ScriptVariableParamData()
+            {
+                TypeHintName = converter?.Id.Name ?? string.Empty,
+                ShowTypeHints = param.ShowHints,
+                AllowTreeAccess = param.AllowTreeAccess,
+                ToolTip = param.ToolTip,
+                ScriptParamAccess = (int)param.Access,
+                VariableName = param.VariableName,
+                Optional = param.Optional,
+                Hidden = param.Hidden,
+                Description = param.Description
+            };
+            // 如果是 CastConverter，尝试获取目标类型信息
+            if (converter is CastConverter castConverter)
+            {
+                pd.CastTargetType = castConverter.TargetType?.FullName ?? string.Empty;
+            }
+            return pd;
+        }
+
+        /// <summary>
+        /// 将ScriptVariableParamData属性填入ScriptVariableParam
+        /// </summary>
+        /// <param name="param"></param>
+        /// <exception cref="ArgumentNullException"></exception>
         public void DeserializeParam(ScriptVariableParam param)
         {
-            if (param == null)
-                throw new ArgumentNullException(nameof(param));
+            ArgumentNullException.ThrowIfNull(nameof(param));
 
-            // 恢复类型提示
-            if (TypeHintID != Guid.Empty)
-            {
-                var converter = Grasshopper1.GetConverter(TypeHintID);
+            // 检测当前 data 对象是否全部是默认值（表示未提供有效配置）
+            if (IsEmptyDefault())
+                return;
 
-                // 检查转换器是否匹配
-                if (converter != null && converter.Id.Id == TypeHintID)
-                {
-                    // 如果是 CastConverter，需要特殊处理
-                    if (TypeHintID == CastConverter.Identity.Id &&
-                        !string.IsNullOrEmpty(CastTargetType))
-                    {
-                        var castConverter = new CastConverter();
-                        IScriptParameter scriptParam = param;
-                        scriptParam.Converter = castConverter;
-                    }
-                    else
-                    {
-                        IScriptParameter scriptParam = param;
-                        scriptParam.Converter = converter;
-                    }
-                }
-                else
-                {
-                    // 找不到转换器，使用 MissingConverter
-                    var missingConverter = new MissingConverter(
-                        TypeHintID,
-                        $"Parameter failed to find Type Hint. (Missing Hint: {TypeHintID})"
-                    );
-                    IScriptParameter scriptParam = param;
-                    scriptParam.Converter = missingConverter;
-                }
-            }
+            ((IScriptParameter)param).Converter = GetConverter();
 
-            // 恢复其他属性
+            // 恢复其他属性（仅当 data 中的值不是 CLR 默认值时）
+            // bool / int 类型总是设置（因为无法区分显式默认值和未设置）
             param.ShowHints = ShowTypeHints;
             param.AllowTreeAccess = AllowTreeAccess;
-            param.VariableName = VariableName;
-            param.PrettyName = PrettyName;
-            param.ToolTip = ToolTip;
-            param.Access = (GH_ParamAccess)ScriptParamAccess;
+            ((IScriptParameter)param).Access = (ScriptParamAccess)ScriptParamAccess;
             param.Optional = Optional;
             param.Hidden = Hidden;
 
+            // 字符串：非 null 且非空字符串时才设置
+            //if (!string.IsNullOrEmpty(VariableName))
+            //    param.VariableName = VariableName;
+            if (!string.IsNullOrEmpty(ToolTip))
+                param.ToolTip = ToolTip;
             if (!string.IsNullOrEmpty(Description))
-            {
                 param.Description = Description;
+        }
+
+        /// <summary>
+        /// 判断当前对象是否所有属性都是默认值（未显式赋值）
+        /// </summary>
+        private bool IsEmptyDefault()
+        {
+            return string.IsNullOrEmpty(TypeHintName)
+                && ShowTypeHints == false
+                && AllowTreeAccess == true
+                && string.IsNullOrEmpty(ToolTip)
+                && ScriptParamAccess == 0
+                && Optional == false
+                && Hidden == false
+                && string.IsNullOrEmpty(Description)
+                && string.IsNullOrEmpty(CastTargetType);
+        }
+
+        public IParamValueConverter GetConverter()
+        {
+            if(TypeHintName == "No Type Hint")
+            {
+                return Grasshopper1.GooConverter;
             }
+            if (TypeHintName == "object")
+            {
+                return Grasshopper1.PythonDynamicConverter;
+            }
+            if (TypeHintName == "Cast")
+            {
+                return Grasshopper1.CastConverter;
+                //ParamType pt = ParamType();
+                //ParamType.TryGetType(CastTargetType, out pt);
+                //return new Converter(pt);
+            }
+            foreach (IParamValueConverter converter in Grasshopper1.GetConverters())
+            {
+                if (converter.TypeName == TypeHintName)
+                {
+                    return converter;
+                }
+            }
+            return Grasshopper1.GooConverter;
+        }
+
+        public static void UpdateParam(ScriptVariableParam fromParam, ScriptVariableParam toParam)
+        {
+            if (fromParam == null || toParam == null) return;
+            ((IScriptParameter)toParam).Converter = ((IScriptParameter)fromParam).Converter;
+            toParam.ShowHints = fromParam.ShowHints;
+            toParam.AllowTreeAccess = fromParam.AllowTreeAccess;
+            ((IScriptParameter)toParam).Access = ((IScriptParameter)fromParam).Access;
+            toParam.Optional = fromParam.Optional;
+            toParam.Hidden = fromParam.Hidden;
+            toParam.ToolTip = fromParam.ToolTip;
+            toParam.Description = fromParam.Description;
         }
     }
 
@@ -141,20 +191,16 @@ namespace GrasshopperSever.Commands
                 return; // 已存在，无需创建
             }
 
-            var newParam = new ScriptVariableParam(name);
-            newParam.Access = access;
-            newParam.Optional = optional;
+            var newParam = new ScriptVariableParam(name)
+            {
+                Access = access,
+                Optional = optional
+            };
 
             // 注册参数
-            if (isInput)
-            {
-                component.Params.RegisterInputParam(newParam);
-            }
-            else
-            {
-                component.Params.RegisterOutputParam(newParam);
-            }
-
+            var _ = isInput? component.Params.RegisterInputParam(newParam)
+                :component.Params.RegisterOutputParam(newParam);
+      
             component.Params.OnParametersChanged();
             component.OnAttributesChanged();
         }
@@ -174,33 +220,9 @@ namespace GrasshopperSever.Commands
         /// </summary>
         public static string SerializeToJson(ScriptVariableParam param)
         {
-            if (param == null)
-                throw new ArgumentNullException(nameof(param));
+            ArgumentNullException.ThrowIfNull(param);
 
-            IScriptParameter scriptParam = param;
-            var converter = scriptParam.Converter;
-
-            var data = new ScriptVariableParamData
-            {
-                TypeHintID = converter?.Id.Id ?? Guid.Empty,
-                TypeHintName = converter?.Id.Name ?? string.Empty,
-                ShowTypeHints = param.ShowHints,
-                AllowTreeAccess = param.AllowTreeAccess,
-                ToolTip = param.ToolTip,
-                ScriptParamAccess = (int)param.Access,
-                VariableName = param.VariableName,
-                PrettyName = param.PrettyName,
-                Optional = param.Optional,
-                Hidden = param.Hidden,
-                Description = param.Description
-            };
-
-            // 如果是 CastConverter，尝试获取目标类型信息
-            if (converter is CastConverter castConverter)
-            {
-                data.CastTargetType = castConverter.TargetType?.FullName ?? string.Empty;
-            }
-
+            var data = ScriptVariableParamData.FromParam(param);
             return JsonSerializer.Serialize(data, Options);
         }
 
@@ -214,10 +236,7 @@ namespace GrasshopperSever.Commands
             if (string.IsNullOrWhiteSpace(json))
                 throw new ArgumentException("JSON 字符串不能为空", nameof(json));
 
-            var data = JsonSerializer.Deserialize<ScriptVariableParamData>(json, Options);
-            if (data == null)
-                throw new InvalidOperationException("JSON 反序列化失败");
-
+            var data = JsonSerializer.Deserialize<ScriptVariableParamData>(json, Options) ?? throw new InvalidOperationException("JSON 反序列化失败");
             var param = new ScriptVariableParam(data.VariableName);
             data.DeserializeParam(param);
             return param;
@@ -322,10 +341,10 @@ namespace GrasshopperSever.Commands
                 {
                     // 处理输入端：少加多补
                     if (! string.IsNullOrEmpty(inputParams))
-                        SyncParameters(component, ((IScriptComponent)component).Inputs, DeserializeParamDefinitions(inputParams), true);
+                        SyncParameters(component, DeserializeParamDefinitions(inputParams), true);
                     // 处理输出端：少加多补
-                    if (!string.IsNullOrEmpty(outputParams))
-                        SyncParameters(component, ((IScriptComponent)component).Outputs, DeserializeParamDefinitions(outputParams), false);
+                    if (! string.IsNullOrEmpty(outputParams))
+                        SyncParameters(component, DeserializeParamDefinitions(outputParams), false);
                     // 5. 刷新组件外观和布局
                     component.Params.OnParametersChanged();
                     ((IGH_VariableParameterComponent)component).VariableParameterMaintenance();
@@ -374,8 +393,11 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 同步参数列表：少加多补
         /// </summary>
-        public static void SyncParameters(BaseLanguageComponent component, IEnumerable<IScriptParameter> currentParams, IEnumerable<IScriptParameter> targetParams, bool isInput)
+        public static void SyncParameters(BaseLanguageComponent component, IEnumerable<ScriptVariableParam> targetParams, bool isInput)
         {
+            List<ScriptVariableParam> currentParams;
+            currentParams = (isInput ? ((IScriptComponent)component).Inputs : ((IScriptComponent)component).Outputs)
+                            .Select(x => (ScriptVariableParam)x).ToList();
             var currentNames = currentParams.Select(p => p.VariableName).ToList();
             var targetNames = targetParams.Select(p => p.VariableName).ToList();
 
@@ -387,11 +409,14 @@ namespace GrasshopperSever.Commands
                 {
                     if(param is IGH_Param p)
                     {
-                        if (isInput)
-                            component.Params.UnregisterInputParameter(p);
-                        else
-                            component.Params.UnregisterOutputParameter(p);
+                        var _ = isInput ? component.Params.UnregisterInputParameter(p)
+                            :component.Params.UnregisterOutputParameter(p);
                     }
+                }
+                else
+                {
+                    var tp = targetParams.FirstOrDefault(x => (x.VariableName == param.VariableName));
+                    ScriptVariableParamData.UpdateParam(tp, param);
                 }
             }
 
@@ -402,11 +427,8 @@ namespace GrasshopperSever.Commands
                 {
                     if (targetParam is IGH_Param p)
                     {
-                        // 直接注册从JSON创建的参数
-                        if (isInput)
-                            component.Params.RegisterInputParam(p);
-                        else
-                            component.Params.RegisterOutputParam(p);
+                        var _ = isInput ? component.Params.RegisterInputParam(p)
+                                            :component.Params.RegisterOutputParam(p);
                     }
                 }
             }

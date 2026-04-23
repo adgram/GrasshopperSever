@@ -176,7 +176,7 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// 从输入参数 Sources 中获取连接的 LanguageComponent
         /// </summary>
-        private BaseLanguageComponent GetLanguageComponent()
+        public BaseLanguageComponent GetLanguageComponent()
         {
             BaseLanguageComponent sourceComponent = null;
 
@@ -187,14 +187,12 @@ namespace GrasshopperSever.Components
                 if (source is IGH_Param sourceParam && sourceParam.Attributes != null)
                 {
                     var docObject = sourceParam.Attributes.GetTopLevel?.DocObject;
-
                     // 检查是否是 LanguageComponent
                     if (docObject is BaseLanguageComponent baseLangComp)
                     {
                         sourceComponent = baseLangComp;
                         break;
                     }
-
                     // 尝试通过类型检查
                     if (docObject is IGH_Component ghComp)
                     {
@@ -204,7 +202,6 @@ namespace GrasshopperSever.Components
                             sourceComponent = baseComp;
                             break;
                         }
-
                         // 通过类型名称检查
                         var typeName = ghComp.GetType().Name;
                         if (typeName.Contains("CSharp") ||

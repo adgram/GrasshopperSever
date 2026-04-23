@@ -78,6 +78,8 @@ AI ──TCP──> GHServer(接收+执行+响应) ──> AI
 | DOCUMENT | `SAVEDOCUMENT` | 保存文档 | [链接](Example/CMD_DOCUMENT/gh_file_test_report.md) |
 | DOCUMENT | `LOADDOCUMENT` | 加载文档 | 同上 |
 | DOCUMENT | `DATABASEPATH` | 获取数据库路径 | 同上 |
+| DOCUMENT | `GETALLOBJECTS` | 通过guid查找画布上组件实例  | 同上 |
+| DOCUMENT | `GETOBJECT` | 获取画布上组件实例 | 同上 |
 | RHINO | `RHINOSCRIPT` | 执行 Rhino 命令 | [链接](Example/CMD_RHINO/commands_RHINO.md) |
 | RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的对象 | 同上 |
 | RHINO | `SELECTOBJECTS` | 选择对象 | 同上 |

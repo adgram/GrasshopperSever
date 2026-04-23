@@ -112,6 +112,8 @@ GrasshopperSever/
 | DOCUMENT | `SAVEDOCUMENT` | 保存当前文档 |
 | DOCUMENT | `LOADDOCUMENT` | 加载文档 |
 | DOCUMENT | `DATABASEPATH` | 获取数据库路径 |
+| DOCUMENT | `GETALLOBJECTS` | 获取画布上所有组件实例 |
+| DOCUMENT | `GETOBJECT` | 通过guid查找画布上组件实例 |
 | RHINO | `RHINOSCRIPT` | 执行 Rhino 命令命令 |
 | RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的 Rhino 对象 |
 | RHINO | `SELECTOBJECTS` | 选择 Rhino 对象 |
@@ -123,7 +125,7 @@ GrasshopperSever/
 | DESIGN | `SETPARAMVALUE` | 设置参数值 |
 | DESIGN | `CONNECTCOMPONENTS` | 连接组件 |
 | DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 |
-| SCRIPT |                     | 未实现的命令，改为 RunScript 组件 |
+| SCRIPT |  | 未实现的命令，改为 RunScript 组件 |
 
 > 各命令的详细参数、示例和响应格式见对应文档：[Component 命令](Example/CMD_COMPONENT/commands_COMPONENT.md)、[Design 命令](Example/CMD_DESIGN/design_test.md)、[Document 命令](Example/CMD_DOCUMENT/gh_file_test_report.md)、[Rhino 命令](Example/CMD_RHINO/commands_RHINO.md)、[Script 命令](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md)。
 

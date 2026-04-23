@@ -113,6 +113,8 @@ All commands use Ljson format and are sent via TCP:
 | DOCUMENT | `SAVEDOCUMENT` | Save current document |
 | DOCUMENT | `LOADDOCUMENT` | Load document |
 | DOCUMENT | `DATABASEPATH` | Get database path |
+| DOCUMENT | `GETALLOBJECTS` | get all objects |
+| DOCUMENT | `GETOBJECT` | get component info by GUID |
 | RHINO | `RHINOSCRIPT` | Execute Rhino script commands |
 | RHINO | `GETLASTCREATEDOBJECTS` | Get last created Rhino objects |
 | RHINO | `SELECTOBJECTS` | Select Rhino objects |

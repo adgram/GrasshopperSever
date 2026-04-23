@@ -162,8 +162,25 @@ class GHClient:
                 matches = re.findall(r'"InstanceGuid"\s*:\s*"([^"]+)"', value)
                 return matches[-1] if matches else None
         return None
-
-
+    
+    @staticmethod
+    def scriptvariable_param(variableName, **kwargs):
+        '''
+        需要创建一个json
+        必须参数：
+        variableName:string 
+        可选参数：
+        typeHintName:string = "No Type Hint";
+        showTypeHints:bool = true;
+        allowTreeAccess:bool = true;
+        toolTip:string = "";
+        scriptParamAccess:int = 0;
+        optional:bool = false;
+        hidden:bool = false;
+        description:string = "";
+        castTargetType:string = "";
+        '''
+        return {"Name": variableName, **kwargs}
 
 
 if __name__ == '__main__':

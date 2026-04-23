@@ -292,39 +292,34 @@ a = line
 ```c#
 public class ScriptVariableParamData
 {
-    [JsonPropertyName("typeHintID")]
-    public Guid TypeHintID { get; set; }
-
+	// 类型提示的显示名称
     [JsonPropertyName("typeHintName")]
     public string TypeHintName { get; set; }
-
+	// 是否在端口上显示类型提示信息
     [JsonPropertyName("showTypeHints")]
     public bool ShowTypeHints { get; set; }
-
+	// 是否允许该参数访问数据树结构
     [JsonPropertyName("allowTreeAccess")]
     public bool AllowTreeAccess { get; set; }
-
+	// 鼠标悬停在端口上时显示的简短提示文本
     [JsonPropertyName("toolTip")]
     public string ToolTip { get; set; }
-
+	// 参数访问类型，对应 GH_ParamAccess 枚举
     [JsonPropertyName("scriptParamAccess")]
     public int ScriptParamAccess { get; set; }
-
+	// 脚本代码中使用的变量名
     [JsonPropertyName("variableName")]
     public string VariableName { get; set; }
-
-    [JsonPropertyName("prettyName")]
-    public string PrettyName { get; set; }
-
+	// 是否为可选参数
     [JsonPropertyName("optional")]
     public bool Optional { get; set; }
-
+	// 是否隐藏端口
     [JsonPropertyName("hidden")]
     public bool Hidden { get; set; }
-
+	// 端口的详细描述文本
     [JsonPropertyName("description")]
     public string Description { get; set; }
-
+	// 当 TypeHintID 指向 CastConverter（通用类型转换器）时，此字段指定要转换到的目标类型全名字符串
     [JsonPropertyName("castTargetType")]
     public string CastTargetType { get; set; }
 }
@@ -332,19 +327,76 @@ public class ScriptVariableParamData
 
 ```json
 [{
-  "typeHintID": "9e93878a-f9c5-4f0a-8a70-584bf09f24bb",
   "typeHintName": "string",
   "showTypeHints": true,
   "allowTreeAccess": true,
   "toolTip": "",
   "scriptParamAccess": 0,
   "variableName": "y",
-  "prettyName": "y",
   "optional": true,
   "hidden": false,
   "description": "Converts to collection of text fragments",
   "castTargetType": null
 }]
+```
+
+```c#
+// 最简单情况，只需要提供variableName即可
+[
+    {
+    "variableName": "y"
+    },
+    {
+    "variableName": "x"
+    }
+]
+```
+
+```
+// 下面是通用typeHintName：typeHintID
+bool:d60527f5-b5af-4ef6-8970-5f96fe412559
+int:48d01794-d3d8-4aef-990e-127168822244
+string:9e93878a-f9c5-4f0a-8a70-584bf09f24bb
+double:19ff81a2-dc4f-4035-8de9-26224c561321
+Complex:309690df-6229-4774-91bb-b1c9c0bfa54d
+DateTime:09bcf900-fe83-4efa-8d32-33d89f7a3e66
+Color:24b1d1a3-ab79-498c-9e44-c5b14607c4d3
+string:d969c421-cd3c-43f3-aef0-abad97d6526a
+Point3d:e1937b56-b1da-4c12-8bd8-e34ee81746ef
+Point3dList:b2ea84da-7a94-4144-9f7a-63167abd77e3
+Vector3d:15a50725-e3d3-4075-9f7c-142ba5f40747
+Plane:3897522d-58e9-4d60-b38c-978ddacfedd8
+Interval:589748aa-e558-4dd9-976f-78e3ab91fc77
+UVInterval:74c906f3-db02-4cea-bd58-de375cb5ae73
+Guid:5325b8e1-51d7-4d36-837a-d98394626c35
+Box:f29cb021-de79-4e63-9f04-fc8e0df5f8b6
+Transform:c4b38e4c-21ff-415f-a0d1-406d282428dd
+Line:f802a8cd-e699-4a94-97ea-83b5406271de
+Circle:3c5409a1-3293-4181-a6fa-c24c37fc0c32
+Arc:9c80ec18-b48c-41b0-bc6e-cd93d9c916aa
+Curve:9ba89ec2-5315-435f-a621-b66c5fa2f301
+Polyline:66fa617b-e3e8-4480-9f1e-2c0688c1d21b
+Rectangle3d:83da014b-a550-4bf5-89ff-16e54225bd5d
+Mesh:794a1f9d-21d5-4379-b987-9e8bbf433912
+Surface:f4070a37-c822-410f-9057-100d2e22a22d
+Extrusion:55816132-8684-4462-9786-df5a0e165430
+SubD:20f4ca9c-6c90-4fd6-ba8a-5bf9ca79db08
+Brep:2ceb0405-fdfe-403d-a4d6-8786da45fb9d
+PointCloud:d73c9fb0-365d-458f-9fb5-f4141399311f
+GeometryBase:c37956f4-d39c-49c7-af71-1e87f8031b26
+Hatch:4565f2a4-3fd1-4b53-b47b-54aee8e3732e
+TextDot:dcac4bdc-14dd-4dbf-a9bf-c0ffe063c912
+TextEntity:ef3aa299-2c5d-41f8-8fa0-77cd7820af9e
+Leader:23d3f942-a6c7-40e1-86d5-33ef632a6a86
+
+// python默认
+object:1c282eeb-dd16-439f-94e4-7d92b542fe8b
+
+// c#默认
+No Type Hint:6a184b65-baa3-42d1-a548-3915b401de53
+
+// CastConverter
+Cast:AFC03D93-D5A7-40F0-B738-00778E112D50
 ```
 
 ### 特点

@@ -1,4 +1,6 @@
+using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
+using RhinoCodePluginGH.Components;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +13,38 @@ namespace GrasshopperSever.Commands
     /// </summary>
     public class ActuatorHandle
     {
+        /// <summary>
+        /// 这里处理数据
+        /// </summary>
+        public static Ljson DoCommand(Ljson json, ref string out_data, string output_link)
+        {
+            out_data = json.GetParameterString("OUTPUT");
+            JsonElement out_data_info = default;
+            if (!string.IsNullOrEmpty(out_data) && !string.IsNullOrEmpty(output_link))
+            {
+                out_data_info = JsonSerializer.SerializeToElement(output_link);
+            }
+            Ljson result = null;
+            if (json != null && !string.IsNullOrWhiteSpace(json.Name))
+            {
+                // 根据 Name 值判断类型（不区分大小写）
+                result = json.Name.ToUpperInvariant() switch
+                {
+                    "COMPONENT" => DoComponentCommand(json),
+                    "DOCUMENT" => DoDocumentCommand(json),
+                    "DESIGN" => DoDesignCommand(json),
+                    "RHINO" => DoRhinoCommand(json),
+                    _ => null,
+                };
+            }
+            if (out_data_info.ValueKind != JsonValueKind.Undefined)
+            {
+                result ??= new Ljson("OUTPUTDATA", "output端连接信息", default);
+                result.SetParameter("OUTPUTDATA", out_data_info);
+            }
+            return result;
+        }
+
         /// <summary>
         /// 执行 Component 相关命令
         /// </summary>
@@ -94,6 +128,9 @@ namespace GrasshopperSever.Commands
 
                     case "GETALLOBJECTS":
                         return HandleGetAllObjects(data);
+
+                    case "GETOBJECT":
+                        return HandleGetObject(data);
 
                     case "DATABASEPATH":
                         return HandleDatabasePath(data);
@@ -757,11 +794,27 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                return DocumentInfo.GetAllObjects();
+                string guid = data.GetParameterString("Guid");
+                if (string.IsNullOrWhiteSpace(guid))
+                {
+                    return Ljson.CreateErrorLjson("缺少参数: guid");
+                }
+                return DocumentInfo.GetObject(guid);
             }
             catch (Exception ex)
             {
                 return Ljson.CreateErrorLjson($"获取文档对象失败: {ex.Message}");
+            }
+        }
+        private static Ljson HandleGetObject(Ljson data)
+        {
+            try
+            {
+                return DocumentInfo.GetAllObjects();
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"获取对象失败: {ex.Message}");
             }
         }
     }
@@ -854,5 +907,6 @@ namespace GrasshopperSever.Commands
         {
             return type.ToString();
         }
+
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
 
@@ -269,9 +270,9 @@ namespace GrasshopperSever.Utils
         /// </summary>
         /// <param name="limit">返回的最大记录数，默认100</param>
         /// <returns>操作历史列表</returns>
-        public static System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>> GetExchangeHistory(int limit = 100)
+        public static List<System.Collections.Generic.Dictionary<string, object>> GetExchangeHistory(int limit = 100)
         {
-            var history = new System.Collections.Generic.List<System.Collections.Generic.Dictionary<string, object>>();
+            var history = new List<System.Collections.Generic.Dictionary<string, object>>();
 
             try
             {
@@ -295,7 +296,7 @@ namespace GrasshopperSever.Utils
                         {
                             while (reader.Read())
                             {
-                                history.Add(new System.Collections.Generic.Dictionary<string, object>
+                                history.Add(new Dictionary<string, object>
                                 {
                                     { "Id", reader["Id"].ToString() },
                                     { "OperationType", reader["OperationType"].ToString() },

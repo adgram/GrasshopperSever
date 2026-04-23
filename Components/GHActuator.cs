@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text.Json;
 using Grasshopper.Kernel;
 using GrasshopperSever.Commands;
 using GrasshopperSever.Params;
@@ -65,7 +64,7 @@ namespace GrasshopperSever.Components
             // 处理命令并获取结果
             try
             {
-                var res_lst = DoCommand(lst, ref _output_data);
+                var res_lst = ActuatorHandle.DoCommand(lst, ref _output_data, GHServer.GetOutputLink(this, 2));
                 DA.SetData(0, res_lst.ToString());
                 DA.SetData(1, new LjsonGoo(res_lst));
                 DA.SetData(2, _output_data);
@@ -90,35 +89,6 @@ namespace GrasshopperSever.Components
         /// It is vital this Guid doesn't change otherwise old ghx files 
         /// that use the old ID will partially fail during loading.
         /// </summary>
-        public override Guid ComponentGuid => new Guid("6FDF874C-D2AC-43C7-A4DB-196A227189F2"); 
-        
-        /// <summary>
-        /// 这里处理数据
-        /// </summary>
-        public static Ljson DoCommand(Ljson lst, ref string out_data)
-        {
-            var h_type = LjsonTypeDetector.DetectType(lst);
-            out_data = lst.GetParameterString("OUTPUT");
-
-            // 根据 Value 值判断类型（不区分大小写）
-            switch (h_type)
-            {
-                case LjsonType.Component:
-                    return ActuatorHandle.DoComponentCommand(lst);
-
-                case LjsonType.Document:
-                    return ActuatorHandle.DoDocumentCommand(lst);
-
-                case LjsonType.Rhino:
-                    return ActuatorHandle.DoRhinoCommand(lst);
-
-                case LjsonType.Design:
-                    return ActuatorHandle.DoDesignCommand(lst);
-
-                default:
-                    break;
-            }
-            return Ljson.CreateOKLjson("ok");
-        }
+        public override Guid ComponentGuid => new Guid("6FDF874C-D2AC-43C7-A4DB-196A227189F2");
     }
 }

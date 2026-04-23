@@ -321,28 +321,30 @@ FROM ALLCOMPS
 
 ### A. 可用命令列表
 
-| 类型      | 命令                      | 说明                            | 详细文档                                    |
-| --------- | ------------------------- | ------------------------------- | ------------------------------------------- |
-| COMPONENT | `GETALLCOMPONENTS`        | 获取所有组件                    | [链接](CMD_COMPONENT/commands_COMPONENT.md) |
-| COMPONENT | `FINDCOMPONENTBYGUID`     | 按 GUID 查找组件                | 同上                                        |
-| COMPONENT | `FINDCOMPONENTBYNAME`     | 按名称查找组件                  | 同上                                        |
-| COMPONENT | `FINDCOMPONENTBYCATEGORY` | 按分类查找组件                  | 同上                                        |
-| COMPONENT | `SEARCHCOMPONENTSBYNAME`  | 模糊搜索组件                    | 同上                                        |
-| DOCUMENT  | `SAVEDOCUMENT`            | 保存文档                        | [链接](CMD_DOCUMENT/gh_file_test_report.md) |
-| DOCUMENT  | `LOADDOCUMENT`            | 加载文档                        | 同上                                        |
-| DOCUMENT  | `DATABASEPATH`            | 获取数据库路径                  | 同上                                        |
-| RHINO     | `RHINOSCRIPT`             | 执行 Rhino 命令                 | [链接](CMD_RHINO/commands_RHINO.md)         |
-| RHINO     | `GETLASTCREATEDOBJECTS`   | 获取最后创建的对象              | 同上                                        |
-| RHINO     | `SELECTOBJECTS`           | 选择对象                        | 同上                                        |
-| RHINO     | `GETANDSELECTLASTOBJECTS` | 获取并选择对象                  | 同上                                        |
-| DESIGN    | `ADDCOMPONENTBYGUID`      | 通过 GUID 添加组件              | [链接](CMD_DESIGN/design_test.md)           |
-| DESIGN    | `ADDCOMPONENTBYNAME`      | 通过名称添加组件                | 同上                                        |
-| DESIGN    | `ADDPARAMWITHVALUE`       | 添加参数组件并设置值            | 同上                                        |
-| DESIGN    | `REMOVECOMPONENT`         | 移除组件                        | 同上                                        |
-| DESIGN    | `SETPARAMVALUE`           | 设置参数值                      | 同上                                        |
-| DESIGN    | `CONNECTCOMPONENTS`       | 连接组件                        | 同上                                        |
-| DESIGN    | `DISCONNECTCOMPONENTS`    | 断开组件连接                    | 同上                                        |
-| SCRIPT    |                           | 未实现的命令，改为RunScript组件 |                                             |
+| 类型 | 命令 | 说明 | 详细文档 |
+|------|------|------|----------|
+| COMPONENT | `GETALLCOMPONENTS` | 获取所有组件 | [链接](../CMD_COMPONENT/commands_COMPONENT.md) |
+| COMPONENT | `FINDCOMPONENTBYGUID` | 按 GUID 查找组件 | 同上 |
+| COMPONENT | `FINDCOMPONENTBYNAME` | 按名称查找组件 | 同上 |
+| COMPONENT | `FINDCOMPONENTBYCATEGORY` | 按分类查找组件 | 同上 |
+| COMPONENT | `SEARCHCOMPONENTSBYNAME` | 模糊搜索组件 | 同上 |
+| DOCUMENT | `SAVEDOCUMENT` | 保存文档 | [链接](../CMD_DOCUMENT/gh_file_test_report.md) |
+| DOCUMENT | `LOADDOCUMENT` | 加载文档 | 同上 |
+| DOCUMENT | `DATABASEPATH` | 获取数据库路径 | 同上 |
+| DOCUMENT | `GETALLOBJECTS` | 通过guid查找画布上组件实例 | 同上 |
+| DOCUMENT | `GETOBJECT` | 获取画布上组件实例 | 同上 |
+| RHINO | `RHINOSCRIPT` | 执行 Rhino 命令 | [链接](../CMD_RHINO/commands_RHINO.md) |
+| RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的对象 | 同上 |
+| RHINO | `SELECTOBJECTS` | 选择对象 | 同上 |
+| RHINO | `GETANDSELECTLASTOBJECTS` | 获取并选择对象 | 同上 |
+| DESIGN | `ADDCOMPONENTBYGUID` | 通过 GUID 添加组件 | [链接](../CMD_DESIGN/design_test.md) |
+| DESIGN | `ADDCOMPONENTBYNAME` | 通过名称添加组件 | 同上 |
+| DESIGN | `ADDPARAMWITHVALUE` | 添加参数组件并设置值 | 同上 |
+| DESIGN | `REMOVECOMPONENT` | 移除组件 | 同上 |
+| DESIGN | `SETPARAMVALUE` | 设置参数值 | 同上 |
+| DESIGN | `CONNECTCOMPONENTS` | 连接组件 | 同上 |
+| DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 | 同上 |
+| SCRIPT |  | 未实现的命令，改为RunScript组件 |  |
 
 警告：如果你是ai，请不要轻易获取所有组件信息(`GETALLCOMPONENTS`)，优先使用分组或名称查询、检索，或者调用数据库。
 
