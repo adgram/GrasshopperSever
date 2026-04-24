@@ -5,30 +5,9 @@
 
 from ghclient import GHClient
 import time
-import re
 
 PORT = 9653
 
-def extract_guid(response):
-    """从响应中提取 InstanceGuid"""
-    if not response:
-        return None
-    
-    # 遍历响应列表
-    for resp in response:
-        value = resp.get('Value', '')
-        if isinstance(value, str) and 'InstanceGuid' in value:
-            # 查找转义的 InstanceGuid（通用）
-            matches_escaped = re.findall(r'\\"InstanceGuid\\":\s*\\"([^"]+)\\"', value)
-            if matches_escaped:
-                return matches_escaped[-1]
-            
-            # 查找未转义的
-            matches = re.findall(r'"InstanceGuid"\s*:\s*"([^"]+)"', value)
-            if matches:
-                return matches[-1]
-    
-    return None
 
 def main():
     print("="*60)
@@ -54,7 +33,7 @@ def main():
             )
             print(f"[响应] {r1[:300] if r1 else '空'}...")
             
-            guid = extract_guid(r1)
+            guid = client.extract_value(r1, "InstanceGuid")
             if guid:
                 print(f"[OK] Number Slider InstanceGuid: {guid}")
             else:

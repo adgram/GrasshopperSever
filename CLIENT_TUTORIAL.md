@@ -139,14 +139,14 @@ source_guid = None
 with GHClient(port=6879) as gh:
     value = {"Command": "AddComponentByName", "ComponentName": "Addition", "X": 200, "Y": 100}
     p = gh.send_command("DESIGN", "", value)
-    target_guid = gh.extract_guid(p)
+    target_guid = gh.extract_value(p, "InstanceGuid")
     print(p)
 
 # 2. 设置参数值
 with GHClient(port=6879) as gh:
     value = {"Command": "ADDPARAMWITHVALUE", 'ParamName': "int", "Value": 42, "X": 50, "Y": 100}
     p = gh.send_command("DESIGN", "", value)
-    source_guid = gh.extract_guid(p)
+    source_guid = gh.extract_value(p, "InstanceGuid")
     print(p)
 
 # 3. 连接组件

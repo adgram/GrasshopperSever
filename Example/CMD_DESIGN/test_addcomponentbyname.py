@@ -30,25 +30,6 @@ def test_single_component(client, component_name, x, y, test_number):
         
         if responses:
             print(f"\n📨收到 {len(responses)} 条响应")
-            for i, resp in enumerate(responses, 1):
-                name = resp.get('Name', 'N/A')
-                value = resp.get('Value', 'N/A')
-                print(f"  [{i}] Name: {name}")
-                print(f"      Value: {value}")
-                
-                # 检查是否包含组件信息
-                if isinstance(value, str) and 'InstanceGuid' in value:
-                    import ast
-                    try:
-                        value_dict = ast.literal_eval(value.split('组件添加成功')[-1].strip())
-                        print(f"\n  📋 组件详情:")
-                        print(f"     ComponentGuid: {value_dict.get('ComponentGuid', 'N/A')}")
-                        print(f"     InstanceGuid: {value_dict.get('InstanceGuid', 'N/A')}")
-                        print(f"     ComponentName: {value_dict.get('ComponentName', 'N/A')}")
-                        print(f"     Position: ({value_dict.get('Position', {}).get('X', 'N/A')}, {value_dict.get('Position', {}).get('Y', 'N/A')})")
-                    except:
-                        pass
-            
             return {
                 'component': component_name,
                 'success': True,

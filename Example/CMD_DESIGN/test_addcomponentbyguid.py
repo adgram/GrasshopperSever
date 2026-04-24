@@ -66,12 +66,6 @@ def test_add_by_guid(client, component_guid, component_name, x, y, test_number):
 
         if responses:
             print(f"\n📨收到 {len(responses)} 条响应")
-            for i, resp in enumerate(responses, 1):
-                name = resp.get('Name', 'N/A')
-                value = resp.get('Value', 'N/A')
-                print(f"  [{i}] Name: {name}")
-                print(f"      Value: {value}")
-
             return {
                 'component': component_name,
                 'guid': component_guid,

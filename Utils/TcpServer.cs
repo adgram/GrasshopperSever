@@ -182,17 +182,18 @@ namespace GrasshopperSever.Utils
             {
                 var stream = client.GetStream();
                 var reader = new StreamReader(stream, Encoding.UTF8);
-
-                // 读取数据
-                string json = await reader.ReadLineAsync();
-                if (!string.IsNullOrEmpty(json))
+                string json;
+                // 持续读取，直到客户端关闭连接
+                while ((json = await reader.ReadLineAsync()) != null)
                 {
-                    Ljson receivedList = new Ljson(json);
-                    if (receivedList.Time > LastReceivedTime)
+                    if (!string.IsNullOrEmpty(json))
                     {
-                        LastReceivedTime = receivedList.Time;
-                        // 触发事件
-                        OnLjsonReceived?.Invoke(receivedList);
+                        Ljson receivedjs = new Ljson(json);
+                        if (receivedjs.Time > LastReceivedTime)
+                        {
+                            LastReceivedTime = receivedjs.Time;
+                            OnLjsonReceived?.Invoke(receivedjs);
+                        }
                     }
                 }
             }
@@ -200,6 +201,33 @@ namespace GrasshopperSever.Utils
             {
                 Log($"TcpReceiver 错误: {ex.Message}");
             }
+            finally
+            {
+                client?.Close();
+                Log("Tcp客户端连接已关闭");
+            }
+            //try
+            //{
+            //    var stream = client.GetStream();
+            //    var reader = new StreamReader(stream, Encoding.UTF8);
+
+            //    // 读取数据
+            //    string json = await reader.ReadLineAsync();
+            //    if (!string.IsNullOrEmpty(json))
+            //    {
+            //        Ljson receivedjs = new Ljson(json);
+            //        if (receivedjs.Time > LastReceivedTime)
+            //        {
+            //            LastReceivedTime = receivedjs.Time;
+            //            // 触发事件
+            //            OnLjsonReceived?.Invoke(receivedjs);
+            //        }
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    Log($"TcpReceiver 错误: {ex.Message}");
+            //}
         }
     }
 

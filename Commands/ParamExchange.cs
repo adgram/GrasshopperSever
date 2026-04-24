@@ -1,11 +1,14 @@
 ﻿using Grasshopper;
 using Grasshopper.Kernel;
+using Grasshopper.Kernel.Parameters;
 using GrasshopperSever.Utils;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text.Json;
+using System.Xml.Linq;
 
 namespace GrasshopperSever.Commands
 {
@@ -14,31 +17,28 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 创建组件Param信息Ljson
         /// </summary>
-        public static Ljson ParamLjson(string paramGuid, string instanceGuid,
-            string name, string nickName, string description,
-            string typeName, bool optional, GH_ParamAccess access,
-            GH_DataMapping mapping, bool reverse, bool simplify,
-            string inputs, string outputs)
+        public static Ljson ParamToLjson(IGH_Param param)
         {
             var data = new Dictionary<string, object>
             {
-                { "ParamGuid", paramGuid },
-                { "InstanceGuid", instanceGuid },
-                { "Name", name },
-                { "NickName", nickName },
-                { "Description", description },
-                { "TypeName", typeName },
-                { "Optional", optional },
-                { "Access", access.ToString() },
-                { "Mapping", mapping.ToString() },
-                { "Reverse", reverse },
-                { "Simplify", simplify },
-                { "Inputs", inputs },
-                { "Outputs", outputs }
+                { "ParamGuid", param.ComponentGuid.ToString()},
+                { "InstanceGuid", param.InstanceGuid.ToString()},
+                { "Name", param.Name},
+                { "NickName", param.NickName},
+                { "Description", param.Description},
+                { "TypeName", param.TypeName},
+                { "Optional", param.Optional},
+                { "Access", param.Access.ToString()},
+                { "Mapping", param.DataMapping.ToString() },
+                { "Reverse", param.Reverse },
+                { "Simplify", param.Simplify},
+                { "Sources", JsonSerializer.Serialize(param.Sources.Select(s => s.InstanceGuid.ToString()))},
+                { "Recipients", JsonSerializer.Serialize(param.Recipients.Select(s => s.InstanceGuid.ToString()))}
             };
 
             return new Ljson("Param", "参数信息", JsonSerializer.SerializeToElement(data));
         }
+
 
         /// <summary>
         /// 核心工厂方法：根据 ParamGuid 创建一个空的 IGH_Param 实例
@@ -83,25 +83,6 @@ namespace GrasshopperSever.Commands
 
             if (Enum.TryParse(data.GetParameterString("Mapping"), true, out GH_DataMapping map))
                 targetParam.DataMapping = map;
-        }
-
-        public static Ljson ParamToLjson(IGH_Param param)
-        {
-            return ParamLjson(
-                param.ComponentGuid.ToString(),   // 电池类型识别码
-                param.InstanceGuid.ToString(),    // 画布实例识别码
-                param.Name,
-                param.NickName,
-                param.Description,
-                param.TypeName,
-                param.Optional,                   // 直接传递 bool 值
-                param.Access,                     // 直接传递枚举值 (item, list, tree)
-                param.DataMapping,                // 直接传递枚举值 (none, flatten, graft)
-                param.Reverse,                    // 直接传递 bool 值
-                param.Simplify,                   // 直接传递 bool 值
-                JsonSerializer.Serialize(param.Sources.Select(s => s.InstanceGuid.ToString())),
-                JsonSerializer.Serialize(param.Recipients.Select(s => s.InstanceGuid.ToString()))
-            );
         }
 
         /// <summary>

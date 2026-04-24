@@ -4,6 +4,7 @@ using GrasshopperSever.Utils;
 using Rhino;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Text.Json;
 
@@ -11,26 +12,6 @@ namespace GrasshopperSever.Commands
 {
     public class ComponentExchange
     {
-        /// <summary>
-        /// 创建组件信息Ljson
-        /// </summary>
-        public static Ljson InstanceLjson(string componentGuid,
-            string instanceGuid, string name, PointF position,
-            string state, string input, string output)
-        {
-            var data = new Dictionary<string, JsonElement>
-            {
-                { "ComponentGuid", JsonSerializer.SerializeToElement(componentGuid) },
-                { "InstanceGuid", JsonSerializer.SerializeToElement(instanceGuid) },
-                { "ComponentName", JsonSerializer.SerializeToElement(name) },
-                { "Position", JsonSerializer.SerializeToElement(position) },
-                { "State", JsonSerializer.SerializeToElement(state) },
-                { "Input", JsonSerializer.SerializeToElement(input) },
-                { "Output", JsonSerializer.SerializeToElement(output) }
-            };
-
-            return new Ljson("Component", "组件信息", JsonSerializer.SerializeToElement(data));
-        }
 
         /// <summary>
         /// 添加组件到 Grasshopper 文档
@@ -88,7 +69,7 @@ namespace GrasshopperSever.Commands
             return RecordAddComponent(dobj, point);
         }
 
-        public static Ljson AddComponent(IGH_DocumentObject dobj, PointF point)
+        public static Ljson AddComponent(IGH_DocumentObject dobj, PointF point, bool hasCustomValue)
         {
             if (dobj == null) throw new InvalidOperationException("Failed to create component");
             Exception caughtException = null;
@@ -126,13 +107,13 @@ namespace GrasshopperSever.Commands
                 throw caughtException;
             }
 
-            return RecordAddComponent(dobj, point);
+            return RecordAddComponent(dobj, point, hasCustomValue);
         }
 
         /// <summary>
         /// 添加组件到 Grasshopper 文档
         /// </summary>
-        public static Ljson RecordAddComponent(IGH_DocumentObject component, PointF point)
+        public static Ljson RecordAddComponent(IGH_DocumentObject component, PointF point, bool hasCustomValue = false)
         {
             if (component == null) throw new InvalidOperationException("Failed to create component");
 
@@ -145,27 +126,8 @@ namespace GrasshopperSever.Commands
                 y: point.Y,
                 description: $"添加组件 {component.Name}"
             );
-
-            string inputsJson = "";
-            string outputsJson = "";
-            if (component is IGH_Component cominst)
-            {
-                inputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Input).ToString();
-                outputsJson = ParamExchange.SerializeParamDefinitions(cominst.Params.Output).ToString();
-            }else if(component is IGH_Param parins)
-            {
-                inputsJson = "不包含自定义值";
-            }
             // 返回 InstanceLjson
-            return InstanceLjson(
-                componentGuid: component.ComponentGuid.ToString(),
-                instanceGuid: component.InstanceGuid.ToString(),
-                name: component.Name,
-                position: point,
-                state: "",
-                input: inputsJson,
-                output: outputsJson
-            );
+            return ComponentInfo.InstanceLjsonBrief(component, point, hasCustomValue);
         }
 
 

@@ -285,7 +285,7 @@ from ghclient import GHClient
 with GHClient(port=6879) as gh:
     value = {"Command": "AddComponentByName", "ComponentName": "Addition", "X": 200, "Y": 100}
     p = gh.send_command("DESIGN", "", value)
-    print(gh.extract_guid(p))
+    print(gh.extract_value(p, "InstanceGuid"))
 ```
 
 ---

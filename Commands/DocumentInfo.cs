@@ -3,10 +3,15 @@ using Grasshopper;
 using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
 using Rhino;
+using Rhino.Runtime.Code;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GrasshopperSever.Commands
 {
@@ -40,10 +45,10 @@ namespace GrasshopperSever.Commands
                 }
 
                 // 3. 确保目录存在
-                var directory = System.IO.Path.GetDirectoryName(savePath);
-                if (!string.IsNullOrWhiteSpace(directory) && !System.IO.Directory.Exists(directory))
+                var directory = Path.GetDirectoryName(savePath);
+                if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
                 {
-                    System.IO.Directory.CreateDirectory(directory);
+                    Directory.CreateDirectory(directory);
                 }
 
                 // 4. 设置文档的文件路径
@@ -90,20 +95,20 @@ namespace GrasshopperSever.Commands
                 }
 
                 // 检查文件是否存在
-                if (!System.IO.File.Exists(filePath))
+                if (!File.Exists(filePath))
                 {
                     return Ljson.CreateErrorLjson($"文件不存在: {filePath}");
                 }
 
                 // 检查文件扩展名
-                string extension = System.IO.Path.GetExtension(filePath).ToLowerInvariant();
+                string extension = Path.GetExtension(filePath).ToLowerInvariant();
                 if (extension != ".gh" && extension != ".ghx")
                 {
                     return Ljson.CreateErrorLjson("不支持的文件格式，只支持 .gh 和 .ghx 文件");
                 }
 
                 // 1. 创建一个新的IO对象并加载文件内容到内存
-                GH_DocumentIO docIO = new GH_DocumentIO();
+                GH_DocumentIO docIO = new();
                 if (!docIO.Open(filePath))
                 {
                     return Ljson.CreateErrorLjson("打开文档失败");
@@ -148,72 +153,13 @@ namespace GrasshopperSever.Commands
                 {
                     return Ljson.CreateErrorLjson("当前没有活动的Grasshopper文档");
                 }
-
-                // 2. 收集所有对象信息
-                var objectsList = new List<object>();
-                int componentCount = 0;
-                int paramCount = 0;
-
-                foreach (IGH_DocumentObject obj in doc.Objects)
-                {
-                    var objInfo = new Dictionary<string, object>
-                    {
-                        { "InstanceGuid", obj.InstanceGuid.ToString() },
-                        { "Name", obj.Name },
-                        { "NickName", obj.NickName }
-                    };
-
-                    // 获取对象类型
-                    if (obj is IGH_Component component)
-                    {
-                        objInfo["Type"] = "Component";
-                        objInfo["ComponentGuid"] = component.ComponentGuid.ToString();
-                        objInfo["Category"] = component.Category;
-                        objInfo["SubCategory"] = component.SubCategory;
-                        componentCount++;
-                    }
-                    else if (obj is IGH_Param param)
-                    {
-                        objInfo["Type"] = "Param";
-                        objInfo["ParamType"] = param.TypeName;
-                        paramCount++;
-                    }
-                    else
-                    {
-                        objInfo["Type"] = obj.GetType().Name;
-                    }
-
-                    // 获取位置信息
-                    if (obj.Attributes != null)
-                    {
-                        objInfo["Position"] = new
-                        {
-                            obj.Attributes.Pivot.X,
-                            obj.Attributes.Pivot.Y
-                        };
-                        objInfo["Bounds"] = new
-                        {
-                            obj.Attributes.Bounds.X,
-                            obj.Attributes.Bounds.Y,
-                            obj.Attributes.Bounds.Width,
-                            obj.Attributes.Bounds.Height
-                        };
-                    }
-
-                    objectsList.Add(objInfo);
-                }
-
-                // 3. 封装结果
                 var data = new Dictionary<string, object>
                 {
                     { "DocumentId", doc.DocumentID.ToString() },
                     { "TotalCount", doc.ObjectCount },
-                    { "ComponentCount", componentCount },
-                    { "ParamCount", paramCount },
-                    { "Objects", objectsList }
+                    { "Graph", ComponentGraph.BuildComponentGraph(doc).SerializeToElement() }
                 };
-
-                return new Ljson("AllObjects", "当前文档所有对象", JsonSerializer.SerializeToElement(data));
+                return new Ljson("DocumentGraph", "当前文档所有对象", JsonSerializer.SerializeToElement(data));
             }
             catch (Exception ex)
             {
@@ -244,52 +190,154 @@ namespace GrasshopperSever.Commands
             {
                 return Ljson.CreateErrorLjson($"获取对象失败{caughtException}");
             }
-            if (obj == null) return Ljson.CreateErrorLjson($"获取对象失败");
-
-            var objInfo = new Dictionary<string, object>
-            {
-                { "InstanceGuid", obj.InstanceGuid.ToString() },
-                { "Name", obj.Name },
-                { "NickName", obj.NickName }
-            };
-
-            // 获取对象类型
-            if (obj is IGH_Component component)
-            {
-                objInfo["Type"] = "Component";
-                objInfo["ComponentGuid"] = component.ComponentGuid.ToString();
-                objInfo["Category"] = component.Category;
-                objInfo["SubCategory"] = component.SubCategory;
-            }
-            else if (obj is IGH_Param param)
-            {
-                objInfo["Type"] = "Param";
-                objInfo["ParamType"] = param.TypeName;
-            }
-            else
-            {
-                objInfo["Type"] = obj.GetType().Name;
-            }
-
-            // 获取位置信息
-            if (obj.Attributes != null)
-            {
-                objInfo["Position"] = new
-                {
-                    obj.Attributes.Pivot.X,
-                    obj.Attributes.Pivot.Y
-                };
-                objInfo["Bounds"] = new
-                {
-                    obj.Attributes.Bounds.X,
-                    obj.Attributes.Bounds.Y,
-                    obj.Attributes.Bounds.Width,
-                    obj.Attributes.Bounds.Height
-                };
-            }
-
-            return new Ljson("Objects", "查找的实例对象", JsonSerializer.SerializeToElement(objInfo));
+            return ComponentInfo.InstanceLjson(obj);
         }
 
     }
+
+
+    /// <summary>
+    /// 混合组件/参数节点的有向图数据结构
+    /// </summary>
+    public class ComponentGraph
+    {
+        // 节点 GUID -> 输出端口名 -> (下游节点 GUID, 下游输入端口名)
+        public Dictionary<Guid, Dictionary<string, Dictionary<Guid, string>>> Adjacency { get; } = new();
+
+        // 节点 GUID -> 显示名称
+        public Dictionary<Guid, string> NodeNames { get; } = new();
+
+        // GUID 到文档对象实例的映射
+        public Dictionary<Guid, IGH_DocumentObject> NodeObjects { get; } = new();
+
+        // 节点类型
+        public Dictionary<Guid, NodeType> NodeTypes { get; } = new();
+
+        // 图的根节点（没有上游连接的节点，即入度为0）
+        public HashSet<Guid> Heads { get; } = new();
+
+        public enum NodeType
+        {
+            Component,
+            TopParam
+        }
+
+        /// <summary>
+        /// 构建包含 IGH_Component 和独立 IGH_Param 的混合连接图
+        /// </summary>
+        public static ComponentGraph BuildComponentGraph(GH_Document doc)
+        {
+            ComponentGraph graph = new();
+            if (doc == null) return graph;
+
+            // 1. 收集所有顶层对象，并分离组件与独立参数
+            var allObjects = doc.Objects.ToList();
+
+            foreach (var obj in allObjects)
+            {
+                var guid = obj.InstanceGuid;
+
+                // 1.1 如果是 IGH_Component（绝大多数情况）
+                if (obj is IGH_Component component)
+                {
+                    graph.Adjacency[guid] = new();
+                    graph.NodeNames[guid] = string.IsNullOrEmpty(component.Name) ? component.NickName : component.Name;
+                    graph.NodeObjects[guid] = component;
+                    graph.NodeTypes[guid] = NodeType.Component;
+                }
+                // 1.2 如果不是组件，但实现了 IGH_Param（游离参数）
+                else if (obj is IGH_Param param && param.Kind == GH_ParamKind.floating)
+                {
+                    graph.Adjacency[guid] = new(); // 只有一个输出端
+                    graph.NodeNames[guid] = param.Name;
+                    graph.NodeObjects[guid] = param;
+                    graph.NodeTypes[guid] = NodeType.TopParam;
+                }
+            }
+
+            var hasInput = new HashSet<Guid>();
+
+            // 2. 为每个节点找出其下游节点
+            foreach (var nodeId in graph.NodeObjects.Keys.ToList())
+            {
+                var node = graph.NodeObjects[nodeId];
+                IEnumerable<IGH_Param> outputParams;
+
+                // 根据节点类型获取“输出端口”列表
+                if (node is IGH_Component comp)
+                {
+                    outputParams = comp.Params.Output;
+                }
+                else if (node is IGH_Param paramNode)
+                {
+                    outputParams = new[] { paramNode };
+                }
+                else
+                {
+                    continue;
+                }
+
+                // 遍历每一个输出参数，找到连接到的下游参数
+                foreach (var outParam in outputParams)
+                {
+                    Dictionary<Guid, string> recipientsParams = new();
+                    foreach (var targetParam in outParam.Recipients)
+                    {
+                        // 通过参数回溯到其所属的顶层文档对象（可能是组件或独立参数）
+                        var targetDocObj = targetParam.Attributes?.GetTopLevel?.DocObject;
+                        if (targetDocObj == null) continue;
+
+                        var targetId = targetDocObj.InstanceGuid;
+                        if (graph.Adjacency.ContainsKey(targetId) && targetId != nodeId)
+                        {
+                            recipientsParams[targetId] = targetParam.Name;
+                            hasInput.Add(targetId);
+                        }
+                    }
+                    graph.Adjacency[nodeId][outParam.Name] = recipientsParams;
+                }
+            }
+
+            // 3. 计算根节点（Heads）：没有任何上游连接的节点
+            foreach (var id in graph.NodeObjects.Keys)
+            {
+                if (!hasInput.Contains(id))
+                    graph.Heads.Add(id);
+            }
+
+            return graph;
+        }
+        /// <summary>
+        /// 序列化为 JSON 字符串（仅含拓扑信息，不包含运行时对象和单独的边列表）
+        /// </summary>
+        public JsonElement SerializeToElement()
+        {
+            // 构建适合序列化的匿名对象，将 Guid 转换为可读字符串
+            var dto = new
+            {
+                Heads = Heads.Select(g => g.ToString("D")).ToList(),
+
+                Nodes = NodeNames.Select(kvp => new
+                {
+                    Id = kvp.Key.ToString("D"),
+                    Name = kvp.Value,
+                    Type = NodeTypes.TryGetValue(kvp.Key, out var t) ? t.ToString() : "Unknown"
+                }).ToList(),
+
+                Adjacency = Adjacency.ToDictionary(
+                    src => src.Key.ToString("D"),
+                    src => src.Value.ToDictionary(
+                        outPortName => outPortName.Key,
+                        outPortName => outPortName.Value.ToDictionary(
+                            tgt => tgt.Key.ToString("D"),
+                            tgt => tgt.Value
+                        )
+                    )
+                )
+            };
+
+            return JsonSerializer.SerializeToElement(dto);
+        }
+    }
+
 }

@@ -308,7 +308,7 @@ pManager.AddParameter(new LjsonParam(), "Ljson", "LJ", "所有组件的信息", 
 
 - 输出结构：
 
-```c#
+```json
 // Ljson.Value为对象格式
 {
   "categorys": "所有分类",
@@ -328,7 +328,7 @@ pManager.AddParameter(new LjsonParam(), "ComponentInfo", "C", "组件信息", GH
 
 - 输出结构`ComponentLjson`（Ljson.Value为对象格式）：
 
-```c#
+```json
 {
   "ComponentGuid": "组件 GUID",
   "ComponentName": "组件名称",

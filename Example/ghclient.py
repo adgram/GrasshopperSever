@@ -151,18 +151,13 @@ class GHClient:
         self.disconnect()
 
     @staticmethod
-    def extract_guid(response_text):
-        """从响应中提取 InstanceGuid"""
+    def extract_value(response_text: list[dict], key):
+        """从响应中提取指定键的值"""
         for r in response_text:
-            if 'Value' not in r: continue
-            value = r['Value']
-            if 'InstanceGuid' in value:
-                matches = re.findall(r'\\"InstanceGuid\\":\s*\\"([^"]+)\\"', value)
-                if matches: return matches[-1]
-                matches = re.findall(r'"InstanceGuid"\s*:\s*"([^"]+)"', value)
-                return matches[-1] if matches else None
+            if "Value" in r and isinstance((value := r["Value"]), dict):
+                return value.get(key, None)
         return None
-    
+
     @staticmethod
     def scriptvariable_param(variableName, **kwargs):
         '''

@@ -275,7 +275,7 @@ namespace GrasshopperSever.Commands
                 var point = new System.Drawing.PointF((float)x, (float)y);
                 var result = ComponentExchange.AddComponentByGuid(componentGuid, point);
 
-                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
+                return result;
             }
             catch (Exception ex)
             {
@@ -310,7 +310,7 @@ namespace GrasshopperSever.Commands
                 var point = new System.Drawing.PointF((float)x, (float)y);
                 var result = ComponentExchange.AddComponentByName(componentName, point);
 
-                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
+                return result;
             }
             catch (Exception ex)
             {
@@ -344,7 +344,7 @@ namespace GrasshopperSever.Commands
                 var point = new System.Drawing.PointF((float)x, (float)y);
                 var result = CommonlyParam.AddParamWithValue(componentName, point, path, value);
 
-                return Ljson.CreateOKLjson($"组件添加成功{result.Value}");
+                return result;
             }
             catch (Exception ex)
             {
@@ -524,7 +524,7 @@ namespace GrasshopperSever.Commands
         /// </summary>
         private static Ljson HandleSelectObjects(Ljson data)
         {
-            string objectsParam =data.GetParameterString("Objects");
+            string objectsParam = data.GetParameterString("Objects");
             if (string.IsNullOrWhiteSpace(objectsParam))
             {
                 return Ljson.CreateErrorLjson("缺少参数: Objects");
@@ -609,12 +609,8 @@ namespace GrasshopperSever.Commands
                     return Ljson.CreateErrorLjson("缺少参数: Guid");
                 }
 
-                var component = ComponentInfo.FindComponentsByGuid(guid);
-                if (component == null)
-                {
-                    return Ljson.CreateErrorLjson($"未找到GUID为 {guid} 的组件");
-                }
-
+                var component = ComponentInfo.FindComponentsByGuid(guid)
+                    ??Ljson.CreateErrorLjson($"未找到GUID为 {guid} 的组件");
                 return component;
             }
             catch (Exception ex)
@@ -638,12 +634,8 @@ namespace GrasshopperSever.Commands
                     return Ljson.CreateErrorLjson("缺少参数: Name");
                 }
 
-                var component = ComponentInfo.FindComponentsByName(name);
-                if (component == null)
-                {
-                    return Ljson.CreateErrorLjson($"未找到名称为 {name} 的组件");
-                }
-
+                var component = ComponentInfo.FindComponentsByName(name)
+                    ?? Ljson.CreateErrorLjson($"未找到名称为 {name} 的组件");
                 return component;
             }
             catch (Exception ex)
@@ -670,12 +662,8 @@ namespace GrasshopperSever.Commands
                     return Ljson.CreateErrorLjson("至少需要提供一个参数: Category, SubCategory 或 Name");
                 }
 
-                var component = ComponentInfo.FindComponentsByCategory(category, subCategory, name);
-                if (component == null)
-                {
-                    return Ljson.CreateErrorLjson($"未找到符合条件的组件");
-                }
-
+                var component = ComponentInfo.FindComponentsByCategory(category, subCategory, name)
+                        ??Ljson.CreateErrorLjson($"未找到符合条件的组件");
                 return component;
             }
             catch (Exception ex)
@@ -709,7 +697,7 @@ namespace GrasshopperSever.Commands
                 var resultData = new Dictionary<string, object>
                 {
                     { "Count", components.Count.ToString() },
-                    { "Components", components.Select(c => c.ToJson()).ToList() }
+                    { "Components", components.Select(c => c.Value).ToList() }
                 };
 
                 return new Ljson("SearchComponentsByName", "搜索组件", JsonSerializer.SerializeToElement(resultData));
@@ -794,6 +782,18 @@ namespace GrasshopperSever.Commands
         {
             try
             {
+                return DocumentInfo.GetAllObjects();
+            }
+            catch (Exception ex)
+            {
+                return Ljson.CreateErrorLjson($"获取对象失败: {ex.Message}");
+            }
+        }
+        
+        private static Ljson HandleGetObject(Ljson data)
+        {
+            try
+            {
                 string guid = data.GetParameterString("Guid");
                 if (string.IsNullOrWhiteSpace(guid))
                 {
@@ -804,17 +804,6 @@ namespace GrasshopperSever.Commands
             catch (Exception ex)
             {
                 return Ljson.CreateErrorLjson($"获取文档对象失败: {ex.Message}");
-            }
-        }
-        private static Ljson HandleGetObject(Ljson data)
-        {
-            try
-            {
-                return DocumentInfo.GetAllObjects();
-            }
-            catch (Exception ex)
-            {
-                return Ljson.CreateErrorLjson($"获取对象失败: {ex.Message}");
             }
         }
     }

@@ -3,10 +3,12 @@ using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
+using System.ComponentModel;
 using System.Data.SQLite;
 using System.Diagnostics;
+using System.Drawing;
+using System.Linq;
+using System.Text.Json;
 
 
 namespace GrasshopperSever.Commands
@@ -16,8 +18,7 @@ namespace GrasshopperSever.Commands
     {
         // 组件代理字典缓存（GUID -> Proxy），用于快速查找
         private static Dictionary<string, IGH_ObjectProxy> _componentProxyCache;
-        private static readonly object _cacheLock = new object();
-
+        private static readonly object _cacheLock = new();
 
         /// <summary>
         /// 创建组件信息Ljson
@@ -632,6 +633,76 @@ namespace GrasshopperSever.Commands
             return $"{cleanCategory}_{cleanName}";
         }
 
+        /// <summary>
+        /// 创建组件信息Ljson
+        /// </summary>
+        public static Ljson InstanceLjsonBrief(IGH_DocumentObject obj, PointF position, bool hasCustomValue)
+        {
+            string type = (obj is IGH_Param) ? "Param" : "Component";
+            var data = new Dictionary<string, object>
+            {
+                { "ComponentGuid", obj.ComponentGuid.ToString()},
+                { "InstanceGuid", obj.InstanceGuid.ToString()},
+                { "ComponentName", obj.Name},
+                { "Position", position },
+                { "Type", type },
+                { "CustomValue", hasCustomValue }
+            };
+
+            return new Ljson(type, "对象信息", JsonSerializer.SerializeToElement(data));
+        }
+
+        /// <summary>
+        /// 组件信息Ljson
+        /// </summary>
+        public static Ljson InstanceLjson(IGH_DocumentObject obj)
+        {
+            if (obj == null) return Ljson.CreateErrorLjson($"获取对象失败");
+            var objInfo = new Dictionary<string, object>
+            {
+                {"ComponentGuid", obj.ComponentGuid.ToString()},
+                { "InstanceGuid", obj.InstanceGuid.ToString() },
+                { "Name", obj.Name },
+                { "NickName", obj.NickName },
+                { "Category", obj.Category },
+                { "SubCategory", obj.SubCategory },
+                { "State", ""}
+            };
+            string obj_type = "";
+            // 获取对象类型
+            if (obj is IGH_Component component)
+            {
+                obj_type = "Component";
+                objInfo["Inputs"] = ParamExchange.SerializeParamDefinitions(component.Params.Input).Value;
+                objInfo["Outputs"] = ParamExchange.SerializeParamDefinitions(component.Params.Output).Value;
+            }
+            else if (obj is IGH_Param param)
+            {
+                obj_type = "Param";
+                objInfo["ParamType"] = param.TypeName;
+                objInfo["DataMapping"] = param.DataMapping.ToString();// 直接传递枚举值 (none, flatten, graft)
+                objInfo["Reverse"] = param.Reverse; // 直接传递 bool 值
+                objInfo["Simplify"] = param.Simplify; // 直接传递 bool 值
+                objInfo["Sources"] = JsonSerializer.Serialize(param.Sources.Select(s => s.InstanceGuid.ToString()));
+                objInfo["Recipients"] = JsonSerializer.Serialize(param.Recipients.Select(s => s.InstanceGuid.ToString()));
+            }
+            else
+            {
+                obj_type = obj.GetType().Name;
+            }
+            objInfo["Type"] = obj_type;
+
+            // 获取位置信息
+            if (obj.Attributes != null)
+            {
+                objInfo["Position"] = new PointF()
+                {
+                    X = obj.Attributes.Pivot.X,
+                    Y = obj.Attributes.Pivot.Y
+                };
+            }
+            return new Ljson(obj_type, "查找的实例对象", JsonSerializer.SerializeToElement(objInfo));
+        }
     }
 
 }

@@ -45,18 +45,18 @@ namespace GrasshopperSever.Commands
                 case "true":
                     var truep = new GH_BooleanToggle();
                     truep.LoadState("True");
-                    return ComponentExchange.AddComponent(truep, point);
+                    return ComponentExchange.AddComponent(truep, point, true);
                 case "false":
                     var falsep = new GH_BooleanToggle();
                     falsep.LoadState("False");
-                    return ComponentExchange.AddComponent(falsep, point);
+                    return ComponentExchange.AddComponent(falsep, point, true);
                 case "toggle":
                     component = new GH_BooleanToggle();
                     break;
                 case "button":
                     var buttonp = new GH_ButtonObject();
                     // 无需传入值
-                    return ComponentExchange.AddComponent(buttonp, point);
+                    return ComponentExchange.AddComponent(buttonp, point, true);
                 case "slider":
                 case "numberslider":
                     component = new GH_NumberSlider();
@@ -128,10 +128,7 @@ namespace GrasshopperSever.Commands
                     return ComponentExchange.AddComponentByName(name, point);
             }
             var tag = SetParamValue(component, path, value);
-            var lj = ComponentExchange.AddComponent(component, point);
-            string ipt = "不包含自定义值";
-            if (tag) ipt = "包含自定义值";
-            lj.SetParameter("input", JsonSerializer.SerializeToElement(ipt));
+            var lj = ComponentExchange.AddComponent(component, point, tag);
             return lj;
         }
         

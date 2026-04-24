@@ -91,7 +91,7 @@ namespace GrasshopperSever.Commands
                 return new Ljson("GetLastCreatedObjects", "获取最后创建的对象", JsonSerializer.SerializeToElement(objectsData));
             }
 
-            return new Ljson("GetLastCreatedObjects", "未找到对象", JsonSerializer.SerializeToElement(new Dictionary<string, object>()));
+            return Ljson.CreateErrorLjson("未获取对象，最后创建对象为空");
         }
 
         /// <summary>

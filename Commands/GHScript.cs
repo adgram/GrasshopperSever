@@ -280,7 +280,7 @@ namespace GrasshopperSever.Commands
         public static Ljson GetParametersFromComponent(BaseLanguageComponent component)
         {
             if (component == null)
-                return Ljson.CreateErrorLjson("组件为空");
+                return Ljson.CreateErrorLjson("GetParametersFromComponent输入组件为空");
 
             // 获取输入参数信息
             string inputParamsJson = ScriptParamSerializer.SerializeParamDefinitions(((IScriptComponent)component).Inputs);

@@ -1,4 +1,4 @@
-﻿﻿﻿# GrasshopperSever
+﻿﻿﻿﻿# GrasshopperSever
 
 Rhino Grasshopper 插件，通过 TCP 协议提供与 Grasshopper/Rhino 的双向通信，支持 AI 客户端远程控制组件布局、执行脚本和查询数据。
 中文 | [English](README_EN.md)
@@ -98,7 +98,7 @@ GrasshopperSever/
 }
 ```
 
-**Name 字段**：`COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGN`
+**命令Name 字段**：`COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGN`
 
 ### 命令速览
 
