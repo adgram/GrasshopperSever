@@ -4,9 +4,7 @@ using GrasshopperSever.Utils;
 using Rhino;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
-using System.Text.Json;
 
 namespace GrasshopperSever.Commands
 {
@@ -138,7 +136,7 @@ namespace GrasshopperSever.Commands
         {
             string guid = ComponentInfo.FindComponentsGuidByName(name);
             if (guid != null) return AddComponentByGuid(guid, point);
-            
+
             throw new InvalidOperationException($"Failed to find component with name: {name}");
         }
 
@@ -200,7 +198,8 @@ namespace GrasshopperSever.Commands
 
         public static IGH_Param FindParam(GH_Document doc, string guid, string name, bool isIn)
         {
-            if (!Guid.TryParse(guid, out Guid uid)){
+            if (!Guid.TryParse(guid, out Guid uid))
+            {
                 throw new ArgumentException("Invalid component ID format");
             }
             var p = doc.FindParameter(uid);
@@ -209,7 +208,7 @@ namespace GrasshopperSever.Commands
             var c = doc.FindComponent(uid) ?? throw new ArgumentException($"Source or target {uid} not found");
             List<IGH_Param> ps = c.Params.Output;
             if (isIn) ps = c.Params.Input;
-            
+
             foreach (var param in ps)
             {
                 if (param.Name.Equals(name, StringComparison.OrdinalIgnoreCase))

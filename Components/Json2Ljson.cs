@@ -1,7 +1,7 @@
-﻿using System;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using GrasshopperSever.Params;
 using GrasshopperSever.Utils;
+using System;
 
 namespace GrasshopperSever.Components
 {
@@ -14,7 +14,7 @@ namespace GrasshopperSever.Components
         /// Initializes a new instance of the String2Ljson class.
         /// </summary>
         public Json2Ljson()
-          : base("Json2Ljson", "J2L",
+          : base("String2Ljson", "S2L",
               "将JSON格式的字符串转换为Ljson对象",
               "Maths", "Sever")
         {
@@ -63,7 +63,7 @@ namespace GrasshopperSever.Components
 
             try
             {
-                Ljson jlst = new Ljson(jsonString);
+                Ljson jlst = new(jsonString);
                 DA.SetData(0, jlst);
             }
             catch (Exception ex)

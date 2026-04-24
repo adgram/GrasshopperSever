@@ -1,5 +1,4 @@
-﻿using Eto.Forms;
-using Grasshopper;
+﻿using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Parameters;
@@ -8,7 +7,6 @@ using Grasshopper.Kernel.Types;
 using GrasshopperSever.Utils;
 using Rhino;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Text.Json;
@@ -131,8 +129,8 @@ namespace GrasshopperSever.Commands
             var lj = ComponentExchange.AddComponent(component, point, tag);
             return lj;
         }
-        
-        
+
+
         /// 设置组件的值
         /// </summary>
         public static bool SetParamValue(string guid, string path, string value)
@@ -223,7 +221,7 @@ namespace GrasshopperSever.Commands
             // 解析 JSON
             var pathp = new GH_Path();
             pathp.FromString(path);
-            
+
             // 提取数值列表
             List<string> dataList;
             if (value.TrimStart().StartsWith("["))
@@ -244,11 +242,11 @@ namespace GrasshopperSever.Commands
                 // 如果不是列表格式，封装为单元素列表
                 dataList = new List<string> { value };
             }
-            
+
             // 设置参数值
             return SetParamList(item, pathp, dataList);
         }
-        
+
         public static bool SetParamList(IGH_Param item, GH_Path path, IEnumerable<string> datalist)
         {
             if (path.Length == 0)

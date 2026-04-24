@@ -1,6 +1,6 @@
-﻿using System;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using GrasshopperSever.Params;
+using System;
 
 namespace GrasshopperSever.Components
 {
@@ -10,8 +10,8 @@ namespace GrasshopperSever.Components
         /// Initializes a new instance of the MyComponent1 class.
         /// </summary>
         public Ljson2Json()
-          : base("Ljson2Json", "L2J",
-              "将Ljson转换为Json",
+          : base("Ljson2String", "L2S",
+              "将Ljson转换为JsonString",
                 "Maths", "Sever")
         {
         }
@@ -55,7 +55,7 @@ namespace GrasshopperSever.Components
                 return;
             }
 
-            string jsonString = jlistGoo.Value.ToJson();
+            string jsonString = jlistGoo.Value.ToJsonString();
             DA.SetData(0, jsonString);
         }
 

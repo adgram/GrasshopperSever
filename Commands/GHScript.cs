@@ -58,7 +58,7 @@ namespace GrasshopperSever.Commands
         {
             //component.SetParametersToScript();// 这个在c#起作用，但是这个不可控
             string code = GetCode(component);
-            
+
             // 获取组件的输入输出参数信息
             var inputParamsJson = ScriptParamSerializer.SerializeParamDefinitions(((IScriptComponent)component).Inputs);
             var outputParamsJson = ScriptParamSerializer.SerializeParamDefinitions(((IScriptComponent)component).Outputs);
@@ -66,7 +66,7 @@ namespace GrasshopperSever.Commands
             // 根据组件类型确定注释格式
             bool isPython = IsPythonComponent(component);
             string ioCommentBlock = GenerateIOCommentBlock(inputParamsJson, outputParamsJson, isPython);
-            
+
             // 将注释块添加到代码开头（如果还没有的话）
             string startMarker = isPython ? "# GH_COMPONENT_IO_START" : "// GH_COMPONENT_IO_START";
             if (!code.Contains(startMarker))
@@ -78,7 +78,7 @@ namespace GrasshopperSever.Commands
                 // 如果已存在注释块，则更新它
                 code = UpdateExistingIOComment(code, inputParamsJson, outputParamsJson, isPython);
             }
-            
+
             SetCode(component, code);
         }
 
@@ -120,7 +120,7 @@ namespace GrasshopperSever.Commands
         {
             if (component is Python3Component || component is IronPython2Component)
                 return true;
-            
+
             var typeName = component.GetType().Name;
             return typeName.Contains("Python") || typeName.Contains("IronPython");
         }
@@ -271,7 +271,7 @@ namespace GrasshopperSever.Commands
                 return (null, null);
             }
         }
-        
+
         /// <summary>
         /// 从组件获取端口信息
         /// </summary>

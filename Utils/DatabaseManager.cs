@@ -1,11 +1,11 @@
-using System;
-using System.IO;
-using System.Data.SQLite;
-using System.Reflection;
-using System.Diagnostics;
 using Grasshopper;
 using Grasshopper.Kernel;
+using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
 
 namespace GrasshopperSever.Utils
 {
@@ -27,10 +27,7 @@ namespace GrasshopperSever.Utils
         {
             get
             {
-                if (_databasePath == null)
-                {
-                    _databasePath = Path.Combine(AssemblyDirectory, DatabaseFileName);
-                }
+                _databasePath ??= Path.Combine(AssemblyDirectory, DatabaseFileName);
                 return _databasePath;
             }
         }
@@ -43,10 +40,7 @@ namespace GrasshopperSever.Utils
         {
             get
             {
-                if (_documentDatabasePath == null)
-                {
-                    _documentDatabasePath = GetDocumentDatabasePathInternal();
-                }
+                _documentDatabasePath ??= GetDocumentDatabasePathInternal();
                 return _documentDatabasePath;
             }
         }
@@ -133,12 +127,11 @@ namespace GrasshopperSever.Utils
         {
             SQLiteConnection.CreateFile(DatabasePath);
 
-            using (var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;"))
-            {
-                connection.Open();
+            using var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;");
+            connection.Open();
 
-                // 创建元信息表，用于跟踪表的更新时间
-                string createMetaInfoTable = @"
+            // 创建元信息表，用于跟踪表的更新时间
+            string createMetaInfoTable = @"
                     CREATE TABLE IF NOT EXISTS MetaInfo (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                         TableName TEXT NOT NULL UNIQUE,
@@ -146,20 +139,19 @@ namespace GrasshopperSever.Utils
                         Description TEXT
                     )";
 
-                using (var command = new SQLiteCommand(createMetaInfoTable, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
+            using (var command = new SQLiteCommand(createMetaInfoTable, connection))
+            {
+                command.ExecuteNonQuery();
+            }
 
-                // 插入数据库创建信息
-                string insertMetaInfo = @"
+            // 插入数据库创建信息
+            string insertMetaInfo = @"
                     INSERT INTO MetaInfo (TableName, Description)
                     VALUES ('DatabaseCreated', '数据库初始化创建')";
 
-                using (var command = new SQLiteCommand(insertMetaInfo, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
+            using (var command = new SQLiteCommand(insertMetaInfo, connection))
+            {
+                command.ExecuteNonQuery();
             }
         }
 
@@ -168,23 +160,20 @@ namespace GrasshopperSever.Utils
         /// </summary>
         private static void EnsureMetaInfoTableExists()
         {
-            using (var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;"))
-            {
-                connection.Open();
+            using var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;");
+            connection.Open();
 
-                // 检查 MetaInfo 表是否存在
-                string checkTable = @"
+            // 检查 MetaInfo 表是否存在
+            string checkTable = @"
                     SELECT name FROM sqlite_master 
                     WHERE type='table' AND name='MetaInfo'";
 
-                using (var command = new SQLiteCommand(checkTable, connection))
-                {
-                    using (var reader = command.ExecuteReader())
-                    {
-                        if (!reader.Read())
-                        {
-                            // 表不存在，创建它
-                            string createMetaInfoTable = @"
+            using var command = new SQLiteCommand(checkTable, connection);
+            using var reader = command.ExecuteReader();
+            if (!reader.Read())
+            {
+                // 表不存在，创建它
+                string createMetaInfoTable = @"
                                 CREATE TABLE IF NOT EXISTS MetaInfo (
                                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                                     TableName TEXT NOT NULL UNIQUE,
@@ -192,13 +181,8 @@ namespace GrasshopperSever.Utils
                                     Description TEXT
                                 )";
 
-                            using (var createCmd = new SQLiteCommand(createMetaInfoTable, connection))
-                            {
-                                createCmd.ExecuteNonQuery();
-                            }
-                        }
-                    }
-                }
+                using var createCmd = new SQLiteCommand(createMetaInfoTable, connection);
+                createCmd.ExecuteNonQuery();
             }
         }
 
@@ -212,27 +196,25 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;"))
+                using var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;");
+                connection.Open();
+
+                // 创建表
+                using (var command = new SQLiteCommand(createTableSql, connection))
                 {
-                    connection.Open();
+                    command.ExecuteNonQuery();
+                }
 
-                    // 创建表
-                    using (var command = new SQLiteCommand(createTableSql, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-
-                    // 记录表元信息
-                    string insertMetaInfo = @"
+                // 记录表元信息
+                string insertMetaInfo = @"
                         INSERT OR REPLACE INTO MetaInfo (TableName, LastUpdateTime, Description)
                         VALUES (@tableName, CURRENT_TIMESTAMP, @description)";
 
-                    using (var command = new SQLiteCommand(insertMetaInfo, connection))
-                    {
-                        command.Parameters.AddWithValue("@tableName", tableName);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
-                        command.ExecuteNonQuery();
-                    }
+                using (var command = new SQLiteCommand(insertMetaInfo, connection))
+                {
+                    command.Parameters.AddWithValue("@tableName", tableName);
+                    command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                    command.ExecuteNonQuery();
                 }
                 return true;
             }
@@ -252,20 +234,16 @@ namespace GrasshopperSever.Utils
             try
             {
                 // 使用 WAL 模式和连接池优化
-                using (var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;Default Timeout=30;Journal Mode=WAL;Pooling=True;"))
-                {
-                    connection.Open();
+                using var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;Default Timeout=30;Journal Mode=WAL;Pooling=True;");
+                connection.Open();
 
-                    string sql = @"
+                string sql = @"
                         INSERT OR REPLACE INTO MetaInfo (TableName, LastUpdateTime)
                         VALUES (@tableName, CURRENT_TIMESTAMP)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@tableName", tableName);
-                        command.ExecuteNonQuery();
-                    }
-                }
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@tableName", tableName);
+                command.ExecuteNonQuery();
                 return true;
             }
             catch (Exception ex)
@@ -284,24 +262,18 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;"))
+                using var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;");
+                connection.Open();
+
+                string sql = "SELECT LastUpdateTime FROM MetaInfo WHERE TableName = @tableName";
+
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@tableName", tableName);
+
+                using var reader = command.ExecuteReader();
+                if (reader.Read() && !reader.IsDBNull(0))
                 {
-                    connection.Open();
-
-                    string sql = "SELECT LastUpdateTime FROM MetaInfo WHERE TableName = @tableName";
-
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@tableName", tableName);
-
-                        using (var reader = command.ExecuteReader())
-                        {
-                            if (reader.Read() && !reader.IsDBNull(0))
-                            {
-                                return DateTime.Parse(reader["LastUpdateTime"].ToString());
-                            }
-                        }
-                    }
+                    return DateTime.Parse(reader["LastUpdateTime"].ToString());
                 }
             }
             catch (Exception ex)
@@ -320,24 +292,18 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;"))
-                {
-                    connection.Open();
+                using var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;");
+                connection.Open();
 
-                    string sql = @"
+                string sql = @"
                         SELECT name FROM sqlite_master 
                         WHERE type='table' AND name=@tableName";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@tableName", tableName);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@tableName", tableName);
 
-                        using (var reader = command.ExecuteReader())
-                        {
-                            return reader.Read();
-                        }
-                    }
-                }
+                using var reader = command.ExecuteReader();
+                return reader.Read();
             }
             catch (Exception ex)
             {
@@ -382,31 +348,27 @@ namespace GrasshopperSever.Utils
             try
             {
                 // 使用 WAL 模式和连接池优化
-                using (var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;Default Timeout=30;Journal Mode=WAL;Pooling=True;"))
+                using var connection = new SQLiteConnection($"Data Source={DatabasePath};Version=3;Default Timeout=30;Journal Mode=WAL;Pooling=True;");
+                connection.Open();
+
+                using var command = new SQLiteCommand(sql, connection);
+                if (parameters != null)
                 {
-                    connection.Open();
-
-                    using (var command = new SQLiteCommand(sql, connection))
+                    foreach (var param in parameters)
                     {
-                        if (parameters != null)
-                        {
-                            foreach (var param in parameters)
-                            {
-                                command.Parameters.AddWithValue(param.Key, param.Value);
-                            }
-                        }
-
-                        int rowsAffected = command.ExecuteNonQuery();
-
-                        // 更新表时间戳
-                        if (rowsAffected > 0)
-                        {
-                            UpdateTableTimestamp(tableName);
-                        }
-
-                        return rowsAffected;
+                        command.Parameters.AddWithValue(param.Key, param.Value);
                     }
                 }
+
+                int rowsAffected = command.ExecuteNonQuery();
+
+                // 更新表时间戳
+                if (rowsAffected > 0)
+                {
+                    UpdateTableTimestamp(tableName);
+                }
+
+                return rowsAffected;
             }
             catch (Exception ex)
             {

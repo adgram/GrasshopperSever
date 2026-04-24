@@ -54,7 +54,7 @@ namespace GrasshopperSever.Components
                 code = _cachedCode;
             if (string.IsNullOrEmpty(code))
                 code = "Print(\"Hello\");";
-            
+
             EnsureLocalReferences();
 
             if (code != _cachedCode)

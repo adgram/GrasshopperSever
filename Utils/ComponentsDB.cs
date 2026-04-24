@@ -112,21 +112,17 @@ namespace GrasshopperSever.Utils
 
             using (var connection = DatabaseManager.GetConnection())
             {
-                using (var command = new SQLiteCommand(sql, connection))
-                {
-                    command.Parameters.AddWithValue("@searchTerm", $"%{searchTerm}%");
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@searchTerm", $"%{searchTerm}%");
 
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            components.Add((
-                                reader["ComponentGuid"].ToString(),
-                                reader["ComponentName"].ToString(),
-                                reader["NickName"].ToString()
-                            ));
-                        }
-                    }
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    components.Add((
+                        reader["ComponentGuid"].ToString(),
+                        reader["ComponentName"].ToString(),
+                        reader["NickName"].ToString()
+                    ));
                 }
             }
 

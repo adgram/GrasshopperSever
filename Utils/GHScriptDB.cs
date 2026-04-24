@@ -18,21 +18,18 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    // 检查表是否存在
-                    string checkTable = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                // 检查表是否存在
+                string checkTable = @"
                         SELECT name FROM sqlite_master
                         WHERE type='table' AND name='GHScriptModifyHistory'";
 
-                    using (var checkCmd = new SQLiteCommand(checkTable, connection))
-                    {
-                        using (var reader = checkCmd.ExecuteReader())
-                        {
-                            if (!reader.Read())
-                            {
-                                // 表不存在，创建它
-                                string createTableSql = @"
+                using var checkCmd = new SQLiteCommand(checkTable, connection);
+                using var reader = checkCmd.ExecuteReader();
+                if (!reader.Read())
+                {
+                    // 表不存在，创建它
+                    string createTableSql = @"
                                     CREATE TABLE GHScriptModifyHistory (
                                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                                         InstanceGuid TEXT NOT NULL,
@@ -44,14 +41,9 @@ namespace GrasshopperSever.Utils
                                         ModifyTime DATETIME DEFAULT CURRENT_TIMESTAMP
                                     )";
 
-                                using (var createCmd = new SQLiteCommand(createTableSql, connection))
-                                {
-                                    createCmd.ExecuteNonQuery();
-                                    Debug.WriteLine("GHScript修改记录表创建成功");
-                                }
-                            }
-                        }
-                    }
+                    using var createCmd = new SQLiteCommand(createTableSql, connection);
+                    createCmd.ExecuteNonQuery();
+                    Debug.WriteLine("GHScript修改记录表创建成功");
                 }
             }
             catch (Exception ex)
@@ -75,25 +67,21 @@ namespace GrasshopperSever.Utils
             {
                 InitializeScriptModifyTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         INSERT INTO GHScriptModifyHistory
                         (InstanceGuid, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description)
                         VALUES (@instanceGuid, @componentGuid, @componentName, @modifyType, @modifyContent, @description)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
-                        command.Parameters.AddWithValue("@componentGuid", componentGuid);
-                        command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
-                        command.Parameters.AddWithValue("@modifyType", modifyType);
-                        command.Parameters.AddWithValue("@modifyContent", modifyContent ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
+                command.Parameters.AddWithValue("@componentGuid", componentGuid);
+                command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
+                command.Parameters.AddWithValue("@modifyType", modifyType);
+                command.Parameters.AddWithValue("@modifyContent", modifyContent ?? string.Empty);
+                command.Parameters.AddWithValue("@description", description ?? string.Empty);
 
-                        command.ExecuteNonQuery();
-                    }
-                }
+                command.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
@@ -114,24 +102,21 @@ namespace GrasshopperSever.Utils
             {
                 InitializeScriptModifyTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         SELECT Id, ComponentGuid, ComponentName, ModifyType, ModifyContent, Description, ModifyTime
                         FROM GHScriptModifyHistory
                         WHERE InstanceGuid = @instanceGuid
                         ORDER BY ModifyTime DESC
                         LIMIT 100";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@instanceGuid", instanceGuid);
 
-                        using (var reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                history.Add(new Dictionary<string, object>
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    history.Add(new Dictionary<string, object>
                                 {
                                     { "Id", reader["Id"].ToString() },
                                     { "ComponentGuid", reader["ComponentGuid"].ToString() },
@@ -141,9 +126,6 @@ namespace GrasshopperSever.Utils
                                     { "Description", reader["Description"].ToString() },
                                     { "ModifyTime", reader["ModifyTime"].ToString() }
                                 });
-                            }
-                        }
-                    }
                 }
             }
             catch (Exception ex)

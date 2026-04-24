@@ -23,7 +23,7 @@ namespace GrasshopperSever.Components
         /// 上次更新的目标组件GUID
         /// </summary>
         private Guid _lastTargetGuid = Guid.Empty;
-        
+
         private string _log = "";
 
         /// <summary>

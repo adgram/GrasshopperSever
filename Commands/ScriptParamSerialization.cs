@@ -125,7 +125,7 @@ namespace GrasshopperSever.Commands
 
         public IParamValueConverter GetConverter()
         {
-            if(TypeHintName == "No Type Hint")
+            if (TypeHintName == "No Type Hint")
             {
                 return Grasshopper1.GooConverter;
             }
@@ -198,9 +198,9 @@ namespace GrasshopperSever.Commands
             };
 
             // 注册参数
-            var _ = isInput? component.Params.RegisterInputParam(newParam)
-                :component.Params.RegisterOutputParam(newParam);
-      
+            var _ = isInput ? component.Params.RegisterInputParam(newParam)
+                : component.Params.RegisterOutputParam(newParam);
+
             component.Params.OnParametersChanged();
             component.OnAttributesChanged();
         }
@@ -340,10 +340,10 @@ namespace GrasshopperSever.Commands
                 doc.ScheduleSolution(5, (d) =>
                 {
                     // 处理输入端：少加多补
-                    if (! string.IsNullOrEmpty(inputParams))
+                    if (!string.IsNullOrEmpty(inputParams))
                         SyncParameters(component, DeserializeParamDefinitions(inputParams), true);
                     // 处理输出端：少加多补
-                    if (! string.IsNullOrEmpty(outputParams))
+                    if (!string.IsNullOrEmpty(outputParams))
                         SyncParameters(component, DeserializeParamDefinitions(outputParams), false);
                     // 5. 刷新组件外观和布局
                     component.Params.OnParametersChanged();
@@ -407,10 +407,10 @@ namespace GrasshopperSever.Commands
             {
                 if (!targetNames.Contains(param.VariableName))
                 {
-                    if(param is IGH_Param p)
+                    if (param is IGH_Param p)
                     {
                         var _ = isInput ? component.Params.UnregisterInputParameter(p)
-                            :component.Params.UnregisterOutputParameter(p);
+                            : component.Params.UnregisterOutputParameter(p);
                     }
                 }
                 else
@@ -428,7 +428,7 @@ namespace GrasshopperSever.Commands
                     if (targetParam is IGH_Param p)
                     {
                         var _ = isInput ? component.Params.RegisterInputParam(p)
-                                            :component.Params.RegisterOutputParam(p);
+                                            : component.Params.RegisterOutputParam(p);
                     }
                 }
             }

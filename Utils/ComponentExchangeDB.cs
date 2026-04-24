@@ -31,21 +31,18 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    // 检查表是否存在
-                    string checkTable = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                // 检查表是否存在
+                string checkTable = @"
                         SELECT name FROM sqlite_master
                         WHERE type='table' AND name='ComponentExchangeHistory'";
 
-                    using (var checkCmd = new SQLiteCommand(checkTable, connection))
-                    {
-                        using (var reader = checkCmd.ExecuteReader())
-                        {
-                            if (!reader.Read())
-                            {
-                                // 表不存在，创建它
-                                string createTableSql = @"
+                using var checkCmd = new SQLiteCommand(checkTable, connection);
+                using var reader = checkCmd.ExecuteReader();
+                if (!reader.Read())
+                {
+                    // 表不存在，创建它
+                    string createTableSql = @"
                                     CREATE TABLE ComponentExchangeHistory (
                                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                                         OperationType TEXT NOT NULL,
@@ -63,27 +60,22 @@ namespace GrasshopperSever.Utils
                                         Description TEXT
                                     )";
 
-                                using (var createCmd = new SQLiteCommand(createTableSql, connection))
-                                {
-                                    createCmd.ExecuteNonQuery();
-                                    Debug.WriteLine("组件交换操作表创建成功");
-                                }
+                    using (var createCmd = new SQLiteCommand(createTableSql, connection))
+                    {
+                        createCmd.ExecuteNonQuery();
+                        Debug.WriteLine("组件交换操作表创建成功");
+                    }
 
-                                // 创建索引以提高查询性能
-                                string createIndexSql = @"
+                    // 创建索引以提高查询性能
+                    string createIndexSql = @"
                                     CREATE INDEX IF NOT EXISTS idx_component_exchange_time 
                                     ON ComponentExchangeHistory(OperationTime DESC);
 
                                     CREATE INDEX IF NOT EXISTS idx_component_exchange_instance 
                                     ON ComponentExchangeHistory(InstanceGuid);";
 
-                                using (var indexCmd = new SQLiteCommand(createIndexSql, connection))
-                                {
-                                    indexCmd.ExecuteNonQuery();
-                                }
-                            }
-                        }
-                    }
+                    using var indexCmd = new SQLiteCommand(createIndexSql, connection);
+                    indexCmd.ExecuteNonQuery();
                 }
             }
             catch (Exception ex)
@@ -101,26 +93,22 @@ namespace GrasshopperSever.Utils
             {
                 InitializeComponentExchangeTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         INSERT INTO ComponentExchangeHistory 
                         (OperationType, ComponentGuid, InstanceGuid, ComponentName, PositionX, PositionY, Description)
                         VALUES (@operationType, @componentGuid, @instanceGuid, @componentName, @positionX, @positionY, @description)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@operationType", OperationType.AddComponent.ToString());
-                        command.Parameters.AddWithValue("@componentGuid", componentGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
-                        command.Parameters.AddWithValue("@positionX", x);
-                        command.Parameters.AddWithValue("@positionY", y);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@operationType", OperationType.AddComponent.ToString());
+                command.Parameters.AddWithValue("@componentGuid", componentGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@instanceGuid", instanceGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
+                command.Parameters.AddWithValue("@positionX", x);
+                command.Parameters.AddWithValue("@positionY", y);
+                command.Parameters.AddWithValue("@description", description ?? string.Empty);
 
-                        command.ExecuteNonQuery();
-                    }
-                }
+                command.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
@@ -137,23 +125,19 @@ namespace GrasshopperSever.Utils
             {
                 InitializeComponentExchangeTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         INSERT INTO ComponentExchangeHistory 
                         (OperationType, InstanceGuid, ComponentName, Description)
                         VALUES (@operationType, @instanceGuid, @componentName, @description)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@operationType", OperationType.RemoveComponent.ToString());
-                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@operationType", OperationType.RemoveComponent.ToString());
+                command.Parameters.AddWithValue("@instanceGuid", instanceGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
+                command.Parameters.AddWithValue("@description", description ?? string.Empty);
 
-                        command.ExecuteNonQuery();
-                    }
-                }
+                command.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
@@ -170,24 +154,20 @@ namespace GrasshopperSever.Utils
             {
                 InitializeComponentExchangeTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         INSERT INTO ComponentExchangeHistory 
                         (OperationType, InstanceGuid, ComponentName, Value, Description)
                         VALUES (@operationType, @instanceGuid, @componentName, @value, @description)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@operationType", OperationType.SetComponentValue.ToString());
-                        command.Parameters.AddWithValue("@instanceGuid", instanceGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
-                        command.Parameters.AddWithValue("@value", value ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@operationType", OperationType.SetComponentValue.ToString());
+                command.Parameters.AddWithValue("@instanceGuid", instanceGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@componentName", componentName ?? string.Empty);
+                command.Parameters.AddWithValue("@value", value ?? string.Empty);
+                command.Parameters.AddWithValue("@description", description ?? string.Empty);
 
-                        command.ExecuteNonQuery();
-                    }
-                }
+                command.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
@@ -204,25 +184,21 @@ namespace GrasshopperSever.Utils
             {
                 InitializeComponentExchangeTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         INSERT INTO ComponentExchangeHistory 
                         (OperationType, FromInstanceGuid, FromParameter, ToInstanceGuid, ToParameter, Description)
                         VALUES (@operationType, @fromInstanceGuid, @fromParameter, @toInstanceGuid, @toParameter, @description)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@operationType", OperationType.ConnectComponents.ToString());
-                        command.Parameters.AddWithValue("@fromInstanceGuid", fromInstanceGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@fromParameter", fromParameter ?? string.Empty);
-                        command.Parameters.AddWithValue("@toInstanceGuid", toInstanceGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@toParameter", toParameter ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@operationType", OperationType.ConnectComponents.ToString());
+                command.Parameters.AddWithValue("@fromInstanceGuid", fromInstanceGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@fromParameter", fromParameter ?? string.Empty);
+                command.Parameters.AddWithValue("@toInstanceGuid", toInstanceGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@toParameter", toParameter ?? string.Empty);
+                command.Parameters.AddWithValue("@description", description ?? string.Empty);
 
-                        command.ExecuteNonQuery();
-                    }
-                }
+                command.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
@@ -239,25 +215,21 @@ namespace GrasshopperSever.Utils
             {
                 InitializeComponentExchangeTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         INSERT INTO ComponentExchangeHistory 
                         (OperationType, FromInstanceGuid, FromParameter, ToInstanceGuid, ToParameter, Description)
                         VALUES (@operationType, @fromInstanceGuid, @fromParameter, @toInstanceGuid, @toParameter, @description)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@operationType", OperationType.DisconnectComponents.ToString());
-                        command.Parameters.AddWithValue("@fromInstanceGuid", fromInstanceGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@fromParameter", fromParameter ?? string.Empty);
-                        command.Parameters.AddWithValue("@toInstanceGuid", toInstanceGuid ?? string.Empty);
-                        command.Parameters.AddWithValue("@toParameter", toParameter ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@operationType", OperationType.DisconnectComponents.ToString());
+                command.Parameters.AddWithValue("@fromInstanceGuid", fromInstanceGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@fromParameter", fromParameter ?? string.Empty);
+                command.Parameters.AddWithValue("@toInstanceGuid", toInstanceGuid ?? string.Empty);
+                command.Parameters.AddWithValue("@toParameter", toParameter ?? string.Empty);
+                command.Parameters.AddWithValue("@description", description ?? string.Empty);
 
-                        command.ExecuteNonQuery();
-                    }
-                }
+                command.ExecuteNonQuery();
             }
             catch (Exception ex)
             {
@@ -270,17 +242,16 @@ namespace GrasshopperSever.Utils
         /// </summary>
         /// <param name="limit">返回的最大记录数，默认100</param>
         /// <returns>操作历史列表</returns>
-        public static List<System.Collections.Generic.Dictionary<string, object>> GetExchangeHistory(int limit = 100)
+        public static List<Dictionary<string, object>> GetExchangeHistory(int limit = 100)
         {
-            var history = new List<System.Collections.Generic.Dictionary<string, object>>();
+            var history = new List<Dictionary<string, object>>();
 
             try
             {
                 InitializeComponentExchangeTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         SELECT Id, OperationType, ComponentGuid, InstanceGuid, ComponentName, 
                                PositionX, PositionY, Value, FromInstanceGuid, FromParameter, 
                                ToInstanceGuid, ToParameter, OperationTime, Description
@@ -288,15 +259,13 @@ namespace GrasshopperSever.Utils
                         ORDER BY OperationTime DESC
                         LIMIT @limit";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@limit", limit);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@limit", limit);
 
-                        using (var reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                history.Add(new Dictionary<string, object>
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    history.Add(new Dictionary<string, object>
                                 {
                                     { "Id", reader["Id"].ToString() },
                                     { "OperationType", reader["OperationType"].ToString() },
@@ -313,9 +282,6 @@ namespace GrasshopperSever.Utils
                                     { "OperationTime", reader["OperationTime"].ToString() },
                                     { "Description", reader["Description"].ToString() }
                                 });
-                            }
-                        }
-                    }
                 }
             }
             catch (Exception ex)
@@ -335,15 +301,11 @@ namespace GrasshopperSever.Utils
             {
                 InitializeComponentExchangeTable();
 
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = "DELETE FROM ComponentExchangeHistory";
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = "DELETE FROM ComponentExchangeHistory";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                }
+                using var command = new SQLiteCommand(sql, connection);
+                command.ExecuteNonQuery();
                 return true;
             }
             catch (Exception ex)

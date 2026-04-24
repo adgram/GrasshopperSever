@@ -3,7 +3,6 @@ using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.Drawing;
@@ -63,8 +62,8 @@ namespace GrasshopperSever.Commands
             }
             return _componentProxyCache;
         }
-       
-        
+
+
         /// <summary>
         /// 获取所有组件
         /// </summary>
@@ -277,7 +276,7 @@ namespace GrasshopperSever.Commands
 
             return null;
         }
-        
+
         // 通过名称查询组件信息
         public static Ljson FindComponentsByName(string name)
         {
@@ -512,7 +511,7 @@ namespace GrasshopperSever.Commands
                 }
             }
         }
-        
+
         /// <summary>
         /// 获取组件的函数签名（通过创建组件实例）
         /// </summary>

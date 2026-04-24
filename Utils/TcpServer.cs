@@ -9,17 +9,17 @@ using System.Threading.Tasks;
 
 namespace GrasshopperSever.Utils
 {
-	/// <summary>
-	/// TCP接收器，专门负责监听端口和接收Ljson数据
-	/// 设计说明：
-	/// 1. 一个 TcpListener 实例只能监听一个端口
-	/// 2. 可以创建多个 TcpReceiver 实例，分别监听不同端口（实现多端口服务）
-	/// 3. 当前实现只监听单个端口，如需扩展可修改 Server.Start 方法接受端口列表
-	/// 4. 接收器将接收到的Ljson通过事件回调传递给服务器
-	/// 5. 会检查Ljson的time标签，只接收比上次更新的数据
-	/// 6. 每个端口只能创建一个TcpReceiver实例
-	/// </summary>
-	public class TcpReceiver
+    /// <summary>
+    /// TCP接收器，专门负责监听端口和接收Ljson数据
+    /// 设计说明：
+    /// 1. 一个 TcpListener 实例只能监听一个端口
+    /// 2. 可以创建多个 TcpReceiver 实例，分别监听不同端口（实现多端口服务）
+    /// 3. 当前实现只监听单个端口，如需扩展可修改 Server.Start 方法接受端口列表
+    /// 4. 接收器将接收到的Ljson通过事件回调传递给服务器
+    /// 5. 会检查Ljson的time标签，只接收比上次更新的数据
+    /// 6. 每个端口只能创建一个TcpReceiver实例
+    /// </summary>
+    public class TcpReceiver
     {
         private static readonly Dictionary<int, TcpReceiver> _activeReceivers = new Dictionary<int, TcpReceiver>();
         private static readonly object _lock = new object();
@@ -371,7 +371,7 @@ namespace GrasshopperSever.Utils
                 }
                 var stream = _client.GetStream();
                 var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
-                string jsonJson = json.ToJson();
+                string jsonJson = json.ToJsonString();
                 await writer.WriteLineAsync(jsonJson);
             }
             catch (Exception ex)

@@ -42,7 +42,8 @@ namespace GrasshopperSever.Components
         private void OnLogHandler(string message)
         {
             AddLog(message);
-            this.OnPingDocument()?.ScheduleSolution(5, doc => {
+            this.OnPingDocument()?.ScheduleSolution(5, doc =>
+            {
                 this.ExpireSolution(false);
             });
         }
@@ -191,9 +192,10 @@ namespace GrasshopperSever.Components
 
             AddLog($"GHServer: 客户端已连接");
             _sender.EnqueueLjson(Ljson.CreateOKLjson("客户端已连接"));
-            this.OnPingDocument()?.ScheduleSolution(5, doc => {
-                    this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
-                });
+            this.OnPingDocument()?.ScheduleSolution(5, doc =>
+            {
+                this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
+            });
         }
 
         /// <summary>
@@ -227,9 +229,10 @@ namespace GrasshopperSever.Components
             }
 
             // 触发重新计算以更新状态
-            this.OnPingDocument()?.ScheduleSolution(5, (doc) => {
-                    this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
-                });
+            this.OnPingDocument()?.ScheduleSolution(5, (doc) =>
+            {
+                this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
+            });
         }
 
         /// <summary>
@@ -248,7 +251,7 @@ namespace GrasshopperSever.Components
 
                 // 执行命令并获取响应
                 var responseJson = ActuatorHandle.DoCommand(lst, ref _output_data, GetOutputLink(this, 1));
-                if(responseJson != null)
+                if (responseJson != null)
                 {
                     // 将响应加入发送队列
                     _sender.EnqueueLjson(responseJson);
@@ -263,7 +266,7 @@ namespace GrasshopperSever.Components
                 _pendingLjson = null;
             }
         }
-        
+
         public static string GetOutputLink(IGH_Component ct, int idx)
         {
             foreach (var recipient in ct.Params.Output[idx].Recipients)

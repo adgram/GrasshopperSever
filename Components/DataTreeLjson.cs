@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
 using GrasshopperSever.Params;
 using GrasshopperSever.Utils;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 
 namespace GrasshopperSever.Components
 {
@@ -58,7 +58,7 @@ namespace GrasshopperSever.Components
             if (!DA.GetData(1, ref info)) return;
             if (!DA.GetDataTree(2, out dataTree)) return;
 
-            if(dataTree.PathCount == 1 && dataTree[0].Count == 1)
+            if (dataTree.PathCount == 1 && dataTree[0].Count == 1)
             {
                 // 直接构造 Ljson
                 var j = JsonSerializer.Deserialize<JsonElement>(ConvertGooToBasicType(dataTree.First()).ToString());
@@ -101,7 +101,7 @@ namespace GrasshopperSever.Components
                     jsonElement = JsonSerializer.SerializeToElement(jsonArray);
                 }
                 // 直接构造 Ljson
-                Ljson ljson = new Ljson(name, info, jsonElement);
+                Ljson ljson = new(name, info, jsonElement);
 
                 DA.SetData(0, ljson);
             }

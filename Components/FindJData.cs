@@ -1,7 +1,7 @@
-﻿using System;
-using System.Linq;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using GrasshopperSever.Params;
+using System;
+using System.Linq;
 using System.Text.Json;
 
 namespace GrasshopperSever.Components
@@ -111,6 +111,6 @@ namespace GrasshopperSever.Components
         /// <summary>
         /// Gets the unique ID for this component. Do not change this ID after release.
         /// </summary>
-        public override Guid ComponentGuid => new Guid("ECCCF6E5-C2BC-415D-9FFA-9DAFD7D6F9E2"); 
+        public override Guid ComponentGuid => new Guid("ECCCF6E5-C2BC-415D-9FFA-9DAFD7D6F9E2");
     }
 }

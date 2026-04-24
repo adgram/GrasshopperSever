@@ -17,21 +17,18 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    // 检查表是否存在
-                    string checkTable = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                // 检查表是否存在
+                string checkTable = @"
                         SELECT name FROM sqlite_master
                         WHERE type='table' AND name='RhinoObjects'";
 
-                    using (var checkCmd = new SQLiteCommand(checkTable, connection))
-                    {
-                        using (var reader = checkCmd.ExecuteReader())
-                        {
-                            if (!reader.Read())
-                            {
-                                // 表不存在，创建它
-                                string createTableSql = @"
+                using var checkCmd = new SQLiteCommand(checkTable, connection);
+                using var reader = checkCmd.ExecuteReader();
+                if (!reader.Read())
+                {
+                    // 表不存在，创建它
+                    string createTableSql = @"
                                     CREATE TABLE RhinoObjects (
                                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                                         ObjectId TEXT NOT NULL,
@@ -43,13 +40,10 @@ namespace GrasshopperSever.Utils
                                         Description TEXT
                                     )";
 
-                                using (var createCmd = new SQLiteCommand(createTableSql, connection))
-                                {
-                                    createCmd.ExecuteNonQuery();
-                                    Debug.WriteLine("对象表创建成功");
-                                }
-                            }
-                        }
+                    using (var createCmd = new SQLiteCommand(createTableSql, connection))
+                    {
+                        createCmd.ExecuteNonQuery();
+                        Debug.WriteLine("对象表创建成功");
                     }
                 }
             }
@@ -73,30 +67,26 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                using (var connection = DatabaseManager.GetDocumentConnection())
-                {
-                    string sql = @"
+                using var connection = DatabaseManager.GetDocumentConnection();
+                string sql = @"
                         INSERT INTO RhinoObjects (ObjectId, ObjectType, LayerName, ObjectName, DocumentSerialNumber, Description)
                         VALUES (@objectId, @objectType, @layerName, @objectName, @documentSerialNumber, @description)";
 
-                    using (var command = new SQLiteCommand(sql, connection))
-                    {
-                        command.Parameters.AddWithValue("@objectId", objectId);
-                        command.Parameters.AddWithValue("@objectType", objectType ?? string.Empty);
-                        command.Parameters.AddWithValue("@layerName", layerName ?? string.Empty);
-                        command.Parameters.AddWithValue("@objectName", objectName ?? string.Empty);
-                        command.Parameters.AddWithValue("@documentSerialNumber", documentSerialNumber ?? string.Empty);
-                        command.Parameters.AddWithValue("@description", description ?? string.Empty);
+                using var command = new SQLiteCommand(sql, connection);
+                command.Parameters.AddWithValue("@objectId", objectId);
+                command.Parameters.AddWithValue("@objectType", objectType ?? string.Empty);
+                command.Parameters.AddWithValue("@layerName", layerName ?? string.Empty);
+                command.Parameters.AddWithValue("@objectName", objectName ?? string.Empty);
+                command.Parameters.AddWithValue("@documentSerialNumber", documentSerialNumber ?? string.Empty);
+                command.Parameters.AddWithValue("@description", description ?? string.Empty);
 
-                        command.ExecuteNonQuery();
+                command.ExecuteNonQuery();
 
-                        // 获取插入的记录ID
-                        command.CommandText = "SELECT last_insert_rowid()";
-                        long insertedId = (long)command.ExecuteScalar();
+                // 获取插入的记录ID
+                command.CommandText = "SELECT last_insert_rowid()";
+                long insertedId = (long)command.ExecuteScalar();
 
-                        return insertedId;
-                    }
-                }
+                return insertedId;
             }
             catch (Exception ex)
             {

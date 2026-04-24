@@ -26,7 +26,7 @@ namespace GrasshopperSever.Components
         {
         }
 
-        public override GH_Exposure Exposure => GH_Exposure.primary; 
+        public override GH_Exposure Exposure => GH_Exposure.primary;
 
         /// <summary>
         /// 添加日志信息，集中管理输出
@@ -42,7 +42,8 @@ namespace GrasshopperSever.Components
         private void OnLogHandler(string message)
         {
             AddLog(message);
-            this.OnPingDocument()?.ScheduleSolution(5, doc => {
+            this.OnPingDocument()?.ScheduleSolution(5, doc =>
+            {
                 this.ExpireSolution(false);
             });
         }
@@ -110,7 +111,7 @@ namespace GrasshopperSever.Components
                         _receiver.OnClientConnected -= OnClientConnectedHandler;
                         _receiver.OnLog -= OnLogHandler;
                     }
-                    if(_sender != null)
+                    if (_sender != null)
                     {
                         _sender.Stop();
                         _sender.OnLog -= OnLogHandler;
@@ -181,7 +182,8 @@ namespace GrasshopperSever.Components
             AddLog($"GHServer: 客户端已连接");
             // 将响应加入发送队列
             _sender.EnqueueLjson(Ljson.CreateOKLjson("客户端已连接"));
-            this.OnPingDocument()?.ScheduleSolution(5, doc => {
+            this.OnPingDocument()?.ScheduleSolution(5, doc =>
+            {
                 this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
             });
         }
@@ -198,7 +200,8 @@ namespace GrasshopperSever.Components
             AddLog($"GHServer: 接收到新数据 (时间: {json.Time}, 数据项: {json.Name})");
             // 将响应加入发送队列
             _sender.EnqueueLjson(Ljson.CreateOKLjson("数据接收成功"));
-            this.OnPingDocument()?.ScheduleSolution(5, (doc) => {
+            this.OnPingDocument()?.ScheduleSolution(5, (doc) =>
+            {
                 this.ExpireSolution(false); // 仅标记过期，由 Schedule 触发重算
             });
         }

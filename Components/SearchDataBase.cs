@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
-using Rhino.Geometry;
+using System;
+using System.Collections.Generic;
 
 namespace GrasshopperSever.Components
 {

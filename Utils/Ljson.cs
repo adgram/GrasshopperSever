@@ -4,8 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Xml.Linq;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskbarClock;
 
 namespace GrasshopperSever.Utils
 {
@@ -34,7 +32,7 @@ namespace GrasshopperSever.Utils
         /// 数据值（JsonElement，可以是对象、数组或原始值）
         /// </summary>
         public JsonElement Value { get; set; }
-        
+
         /// <summary>
         /// 跟踪对象的释放状态
         /// </summary>
@@ -89,47 +87,45 @@ namespace GrasshopperSever.Utils
                 throw new ArgumentException("JSON字符串不能为空", nameof(json));
             }
 
-            FromJson(json);
+            FromJsonString(json);
         }
 
         /// <summary>
         /// 序列化为JSON字符串（避免多重转义）
         /// </summary>
         /// <returns>JSON字符串</returns>
-        public string ToJson()
+        public string ToJsonString()
         {
-            using (var ms = new MemoryStream())
+            using var ms = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(ms, LjsonHelper.JWriterOptions))
             {
-                using (var writer = new Utf8JsonWriter(ms, LjsonHelper.JWriterOptions))
-                {
-                    writer.WriteStartObject();
+                writer.WriteStartObject();
 
-                    // 写入 Name
-                    writer.WriteString("Name", Name);
+                // 写入 Name
+                writer.WriteString(nameof(Name), Name);
 
-                    // 写入 Info
-                    writer.WriteString("Info", Info);
+                // 写入 Info
+                writer.WriteString(nameof(Info), Info);
 
-                    // 写入 Time
-                    writer.WriteString("Time", Time.ToString("O"));
+                // 写入 Time
+                writer.WriteString(nameof(Time), Time.ToString("O"));
 
-                    // 写入 Value - 直接写入 JsonElement，避免双重序列化
-                    writer.WritePropertyName("Value");
-                    Value.WriteTo(writer);
+                // 写入 Value - 直接写入 JsonElement，避免双重序列化
+                writer.WritePropertyName(nameof(Value));
+                Value.WriteTo(writer);
 
-                    writer.WriteEndObject();
-                    writer.Flush();
-                }
-
-                return System.Text.Encoding.UTF8.GetString(ms.ToArray());
+                writer.WriteEndObject();
+                writer.Flush();
             }
+
+            return System.Text.Encoding.UTF8.GetString(ms.ToArray());
         }
 
         /// <summary>
         /// 从JSON字符串反序列化
         /// </summary>
         /// <param name="json">JSON字符串</param>
-        public void FromJson(string json)
+        public void FromJsonString(string json)
         {
             if (string.IsNullOrWhiteSpace(json))
             {
@@ -143,15 +139,15 @@ namespace GrasshopperSever.Utils
                 {
                     var root = doc.RootElement;
 
-                    bool hasName = root.TryGetProperty("Name", out var nameElement);
-                    bool hasValue = root.TryGetProperty("Value", out var valueElement);
+                    bool hasName = root.TryGetProperty(nameof(Name), out var nameElement);
+                    bool hasValue = root.TryGetProperty(nameof(Value), out var valueElement);
 
                     if (hasName && hasValue)
                     {
                         // 情况1: 完整Ljson格式
                         Name = nameElement.GetString();
-                        Info = root.TryGetProperty("Info", out var infoElement) ? infoElement.GetString() : null;
-                        Time = root.TryGetProperty("Time", out var timeElement) ? timeElement.GetDateTime() : DateTime.Now;
+                        Info = root.TryGetProperty(nameof(Info), out var infoElement) ? infoElement.GetString() : null;
+                        Time = root.TryGetProperty(nameof(Time), out var timeElement) ? timeElement.GetDateTime() : DateTime.Now;
                         Value = valueElement.Clone();
                     }
                     else if (!hasName && !hasValue)
@@ -462,7 +458,7 @@ namespace GrasshopperSever.Utils
     /// </summary>
     public static class LjsonHelper
     {
-        public static JsonWriterOptions JWriterOptions  => new JsonWriterOptions
+        public static JsonWriterOptions JWriterOptions => new JsonWriterOptions
         {
             Indented = false,
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping

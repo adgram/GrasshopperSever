@@ -1,13 +1,13 @@
 ﻿using Grasshopper.Kernel;
+using GrasshopperSever.Commands;
 using GrasshopperSever.Params;
 using RhinoCodePluginGH.Components;
 using System;
 using System.Linq;
-using GrasshopperSever.Commands;
 
 namespace GrasshopperSever.Components
 {
-    public class RunScript: GH_Component
+    public class RunScript : GH_Component
     {
         // 编译缓存
         private CSharpComponent _cachedComponent;
@@ -63,7 +63,7 @@ namespace GrasshopperSever.Components
           : base("RunScript", "RunC#",
               "一个对C#的包装器，输出端口为ljson",
                 "Maths", "Sever")
-        {}
+        { }
 
         public override GH_Exposure Exposure => GH_Exposure.primary | GH_Exposure.obscure;
 

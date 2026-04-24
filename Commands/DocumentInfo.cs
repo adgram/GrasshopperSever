@@ -1,17 +1,12 @@
-﻿using Eto.Forms;
-using Grasshopper;
+﻿using Grasshopper;
 using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
 using Rhino;
-using Rhino.Runtime.Code;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GrasshopperSever.Commands
 {

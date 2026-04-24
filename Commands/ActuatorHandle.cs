@@ -1,6 +1,4 @@
-using Grasshopper.Kernel;
 using GrasshopperSever.Utils;
-using RhinoCodePluginGH.Components;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -432,7 +430,7 @@ namespace GrasshopperSever.Commands
                 var toGuid = data.GetParameterString("ToGuid");
                 var toParameter = data.GetParameterString("ToParameter");
 
-                if (string.IsNullOrWhiteSpace(fromGuid)|| string.IsNullOrWhiteSpace(toGuid))
+                if (string.IsNullOrWhiteSpace(fromGuid) || string.IsNullOrWhiteSpace(toGuid))
                 {
                     return Ljson.CreateErrorLjson("缺少必要参数（FromGuid, ToGuid）");
                 }
@@ -516,7 +514,7 @@ namespace GrasshopperSever.Commands
         {
             return RhinoCommand.GetLastCreatedObjects();
         }
-        
+
         /// <summary>
         /// 处理选择对象命令
         /// 输入：Ljson包含 Command="SelectObjects", Objects="对象ID列表(逗号分隔)"
@@ -603,14 +601,14 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                string guid =data.GetParameterString("Guid");
+                string guid = data.GetParameterString("Guid");
                 if (string.IsNullOrWhiteSpace(guid))
                 {
                     return Ljson.CreateErrorLjson("缺少参数: Guid");
                 }
 
                 var component = ComponentInfo.FindComponentsByGuid(guid)
-                    ??Ljson.CreateErrorLjson($"未找到GUID为 {guid} 的组件");
+                    ?? Ljson.CreateErrorLjson($"未找到GUID为 {guid} 的组件");
                 return component;
             }
             catch (Exception ex)
@@ -628,7 +626,7 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                string name =data.GetParameterString("Name");
+                string name = data.GetParameterString("Name");
                 if (string.IsNullOrWhiteSpace(name))
                 {
                     return Ljson.CreateErrorLjson("缺少参数: Name");
@@ -653,9 +651,9 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                string category =data.GetParameterString("Category");
-                string subCategory =data.GetParameterString("SubCategory");
-                string name =data.GetParameterString("Name");
+                string category = data.GetParameterString("Category");
+                string subCategory = data.GetParameterString("SubCategory");
+                string name = data.GetParameterString("Name");
 
                 if (string.IsNullOrWhiteSpace(category) && string.IsNullOrWhiteSpace(subCategory) && string.IsNullOrWhiteSpace(name))
                 {
@@ -663,7 +661,7 @@ namespace GrasshopperSever.Commands
                 }
 
                 var component = ComponentInfo.FindComponentsByCategory(category, subCategory, name)
-                        ??Ljson.CreateErrorLjson($"未找到符合条件的组件");
+                        ?? Ljson.CreateErrorLjson($"未找到符合条件的组件");
                 return component;
             }
             catch (Exception ex)
@@ -750,7 +748,7 @@ namespace GrasshopperSever.Commands
                 return Ljson.CreateErrorLjson($"打开文档失败: {ex.Message}");
             }
         }
-        
+
         /// <summary>
         /// 处理获取数据库路径命令
         /// 输入：Ljson包含 Command="DatabasePath"
@@ -789,7 +787,7 @@ namespace GrasshopperSever.Commands
                 return Ljson.CreateErrorLjson($"获取对象失败: {ex.Message}");
             }
         }
-        
+
         private static Ljson HandleGetObject(Ljson data)
         {
             try
