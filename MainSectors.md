@@ -10,9 +10,9 @@ GrasshopperSever插件为Grasshopper提供了以下核心功能：
 
 ## 二、数据通信
 
-可以创建连接的组件有两个：①GHReceiver+GHSender、②GHServer。①中，GHReceiver用于从客户端接收数据，GHSender用于返回数据到客户端。②中GHServer是集接收处理返回于一体，它只能处理几个特定命令，不支持将接收到数据在gh中手动处理。
+可以创建TCP连接的组件有两个：①GHReceiver+GHSender、②GHServer。①中，GHReceiver用于从客户端接收数据，GHSender用于返回数据到客户端。②中GHServer是集接收处理返回于一体，它只能处理几个特定命令，不支持将接收到数据在gh中手动处理。
 
-**内置的处理命令**组件有两个，分别是GHServer和GHActuator，它们两个可以接收到命令是相同的，区别是前者只能从客户端接收数据，且处理完可以自动返回。
+**内置的执行命令的组件**有两个，分别是GHServer和GHActuator，它们两个可以执行的命令是相同的，区别是前者只能使用TCP接收数据，且处理完可以自动返回。
 
 ### 1 创建连接
 
@@ -159,16 +159,16 @@ with GHClient(port=5695) as client
 相关命令:
 1. RHINOSCRIPT - 执行Rhino脚本命令
 2. GETLASTCREATEDOBJECTS - 获取最后创建的对象
-3. AddParamWithValue - 添加参数组件并设置值
+3. AddParamWithValue - 添加Param并设置值
 ```
 
 ![image-20260421172046241](Example/SECTORS/image-20260421172046241.png)
 
-rhino命令和相关param命令，可以完成rhino建模到gh拾取之间的操作。
+rhino命令结合param命令，可以连续执行rhino建模到gh拾取之间的操作。
 
 ## 四、gh脚本注入
 
-这部分功能未提供内置命令，主要是由ScriptEditor组件完成。这里使用GHServer的output端口获取相关命令。
+这部分功能未提供内置命令，主要是由ScriptEditor组件完成。该组件可以注入代码、设置脚本组件的输入输出端口，最后返回操作的组件的guid。这里使用GHServer的output端口获取相关命令。
 
 在grasshopper中，添加一个GHServer组件，Enabled端口为True，Port端口为5695。添加一个ScriptEditor组件，将GHServer的output(O)输出和ScriptEditor的Code(C)输入连接。添加一个Python 3 Script组件，将Python的out输出和ScriptEditor的SC输入连接。
 
@@ -177,7 +177,7 @@ rhino命令和相关param命令，可以完成rhino建模到gh拾取之间的操
 详见[scripteditor 命令](Example/SCRIPT&CMD_SCRIPT/scripteditor_test.md) - scripteditor操作命令详解。
 
 ```
-> 请创建一个数学曲面。要求：使用python3，输入数量项数Number Slider，输出数列列表到panel。
+> 请创建一个数学曲面。要求：使用python3，输入x和y数列，输出曲面到panel。
 ```
 
 ```python
@@ -259,11 +259,9 @@ if __name__ == '__main__':
 
 ![image-20260425185539741](Example/SECTORS/image-20260425185539741.png)
 
-## 五、运行gh脚本
+## 五、运行c#脚本
 
-这部分功能未提供内置命令，主要是由RunScript组件或RunScript2组件完成。这里使用GHServer的output端口获取相关命令。
-
-在grasshopper中，添加一个GHServer组件，Enabled端口为True，Port端口为5695。添加一个ScriptEditor组件，将GHServer的output(O)输出和ScriptEditor的Code(C)输入连接。
+这部分功能未提供内置命令，主要是由RunScript组件或RunScript2组件完成。这里使用GHActuator的output端口获取相关命令。
 
 ![image-20260425194225592](Example/SECTORS/image-20260425194225592.png)
 
@@ -347,7 +345,7 @@ if __name__ == '__main__':
 
 这里使用豆包。对于识别结果，除了倒数第二个组件（用户安装插件中的螺旋线）不能识别外，其余的都识别准确。
 
-设计图选自”逻辑大师-GH趣味案例集第六季-29-DNA螺线“。
+设计图选自“逻辑大师-GH趣味案例集第六季-29-DNA螺线”。
 
 ![](Example/SECTORS/DNA螺线案例理解/10.png)
 
@@ -357,7 +355,7 @@ if __name__ == '__main__':
 
 ![](Example/SECTORS/DNA螺线案例理解/13.png)
 
-### 2、读取GH文件的连接关系
+### 2、读取GH文件的组件连接关系
 
 这部分是内置的处理命令，可以执行相关命令。
 

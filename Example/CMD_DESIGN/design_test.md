@@ -228,7 +228,7 @@ with GHClient(port=6879) as gh:
 
 ---
 
-### 测试4: ADDPARAMWITHVALUE - 添加参数组件并设置值
+### 测试4: ADDPARAMWITHVALUE - 添加Param并设置值
 
 **状态**: ✓ 成功
 
@@ -469,7 +469,7 @@ with GHClient(port=6879) as gh:
 
 - `test_addcomponentbyguid.py` - 测试通过 GUID 添加组件
 - `test_addcomponentbyname.py` - 测试通过名称添加组件
-- `test_addparamwithvalue.py` - 测试添加参数组件并设置值
+- `test_addparamwithvalue.py` - 测试添加Param并设置值
 - `test_set_value.py` - 测试设置 Panel 值
 - `test_set_slider_value.py` - 测试添加 Number Slider 并设置值
 - `test_set_slider_direct.py` - 测试直接设置 Number Slider 值
@@ -501,7 +501,7 @@ with GHClient(port=6879) as gh:
 **成功的命令**:
 - ✓ ADDCOMPONENTBYNAME - 通过名称添加组件
 - ✓ ADDCOMPONENTBYGUID - 通过 GUID 添加组件
-- ✓ ADDPARAMWITHVALUE - 添加参数组件并设置值
+- ✓ ADDPARAMWITHVALUE - 添加Param并设置值
 - ✓ SETPARAMVALUE - 设置组件值
 - ✓ REMOVECOMPONENT - 移除组件
 - ✓ CONNECTCOMPONENTS - 连接组件

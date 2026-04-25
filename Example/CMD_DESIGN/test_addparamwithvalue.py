@@ -9,7 +9,7 @@ import time
 
 
 def test_add_param(client: GHClient, param_name, x, y, path=None, value=None):
-    """测试添加参数组件并设置值"""
+    """测试添加Param并设置值"""
 
     # 构建命令参数
     command_params = {

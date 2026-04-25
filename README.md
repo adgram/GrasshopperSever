@@ -33,7 +33,7 @@ GrasshopperSever/
 |------|------|
 | TCP 通信 | GHReceiver/GHSender 推送模式，GHServer 请求 - 响应模式 |
 | 组件信息查询 | 按名称/GUID/分类查询和模糊搜索组件 |
-| 设计布局控制 | 添加、移除、连接组件，设置参数值 |
+| 设计布局控制 | 添加、移除、连接组件，设置孤立的param的值 |
 | Rhino 脚本执行 | 远程执行 Rhino 命令，获取和选择对象 |
 | GH 脚本执行 | 通过 ScriptEditor 修改脚本组件，或直接运行 C# 脚本 |
 | 文档操作 | 保存/加载 Grasshopper 文档 |
@@ -107,25 +107,25 @@ GrasshopperSever/
 | COMPONENT | `GETALLCOMPONENTS` | 获取所有组件 |
 | COMPONENT | `FINDCOMPONENTBYGUID` | 按 GUID 查找组件 |
 | COMPONENT | `FINDCOMPONENTBYNAME` | 按名称查找组件 |
-| COMPONENT | `FINDCOMPONENTBYCATEGORY` | 按分类查找组件 |
+| COMPONENT | `FINDCOMPONENTBYCATEGORY` | 按Category分组查找组件 |
 | COMPONENT | `SEARCHCOMPONENTSBYNAME` | 模糊搜索组件 |
 | DOCUMENT | `SAVEDOCUMENT` | 保存当前文档 |
 | DOCUMENT | `LOADDOCUMENT` | 加载文档 |
 | DOCUMENT | `DATABASEPATH` | 获取数据库路径 |
 | DOCUMENT | `GETALLOBJECTS` | 获取画布上所有组件实例 |
-| DOCUMENT | `GETOBJECT` | 通过guid查找画布上组件实例 |
+| DOCUMENT | `GETOBJECT` | 获取文档中的组件连接图 |
 | RHINO | `RHINOSCRIPT` | 执行 Rhino 命令命令 |
 | RHINO | `GETLASTCREATEDOBJECTS` | 获取最后创建的 Rhino 对象 |
 | RHINO | `SELECTOBJECTS` | 选择 Rhino 对象 |
 | RHINO | `GETANDSELECTLASTOBJECTS` | 获取并选择最后创建的对象 |
 | DESIGN | `ADDCOMPONENTBYGUID` | 通过 GUID 添加组件 |
 | DESIGN | `ADDCOMPONENTBYNAME` | 通过名称添加组件 |
-| DESIGN | `ADDPARAMWITHVALUE` | 添加参数组件并设置值 |
+| DESIGN | `ADDPARAMWITHVALUE` | 添加Param并设置值 |
 | DESIGN | `REMOVECOMPONENT` | 移除组件 |
-| DESIGN | `SETPARAMVALUE` | 设置参数值 |
+| DESIGN | `SETPARAMVALUE` | 设置孤立的param的值 |
 | DESIGN | `CONNECTCOMPONENTS` | 连接组件 |
 | DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 |
-| DESIGNLIST |  | 批量序列化命令 | 
+| DESIGNLIST |  | 批量执行命令 | 
 
 > 各命令的详细参数、示例和响应格式见对应文档：[Component 命令](Example/CMD_COMPONENT/commands_COMPONENT.md)、[Design 命令](Example/CMD_DESIGN/design_test.md)、[Document 命令](Example/CMD_DOCUMENT/gh_file_test_report.md)、[Rhino 命令](Example/CMD_RHINO/commands_RHINO.md)、[Script 命令](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md)。
 
