@@ -60,7 +60,8 @@ def test_add_by_guid(client, component_guid, component_name, x, y, test_number):
                 "Command": "AddComponentByGuid",
                 "ComponentGuid": component_guid,
                 "X": x,
-                "Y": y
+                "Y": y,
+                'usernick': f'TestComp{test_number}'
             }
         )
 

@@ -9,7 +9,7 @@ import time
 
 PORT = 9653
 
-def test_single_component(client, component_name, x, y, test_number):
+def test_single_component(client, component_name, x, y, usernick, test_number):
     """测试单个组件，返回详细信息"""
     print(f"\n{'='*70}")
     print(f"测试 #{test_number}: {component_name} 在位置 ({x}, {y})")
@@ -24,7 +24,8 @@ def test_single_component(client, component_name, x, y, test_number):
                 "Command": "AddComponentByName",
                 "ComponentName": component_name,
                 "X": x,
-                "Y": y
+                "Y": y,
+                "USERNICK": usernick
             }
         )
         
@@ -60,13 +61,13 @@ def main():
     
     # 测试用例 - 包含多种可能的名称格式
     test_cases = [
-        ('Panel', 100, 100),
-        ('Number Slider', 200, 100)
+        ('Panel', 100, 100, "TestComp1"),
+        ('Number Slider', 200, 100, "TestComp2")
     ]
     
     results = []
     
-    for i, (component_name, x, y) in enumerate(test_cases, 1):
+    for i, (component_name, x, y, usernick) in enumerate(test_cases, 1):
         # 每次测试重新连接，避免状态污染
         print(f"\n\n{'#'*70}")
         print(f"# 开始测试 #{i}: {component_name}")
@@ -80,7 +81,7 @@ def main():
                 time.sleep(0.5)
                 
                 # 测试组件添加
-                result = test_single_component(client, component_name, x, y, i)
+                result = test_single_component(client, component_name, x, y, usernick, i)
                 results.append(result)
                 
         except ConnectionRefusedError:

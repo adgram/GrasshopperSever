@@ -65,8 +65,8 @@ namespace GrasshopperSever.Components
             try
             {
                 var res_lst = ActuatorHandle.DoCommand(lst, ref _output_data, GHServer.GetOutputLink(this, 2));
-                DA.SetData(0, res_lst.ToString());
-                DA.SetData(1, new LjsonGoo(res_lst));
+                if (res_lst != null)
+                    DA.SetData(1, new LjsonGoo(res_lst));
                 DA.SetData(2, _output_data);
             }
             catch (Exception ex)

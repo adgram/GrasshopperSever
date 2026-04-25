@@ -23,78 +23,13 @@
 
 ---
 
-### 方法1: 通过名称精确查找 (FINDCOMPONENTBYNAME)
+### 方法1：Component 命令
 
-精确匹配组件名称，返回单个组件信息。
-
-**请求示例**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过名称查找组件",
-  "Time": "2026-04-15T10:00:00",
-  "Value": {
-    "Command": "FINDCOMPONENTBYNAME",
-    "Name": "Construct Point"
-  }
-}
-```
-
-**适用场景**：已知准确的组件名称，需要快速获取组件信息。
+[Component 命令](Example/CMD_COMPONENT/commands_COMPONENT.md)
 
 ---
 
-### 方法2: 通过名称模糊搜索 (SEARCHCOMPONENTSBYNAME)
-
-模糊匹配组件名称，返回所有匹配的组件列表。
-
-**请求示例**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "搜索组件",
-  "Time": "2026-04-15T10:00:00",
-  "Value": {
-    "Command": "SEARCHCOMPONENTSBYNAME",
-    "Name": "Circle"
-  }
-}
-```
-
-**适用场景**：不确定组件准确名称，需要搜索相关组件。
-
----
-
-### 方法3: 通过分类查找 (FINDCOMPONENTBYCATEGORY)
-
-按组件分类查找，可同时指定主分类、子分类和名称。
-
-**请求示例**：
-```json
-{
-  "Name": "COMPONENT",
-  "Info": "通过分类查找组件",
-  "Time": "2026-04-15T10:00:00",
-  "Value": {
-    "Command": "FINDCOMPONENTBYCATEGORY",
-    "Category": "Curve",
-    "SubCategory": "Primitive",
-    "Name": "Circle"
-  }
-}
-```
-
-**参数说明**：
-- `Category` - 主分类（可选）
-- `SubCategory` - 子分类（可选）
-- `Name` - 组件名称（可选）
-- 至少需要提供一个参数
-
-**适用场景**：需要按分类浏览组件，或缩小搜索范围。
-
----
-
-### 方法4: 直接读取数据库 ALLCOMPS 表
+### 方法2: 直接读取数据库 ALLCOMPS 表
 
 直接查询 SQLite 数据库获取所有组件信息，适合批量操作或离线查询。
 
@@ -199,9 +134,10 @@ conn.close()
 {
   "Name": "Design",
   "Command": "AddComponentByName",
-  "ComponentName": "组件名称",
+  "ComponentName": "组件名称", //或 组件Category@组件名称
   "X": 100,
-  "Y": 100
+  "Y": 100,
+  "UserNick": "组件别名" // 可选，设置后可以替代InstanceGuid
 }
 ```
 
@@ -225,7 +161,8 @@ conn.close()
   "Command": "AddComponentByGuid",
   "ComponentGuid": "组件GUID",
   "X": 100,
-  "Y": 100
+  "Y": 100,
+  "UserNick": "组件别名" // 可选，设置后可以替代InstanceGuid
 }
 ```
 
@@ -259,7 +196,8 @@ conn.close()
 {
   "Name": "Design",
   "Command": "SETPARAMVALUE",
-  "InstanceGuid": "组件实例GUID",
+  "InstanceGuid": "组件实例GUID", // 二选一
+  "UserNick": "用户设置的别名", // 二选一
   "Path": "数据结构",
   "Value": "设置的值"
 }
@@ -306,8 +244,9 @@ with GHClient(port=6879) as gh:
   "ParamName": "参数类型名称",
   "X": 100,
   "Y": 100,
-  "Path": "{0;1;2}",
-  "Value": "值或JSON数组"
+  "Path": "{0;1;2}", // 可选
+  "Value": "值或JSON数组",
+  "UserNick": "组件别名" // 可选，设置后可以替代InstanceGuid
 }
 ```
 
@@ -435,7 +374,8 @@ with GHClient(port=6879) as gh:
 {
   "Name": "Design",
   "Command": "REMOVECOMPONENT",
-  "InstanceGuid": "组件实例GUID"
+  "InstanceGuid": "组件实例GUID", // 二选一
+  "UserNick": "用户设置的别名", // 二选一
 }
 ```
 
@@ -457,9 +397,11 @@ with GHClient(port=6879) as gh:
 {
   "Name": "Design",
   "Command": "CONNECTCOMPONENTS",
-  "FromGuid": "源组件实例GUID",
+  "FromGuid": "源组件实例GUID", // 二选一
+  "FromNick": "用户设置的源别名", // 二选一
   "FromParameter": "源参数名称",
-  "ToGuid": "目标组件实例GUID",
+  "ToGuid": "源组件实例GUID", // 二选一
+  "ToNick": "用户设置的源别名", // 二选一
   "ToParameter": "目标参数名称"
 }
 ```
@@ -493,9 +435,11 @@ with GHClient(port=6879) as gh:
 {
   "Name": "Design",
   "Command": "DISCONNECTCOMPONENTS",
-  "FromGuid": "源组件实例GUID",
+  "FromGuid": "源组件实例GUID", // 二选一
+  "FromNick": "用户设置的源别名", // 二选一
   "FromParameter": "源参数名称",
-  "ToGuid": "目标组件实例GUID",
+  "ToGuid": "源组件实例GUID", // 二选一
+  "ToNick": "用户设置的源别名", // 二选一
   "ToParameter": "目标参数名称"
 }
 ```
@@ -569,3 +513,23 @@ with GHClient(port=6879) as gh:
 - 设置合适的超时时间
 - 使用正则表达式处理转义字符
 - ADDPARAMWITHVALUE 中列表值使用字符串格式（如 `"[\"1.0\", \"2.0\"]"`）
+
+# DesignList命令
+
+```c#
+"ac" => AddComponentByName(string name, string x, string y, string nick)
+"ap" => AddParamWithValue(string name, string x, string y, string path, string Value, string nick)
+"dp" => RemoveComponent(string nick)
+"sv" => SetParamValue(string nick, string path, string value)
+"cc" => ConnectComponents(string fromNick, string fromParam, string toNick, string toParam)
+"dc" => DisconnectComponents(string fromNick, string fromParam, string toNick, string toParam)
+```
+
+```python
+client.send_command(
+    name="DesignList",
+    info="批量操作测试",
+    value='ac Addition 100 100 Add1 ac "Larger Than" 500 100 LargerThan1 cc Add1 Result LargerThan1 "First Number"'
+)
+```
+

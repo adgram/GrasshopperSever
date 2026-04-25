@@ -1,7 +1,11 @@
 using GrasshopperSever.Utils;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Drawing;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 namespace GrasshopperSever.Commands
@@ -16,8 +20,9 @@ namespace GrasshopperSever.Commands
         /// </summary>
         public static Ljson DoCommand(Ljson json, ref string out_data, string output_link)
         {
-            out_data = json.GetParameterString("OUTPUT");
+            var out_d = json.GetParameterString("OUTPUT");
             JsonElement out_data_info = default;
+            if (!string.IsNullOrEmpty(out_d)) out_data = out_d;
             if (!string.IsNullOrEmpty(out_data) && !string.IsNullOrEmpty(output_link))
             {
                 out_data_info = JsonSerializer.SerializeToElement(output_link);
@@ -31,6 +36,7 @@ namespace GrasshopperSever.Commands
                     "COMPONENT" => DoComponentCommand(json),
                     "DOCUMENT" => DoDocumentCommand(json),
                     "DESIGN" => DoDesignCommand(json),
+                    "DESIGNLIST" => DoDesignListCommand(json),
                     "RHINO" => DoRhinoCommand(json),
                     _ => null,
                 };
@@ -57,35 +63,24 @@ namespace GrasshopperSever.Commands
 
             // 获取命令类型
             var commandElement = data.GetParameter("Command");
-            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
+            if (commandElement == null || commandElement?.ValueKind != JsonValueKind.String)
             {
                 return Ljson.CreateErrorLjson("未找到命令类型");
             }
 
-            string commandType = commandElement.Value.GetString();
+            string commandType = commandElement?.GetString();
 
             try
             {
-                switch (commandType.ToUpperInvariant())
+                return commandType.ToUpperInvariant() switch
                 {
-                    case "GETALLCOMPONENTS":
-                        return HandleGetAllComponentsFromDB(data);
-
-                    case "FINDCOMPONENTBYGUID":
-                        return HandleFindComponentByGuid(data);
-
-                    case "FINDCOMPONENTBYNAME":
-                        return HandleFindComponentByName(data);
-
-                    case "FINDCOMPONENTBYCATEGORY":
-                        return HandleFindComponentByCategory(data);
-
-                    case "SEARCHCOMPONENTSBYNAME":
-                        return HandleSearchComponentsByName(data);
-
-                    default:
-                        return Ljson.CreateErrorLjson($"未知的 Component 命令: {commandType}");
-                }
+                    "GETALLCOMPONENTS" => HandleGetAllComponentsFromDB(data),
+                    "FINDCOMPONENTBYGUID" => HandleFindComponentByGuid(data),
+                    "FINDCOMPONENTBYNAME" => HandleFindComponentByName(data),
+                    "FINDCOMPONENTBYCATEGORY" => HandleFindComponentByCategory(data),
+                    "SEARCHCOMPONENTSBYNAME" => HandleSearchComponentsByName(data),
+                    _ => Ljson.CreateErrorLjson($"未知的 Component 命令: {commandType}"),
+                };
             }
             catch (Exception ex)
             {
@@ -107,35 +102,24 @@ namespace GrasshopperSever.Commands
 
             // 获取命令类型
             var commandElement = data.GetParameter("Command");
-            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
+            if (commandElement == null || commandElement?.ValueKind != JsonValueKind.String)
             {
                 return Ljson.CreateErrorLjson("未找到命令类型");
             }
 
-            string commandType = commandElement.Value.GetString();
+            string commandType = commandElement?.GetString();
 
             try
             {
-                switch (commandType.ToUpperInvariant())
+                return commandType.ToUpperInvariant() switch
                 {
-                    case "SAVEDOCUMENT":
-                        return HandleSaveDocument(data);
-
-                    case "LOADDOCUMENT":
-                        return HandleLoadDocument(data);
-
-                    case "GETALLOBJECTS":
-                        return HandleGetAllObjects(data);
-
-                    case "GETOBJECT":
-                        return HandleGetObject(data);
-
-                    case "DATABASEPATH":
-                        return HandleDatabasePath(data);
-
-                    default:
-                        return Ljson.CreateErrorLjson($"未知的 Document 命令: {commandType}");
-                }
+                    "SAVEDOCUMENT" => HandleSaveDocument(data),
+                    "LOADDOCUMENT" => HandleLoadDocument(data),
+                    "GETALLOBJECTS" => HandleGetAllObjects(data),
+                    "GETOBJECT" => HandleGetObject(data),
+                    "DATABASEPATH" => HandleDatabasePath(data),
+                    _ => Ljson.CreateErrorLjson($"未知的 Document 命令: {commandType}"),
+                };
             }
             catch (Exception ex)
             {
@@ -157,32 +141,23 @@ namespace GrasshopperSever.Commands
 
             // 获取命令类型
             var commandElement = data.GetParameter("Command");
-            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
+            if (commandElement == null || commandElement?.ValueKind != JsonValueKind.String)
             {
                 return Ljson.CreateErrorLjson("未找到命令类型");
             }
 
-            string commandType = commandElement.Value.GetString();
+            string commandType = commandElement?.GetString();
 
             try
             {
-                switch (commandType.ToUpperInvariant())
+                return commandType.ToUpperInvariant() switch
                 {
-                    case "RHINOSCRIPT":
-                        return HandleRunRhinoScript(data);
-
-                    case "GETLASTCREATEDOBJECTS":
-                        return HandleGetLastCreatedObjects(data);
-
-                    case "SELECTOBJECTS":
-                        return HandleSelectObjects(data);
-
-                    case "GETANDSELECTLASTOBJECTS":
-                        return HandleGetAndSelectLastObjects(data);
-
-                    default:
-                        return Ljson.CreateErrorLjson($"未知的 Rhino 命令: {commandType}");
-                }
+                    "RHINOSCRIPT" => HandleRunRhinoScript(data),
+                    "GETLASTCREATEDOBJECTS" => HandleGetLastCreatedObjects(data),
+                    "SELECTOBJECTS" => HandleSelectObjects(data),
+                    "GETANDSELECTLASTOBJECTS" => HandleGetAndSelectLastObjects(data),
+                    _ => Ljson.CreateErrorLjson($"未知的 Rhino 命令: {commandType}"),
+                };
             }
             catch (Exception ex)
             {
@@ -204,46 +179,138 @@ namespace GrasshopperSever.Commands
 
             // 获取命令类型
             var commandElement = data.GetParameter("Command");
-            if (commandElement == null || commandElement.Value.ValueKind != JsonValueKind.String)
+            if (commandElement == null || commandElement?.ValueKind != JsonValueKind.String)
             {
                 return Ljson.CreateErrorLjson("未找到命令类型");
             }
 
-            string commandType = commandElement.Value.GetString();
+            string commandType = commandElement?.GetString();
 
             try
             {
-                switch (commandType.ToUpperInvariant())
+                return commandType.ToUpperInvariant() switch
                 {
-                    case "ADDCOMPONENTBYGUID":
-                        return HandleAddComponentByGuid(data);
-
-                    case "ADDCOMPONENTBYNAME":
-                        return HandleAddComponentByName(data);
-
-                    case "ADDPARAMWITHVALUE":
-                        return HandleAddParamWithValue(data);
-
-                    case "REMOVECOMPONENT":
-                        return HandleRemoveComponent(data);
-
-                    case "SETPARAMVALUE":
-                        return HandleSetParamValue(data);
-
-                    case "CONNECTCOMPONENTS":
-                        return HandleConnectComponents(data);
-
-                    case "DISCONNECTCOMPONENTS":
-                        return HandleDisconnectComponents(data);
-
-                    default:
-                        return Ljson.CreateErrorLjson($"未知的 Design 命令: {commandType}");
-                }
+                    "ADDCOMPONENTBYGUID" => HandleAddComponentByGuid(data),
+                    "ADDCOMPONENTBYNAME" => HandleAddComponentByName(data),
+                    "ADDPARAMWITHVALUE" => HandleAddParamWithValue(data),
+                    "REMOVECOMPONENT" => HandleRemoveComponent(data),
+                    "SETPARAMVALUE" => HandleSetParamValue(data),
+                    "CONNECTCOMPONENTS" => HandleConnectComponents(data),
+                    "DISCONNECTCOMPONENTS" => HandleDisconnectComponents(data),
+                    _ => Ljson.CreateErrorLjson($"未知的 Design 命令: {commandType}"),
+                };
             }
             catch (Exception ex)
             {
                 return Ljson.CreateErrorLjson($"执行 Design 命令时出错: {ex.Message}");
             }
+        }
+
+        private static readonly Dictionary<string, int> ListCommandParamCount = new(StringComparer.OrdinalIgnoreCase)
+            {
+                { "ac", 4 },
+                { "ap", 6 },
+                { "dp", 1 },
+                { "sv", 3 },
+                { "cc", 4 },
+                { "dc", 4 }
+            };
+
+        public static Ljson DoDesignListCommand(Ljson data)
+        {
+            if (data == null)
+            {
+                return Ljson.CreateErrorLjson("输入数据为空");
+            }
+            // 按顺序执行value
+            string design = data.Value.GetString();
+            if (string.IsNullOrWhiteSpace(design))
+            {
+                return Ljson.CreateErrorLjson("设计字符串为空");
+            }
+            // 按空格分割，得到命令与参数的原始片段（忽略空项）
+            List<string> designsegs = [];
+            designsegs.AddRange(Tokenize(design));    // 定义命令及其所需的参数个数
+            // 存储解析出的命令和参数
+            Ljson lastResult = null;
+            int idx = 0;
+
+            while (idx < designsegs.Count)
+            {
+                string cmd = designsegs[idx];
+                // 检查命令是否合法
+                if (!ListCommandParamCount.TryGetValue(cmd, out int paramCount))
+                {
+                    return Ljson.CreateErrorLjson($"未知命令: {cmd}");
+                }
+                // 检查剩余参数是否足够
+                if (idx + paramCount >= designsegs.Count)
+                {
+                    return Ljson.CreateErrorLjson($"命令 {cmd} 参数不足，需要 {paramCount} 个参数，但实际剩余 token 不足");
+                }
+                // 提取参数列表
+                List<string> args = designsegs.GetRange(idx + 1, paramCount);
+                bool tag = cmd.ToLowerInvariant() switch
+                {
+                    "ac" => HandleListAddComponentByName(args[0], args[1], args[2], args[3], ref lastResult),
+                    "ap" => HandleListAddParamWithValue(args[0], args[1], args[2], args[3], args[4], args[5], ref lastResult),
+                    "dp" => HandleListRemoveComponent(args[0], ref lastResult),
+                    "sv" => HandleListSetParamValue(args[0], args[1], args[2], ref lastResult),
+                    "cc" => HandleListConnectComponents(args[0], args[1], args[2], args[3], ref lastResult),
+                    "dc" => HandleListDisconnectComponents(args[0], args[1], args[2], args[3], ref lastResult),
+                    _ => false,
+                };
+                if (tag)
+                {
+                    // 移动索引到下一个命令
+                    idx += 1 + paramCount;
+                }
+                else break;
+            }
+            return lastResult;
+        }
+
+        /// <summary>
+        /// 处理字符串中用引号包裹的对象
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static List<string> Tokenize(string input)
+        {
+            var tokens = new List<string>();
+            var current = new StringBuilder();
+            bool inQuotes = false;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+                if (c == '"')
+                {
+                    inQuotes = !inQuotes;
+                    // 不将引号本身加入 token
+                    continue;
+                }
+
+                if (char.IsWhiteSpace(c) && !inQuotes)
+                {
+                    // 空格分隔，提交当前 token
+                    if (current.Length > 0)
+                    {
+                        tokens.Add(current.ToString());
+                        current.Clear();
+                    }
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+
+            // 最后一个 token
+            if (current.Length > 0)
+                tokens.Add(current.ToString());
+
+            return tokens;
         }
 
         /// <summary>
@@ -256,6 +323,7 @@ namespace GrasshopperSever.Commands
                 var componentGuid = data.GetParameterString("ComponentGuid");
                 var xElement = data.GetParameter("X");
                 var yElement = data.GetParameter("Y");
+                var nickName = data.GetParameter("UserNick")?.GetString();
 
                 if (string.IsNullOrWhiteSpace(componentGuid))
                 {
@@ -267,11 +335,11 @@ namespace GrasshopperSever.Commands
                     return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
                 }
 
-                var x = xElement.Value.GetDouble();
-                var y = yElement.Value.GetDouble();
+                var x = xElement?.GetDouble();
+                var y = yElement?.GetDouble();
 
-                var point = new System.Drawing.PointF((float)x, (float)y);
-                var result = ComponentExchange.AddComponentByGuid(componentGuid, point);
+                var point = new PointF((float)x, (float)y);
+                var result = ComponentExchange.AddComponentByGuid(componentGuid, point, nickName);
 
                 return result;
             }
@@ -291,6 +359,7 @@ namespace GrasshopperSever.Commands
                 var componentName = data.GetParameterString("ComponentName");
                 var xElement = data.GetParameter("X");
                 var yElement = data.GetParameter("Y");
+                var nickName = data.GetParameter("UserNick")?.GetString();
 
                 if (string.IsNullOrWhiteSpace(componentName))
                 {
@@ -302,13 +371,13 @@ namespace GrasshopperSever.Commands
                     return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
                 }
 
-                var x = xElement.Value.GetDouble();
-                var y = yElement.Value.GetDouble();
+                var x = xElement?.GetDouble();
+                var y = yElement?.GetDouble();
 
-                var point = new System.Drawing.PointF((float)x, (float)y);
-                var result = ComponentExchange.AddComponentByName(componentName, point);
-
-                return result;
+                var point = new PointF((float)x, (float)y);
+                var result = ComponentExchange.AddComponentByName(componentName, point, nickName);
+                if (result != null) return result;
+                return Ljson.CreateErrorLjson("添加组件失败");
             }
             catch (Exception ex)
             {
@@ -325,6 +394,7 @@ namespace GrasshopperSever.Commands
                 var yElement = data.GetParameter("Y");
                 var path = data.GetParameterString("Path");
                 var value = data.GetParameterString("Value");
+                var nickName = data.GetParameter("UserNick")?.GetString();
 
                 if (string.IsNullOrWhiteSpace(componentName))
                 {
@@ -336,11 +406,11 @@ namespace GrasshopperSever.Commands
                     return Ljson.CreateErrorLjson("缺少坐标参数（X, Y）");
                 }
 
-                var x = xElement.Value.GetDouble();
-                var y = yElement.Value.GetDouble();
+                var x = xElement?.GetDouble();
+                var y = yElement?.GetDouble();
 
-                var point = new System.Drawing.PointF((float)x, (float)y);
-                var result = CommonlyParam.AddParamWithValue(componentName, point, path, value);
+                var point = new PointF((float)x, (float)y);
+                var result = CommonlyParam.AddParamWithValue(componentName, point, path, value, nickName);
 
                 return result;
             }
@@ -349,6 +419,23 @@ namespace GrasshopperSever.Commands
                 return Ljson.CreateErrorLjson($"添加组件失败: {ex.Message}");
             }
         }
+
+        private static string GetGuidOrNick(Ljson data)
+        {
+
+            var tag = data.GetParameterString("InstanceGuid");
+
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                tag = data.GetParameterString("UserNick");
+                if (string.IsNullOrWhiteSpace(tag))
+                {
+                    return null;
+                }
+            }
+            return tag;
+        }
+
         /// <summary>
         /// 处理移除组件命令
         /// </summary>
@@ -356,14 +443,14 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                var instanceGuid = data.GetParameterString("InstanceGuid");
+                var instanceTag = GetGuidOrNick(data);
 
-                if (string.IsNullOrWhiteSpace(instanceGuid))
+                if (string.IsNullOrWhiteSpace(instanceTag))
                 {
-                    return Ljson.CreateErrorLjson("缺少 InstanceGuid 参数");
+                    return Ljson.CreateErrorLjson("缺少 InstanceGuid 或 NickName 参数");
                 }
 
-                var result = ComponentExchange.RemoveComponent(instanceGuid);
+                var result = ComponentExchange.RemoveComponent(instanceTag);
 
                 if (result)
                 {
@@ -387,21 +474,22 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                var instanceGuid = data.GetParameterString("InstanceGuid");
+                var instanceTag = GetGuidOrNick(data);
                 var path = data.GetParameterString("Path");
                 var value = data.GetParameterString("Value");
 
-                if (string.IsNullOrWhiteSpace(instanceGuid))
+                if (string.IsNullOrWhiteSpace(instanceTag))
                 {
-                    return Ljson.CreateErrorLjson("缺少 InstanceGuid 参数");
+                    return Ljson.CreateErrorLjson("缺少 InstanceGuid 或 NickName 参数");
                 }
+
 
                 if (string.IsNullOrWhiteSpace(value))
                 {
                     return Ljson.CreateErrorLjson("缺少 Value 参数");
                 }
 
-                var result = CommonlyParam.SetParamValue(instanceGuid, path, value);
+                var result = CommonlyParam.SetParamValue(instanceTag, path, value);
 
                 if (result)
                 {
@@ -425,17 +513,25 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                var fromGuid = data.GetParameterString("FromGuid");
+                var fromTag = data.GetParameterString("FromGuid");
+                if (string.IsNullOrWhiteSpace(fromTag))
+                {
+                    fromTag = data.GetParameterString("FromNick");
+                }
                 var fromParameter = data.GetParameterString("FromParameter");
-                var toGuid = data.GetParameterString("ToGuid");
+                var ToTag = data.GetParameterString("ToGuid");
+                if (string.IsNullOrWhiteSpace(ToTag))
+                {
+                    ToTag = data.GetParameterString("ToNick");
+                }
                 var toParameter = data.GetParameterString("ToParameter");
 
-                if (string.IsNullOrWhiteSpace(fromGuid) || string.IsNullOrWhiteSpace(toGuid))
+                if (string.IsNullOrWhiteSpace(fromTag) || string.IsNullOrWhiteSpace(ToTag))
                 {
-                    return Ljson.CreateErrorLjson("缺少必要参数（FromGuid, ToGuid）");
+                    return Ljson.CreateErrorLjson("缺少必要参数（fromTag, ToTag）");
                 }
 
-                var result = ComponentExchange.ConnectComponents(fromGuid, fromParameter, toGuid, toParameter);
+                var result = ComponentExchange.ConnectComponents(fromTag, fromParameter, ToTag, toParameter);
 
                 if (result)
                 {
@@ -459,18 +555,25 @@ namespace GrasshopperSever.Commands
         {
             try
             {
-                var fromGuid = data.GetParameterString("FromGuid");
+                var fromTag = data.GetParameterString("FromGuid");
+                if (string.IsNullOrWhiteSpace(fromTag))
+                {
+                    fromTag = data.GetParameterString("FromNick");
+                }
                 var fromParameter = data.GetParameterString("FromParameter");
-                var toGuid = data.GetParameterString("ToGuid");
+                var ToTag = data.GetParameterString("ToGuid");
+                if (string.IsNullOrWhiteSpace(ToTag))
+                {
+                    ToTag = data.GetParameterString("ToNick");
+                }
                 var toParameter = data.GetParameterString("ToParameter");
 
-                if (string.IsNullOrWhiteSpace(fromGuid) || string.IsNullOrWhiteSpace(fromParameter) ||
-                    string.IsNullOrWhiteSpace(toGuid) || string.IsNullOrWhiteSpace(toParameter))
+                if (string.IsNullOrWhiteSpace(fromTag) || string.IsNullOrWhiteSpace(ToTag))
                 {
-                    return Ljson.CreateErrorLjson("缺少必要参数（FromGuid, FromParameter, ToGuid, ToParameter）");
+                    return Ljson.CreateErrorLjson("缺少必要参数（fromTag, ToTag）");
                 }
 
-                var result = ComponentExchange.DisconnectComponents(fromGuid, fromParameter, toGuid, toParameter);
+                var result = ComponentExchange.DisconnectComponents(fromTag, fromParameter, ToTag, toParameter);
 
                 if (result)
                 {
@@ -485,6 +588,54 @@ namespace GrasshopperSever.Commands
             {
                 return Ljson.CreateErrorLjson($"断开组件连接失败: {ex.Message}");
             }
+        }
+
+        public static bool HandleListAddComponentByName(string name, string x, string y, string nick, ref Ljson result)
+        {
+            if ((float.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out float x1))
+                && (float.TryParse(y, NumberStyles.Float, CultureInfo.InvariantCulture, out float y1)))
+            {
+                var point = new PointF(x1, y1);
+                result = ComponentExchange.AddComponentByName(name, point, nick);
+                return result != null;
+            }
+
+            return false;
+        }
+        public static bool HandleListAddParamWithValue(string name, string x, string y, string path, string value, string nick, ref Ljson result)
+        {
+            if ((float.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out float x1))
+                && (float.TryParse(y, NumberStyles.Float, CultureInfo.InvariantCulture, out float y1)))
+            {
+                var point = new PointF(x1, y1);
+                result = CommonlyParam.AddParamWithValue(name, point, path, value, nick);
+                return result != null;
+            }
+            return false;
+        }
+        public static bool HandleListRemoveComponent(string nick, ref Ljson result)
+        {
+            var b = ComponentExchange.RemoveComponent(nick);
+            result = b ? Ljson.CreateOKLjson("组件移除成功") : Ljson.CreateErrorLjson("组件移除失败");
+            return b;
+        }
+        public static bool HandleListSetParamValue(string nick, string path, string value, ref Ljson result)
+        {
+            var b = CommonlyParam.SetParamValue(nick, path, value);
+            result = b ? Ljson.CreateOKLjson("Param值设置成功") : Ljson.CreateErrorLjson("Param值设置失败");
+            return b;
+        }
+        public static bool HandleListConnectComponents(string fromNick, string fromParam, string toNick, string toParam, ref Ljson result)
+        {
+            var b = ComponentExchange.ConnectComponents(fromNick, fromParam, toNick, toParam);
+            result = b ? Ljson.CreateOKLjson("组件连接成功") : Ljson.CreateErrorLjson("组件连接失败");
+            return b;
+        }
+        public static bool HandleListDisconnectComponents(string fromNick, string fromParam, string toNick, string toParam, ref Ljson result)
+        {
+            var b = ComponentExchange.DisconnectComponents(fromNick, fromParam, toNick, toParam);
+            result = b ? Ljson.CreateOKLjson("组件断开成功") : Ljson.CreateErrorLjson("组件断开失败");
+            return b;
         }
 
         /// <summary>
@@ -582,14 +733,7 @@ namespace GrasshopperSever.Commands
         /// </summary>
         private static Ljson HandleGetAllComponentsFromDB(Ljson data)
         {
-            try
-            {
-                return ComponentInfo.GetAllComponentsFromDB();
-            }
-            catch (Exception ex)
-            {
-                return Ljson.CreateErrorLjson($"从数据库获取组件失败: {ex.Message}");
-            }
+            return ComponentInfo.GetAllComponentsFromDB();
         }
 
         /// <summary>
@@ -756,19 +900,12 @@ namespace GrasshopperSever.Commands
         /// </summary>
         private static Ljson HandleDatabasePath(Ljson data)
         {
-            try
+            var path = DatabaseManager.DatabasePath;
+            var resultData = new Dictionary<string, object>
             {
-                var path = DatabaseManager.DatabasePath;
-                var resultData = new Dictionary<string, object>
-                {
-                    { "DatabasePath", path }
-                };
-                return new Ljson("DatabasePath", "获取数据库路径", JsonSerializer.SerializeToElement(resultData));
-            }
-            catch (Exception ex)
-            {
-                return Ljson.CreateErrorLjson($"获取数据库路径失败: {ex.Message}");
-            }
+                { "DatabasePath", path }
+            };
+            return new Ljson("DatabasePath", "获取数据库路径", JsonSerializer.SerializeToElement(resultData));
         }
 
         /// <summary>
@@ -778,122 +915,17 @@ namespace GrasshopperSever.Commands
         /// </summary>
         private static Ljson HandleGetAllObjects(Ljson data)
         {
-            try
-            {
-                return DocumentInfo.GetAllObjects();
-            }
-            catch (Exception ex)
-            {
-                return Ljson.CreateErrorLjson($"获取对象失败: {ex.Message}");
-            }
+            return DocumentInfo.GetAllObjects();
         }
 
         private static Ljson HandleGetObject(Ljson data)
         {
-            try
+            string tag = GetGuidOrNick(data);
+            if (string.IsNullOrWhiteSpace(tag))
             {
-                string guid = data.GetParameterString("Guid");
-                if (string.IsNullOrWhiteSpace(guid))
-                {
-                    return Ljson.CreateErrorLjson("缺少参数: guid");
-                }
-                return DocumentInfo.GetObject(guid);
+                return Ljson.CreateErrorLjson("缺少参数: tag");
             }
-            catch (Exception ex)
-            {
-                return Ljson.CreateErrorLjson($"获取文档对象失败: {ex.Message}");
-            }
+            return DocumentInfo.GetObject(tag);
         }
-    }
-
-    /// <summary>
-    /// Ljson 类型枚举
-    /// 用于标识 Ljson 头部 JData 的类型
-    /// </summary>
-    public enum LjsonType
-    {
-        /// <summary>
-        /// 组件类型
-        /// </summary>
-        Component,
-
-        /// <summary>
-        /// 脚本类型
-        /// </summary>
-        Script,
-
-        /// <summary>
-        /// 文档类型
-        /// </summary>
-        Document,
-
-        /// <summary>
-        /// 设计类型
-        /// </summary>
-        Design,
-
-        /// <summary>
-        /// Rhino命令类型
-        /// </summary>
-        Rhino,
-
-        /// <summary>
-        /// 其他类型
-        /// </summary>
-        Other
-    }
-
-    /// <summary>
-    /// Ljson 类型检测器
-    /// 用于判断 Ljson 头部 JData 的类型
-    /// </summary>
-    public static class LjsonTypeDetector
-    {
-        /// <summary>
-        /// 检测 Ljson 的类型
-        /// 通过检查 Ljson 的 Name 属性来判断类型
-        /// </summary>
-        /// <param name="json">要检测的 Ljson</param>
-        /// <returns>LjsonType 枚举值</returns>
-        public static LjsonType DetectType(Ljson json)
-        {
-            if (json == null || string.IsNullOrWhiteSpace(json.Name))
-            {
-                return LjsonType.Other;
-            }
-
-            // 根据 Name 值判断类型（不区分大小写）
-            switch (json.Name.ToUpperInvariant())
-            {
-                case "COMPONENT":
-                    return LjsonType.Component;
-
-                case "SCRIPT":
-                    return LjsonType.Script;
-
-                case "DOCUMENT":
-                    return LjsonType.Document;
-
-                case "DESIGN":
-                    return LjsonType.Design;
-
-                case "RHINO":
-                    return LjsonType.Rhino;
-
-                default:
-                    return LjsonType.Other;
-            }
-        }
-
-        /// <summary>
-        /// 获取类型的字符串表示
-        /// </summary>
-        /// <param name="type">LjsonType 枚举值</param>
-        /// <returns>类型字符串</returns>
-        public static string ToString(LjsonType type)
-        {
-            return type.ToString();
-        }
-
     }
 }

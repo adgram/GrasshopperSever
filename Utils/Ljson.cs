@@ -261,10 +261,10 @@ namespace GrasshopperSever.Utils
             {
                 foreach (var item in Value.EnumerateArray())
                 {
-                    if (item.TryGetProperty("Name", out var nameElement) &&
+                    if (item.TryGetProperty(nameof(Name), out var nameElement) &&
                         nameElement.GetString().Equals(paramName, StringComparison.OrdinalIgnoreCase))
                     {
-                        return item.GetProperty("Value").Clone();
+                        return item.GetProperty(nameof(Value)).Clone();
                     }
                 }
             }

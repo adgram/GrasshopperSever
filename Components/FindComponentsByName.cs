@@ -12,7 +12,7 @@ namespace GrasshopperSever.Components
         /// </summary>
         public FindComponentsByName()
           : base("FindComponentsByName", "FCBN",
-              "通过组件名称查询组件信息",
+              "通过组件名称查询组件信息，使用 全名 或者 组件Category@全名",
               "Maths", "Sever")
         {
         }

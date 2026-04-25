@@ -1,5 +1,4 @@
-﻿using Grasshopper;
-using Grasshopper.Kernel;
+﻿using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Parameters;
 using Grasshopper.Kernel.Special;
@@ -18,7 +17,7 @@ namespace GrasshopperSever.Commands
     /// </summary>
     public class CommonlyParam
     {
-        public static Ljson AddParamWithValue(string name, PointF point, string path, string value)
+        public static Ljson AddParamWithValue(string name, PointF point, string path, string value, string nick)
         {
             IGH_Param component;
             switch (name.ToLowerInvariant())
@@ -43,18 +42,18 @@ namespace GrasshopperSever.Commands
                 case "true":
                     var truep = new GH_BooleanToggle();
                     truep.LoadState("True");
-                    return ComponentExchange.AddComponent(truep, point, true);
+                    return ComponentExchange.AddComponent(truep, point, true, nick);
                 case "false":
                     var falsep = new GH_BooleanToggle();
                     falsep.LoadState("False");
-                    return ComponentExchange.AddComponent(falsep, point, true);
+                    return ComponentExchange.AddComponent(falsep, point, true, nick);
                 case "toggle":
                     component = new GH_BooleanToggle();
                     break;
                 case "button":
                     var buttonp = new GH_ButtonObject();
                     // 无需传入值
-                    return ComponentExchange.AddComponent(buttonp, point, true);
+                    return ComponentExchange.AddComponent(buttonp, point, true, nick);
                 case "slider":
                 case "numberslider":
                     component = new GH_NumberSlider();
@@ -123,17 +122,17 @@ namespace GrasshopperSever.Commands
                     component = new Param_Guid();
                     break;
                 default:
-                    return ComponentExchange.AddComponentByName(name, point);
+                    return ComponentExchange.AddComponentByName(name, point, nick);
             }
             var tag = SetParamValue(component, path, value);
-            var lj = ComponentExchange.AddComponent(component, point, tag);
+            var lj = ComponentExchange.AddComponent(component, point, tag, nick);
             return lj;
         }
 
 
         /// 设置组件的值
         /// </summary>
-        public static bool SetParamValue(string guid, string path, string value)
+        public static bool SetParamValue(string instanceTag, string path, string value)
         {
             Exception caughtException = null;
             string componentName = null;
@@ -143,10 +142,8 @@ namespace GrasshopperSever.Commands
             {
                 try
                 {
-                    var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
-
                     // 查找组件
-                    var component = doc.FindObject(new Guid(guid), false);
+                    var component = ComponentExchange.FindObject(null, instanceTag);
 
                     if (component != null)
                     {
@@ -158,7 +155,7 @@ namespace GrasshopperSever.Commands
                     }
                     else
                     {
-                        caughtException = new InvalidOperationException($"Failed to find component with instance GUID: {guid}");
+                        caughtException = new InvalidOperationException($"Failed to find component with instance GUID: {instanceTag}");
                     }
                 }
                 catch (Exception ex)
@@ -176,7 +173,7 @@ namespace GrasshopperSever.Commands
             if (tag)
             {
                 ComponentExchangeDB.RecordSetComponentValue(
-                    instanceGuid: guid,
+                    instanceGuid: instanceTag,
                     componentName: componentName,
                     value: value,
                     description: $"设置组件 {componentName} 的值为 {value}"

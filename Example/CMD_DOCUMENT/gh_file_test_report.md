@@ -122,6 +122,46 @@ SELECT * FROM GHScriptModifyHistory WHERE InstanceGuid = '{instance_guid}' ORDER
 
 ---
 
+### 4.GETALLOBJECTS
+
+获取当前文档中所有对象
+
+**请求参数**：
+
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "获取所有对象",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": "GETALLOBJECTS"
+  }
+}
+```
+
+---
+
+### 5.GETOBJECT
+
+查找某个对象
+
+**请求参数**：
+
+```json
+{
+  "Name": "DOCUMENT",
+  "Info": "获取所有对象",
+  "Time": "2026-03-26T10:00:00",
+  "Value": {
+    "Command": " GETOBJECT",
+    "InstanceGuid": "组件实例GUID", // 二选一
+    "UserNick": "用户设置的别名", // 二选一
+  }
+}
+```
+
+---
+
 ## 测试概述
 
 测试GrasshopperSever插件的文档操作API，包括打开和保存GH文件功能。

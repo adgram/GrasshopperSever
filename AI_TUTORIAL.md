@@ -62,7 +62,7 @@
 | DESIGN | `SETPARAMVALUE` | 设置参数值 | 同上 |
 | DESIGN | `CONNECTCOMPONENTS` | 连接组件 | 同上 |
 | DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 | 同上 |
-| SCRIPT |  | 未实现的命令，改为RunScript组件 |  |
+| DESIGNLIST |  | 批量序列化命令 | [链接](../CMD_DESIGN/design_test.md) |
 
 警告：请不要轻易获取所有组件信息(`GETALLCOMPONENTS`)，优先使用分组或名称查询、检索，或者调用数据库。
 

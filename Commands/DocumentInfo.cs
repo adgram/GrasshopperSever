@@ -162,7 +162,7 @@ namespace GrasshopperSever.Commands
             }
         }
 
-        public static Ljson GetObject(string guid)
+        public static Ljson GetObject(string tag)
         {
             Exception caughtException = null;
             IGH_DocumentObject obj = null;
@@ -171,9 +171,8 @@ namespace GrasshopperSever.Commands
             {
                 try
                 {
-                    var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
                     // 查找组件
-                    obj = doc.FindObject(new Guid(guid), false);
+                    obj = ComponentExchange.FindObject(null, tag);
                 }
                 catch (Exception ex)
                 {

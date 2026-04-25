@@ -99,7 +99,7 @@ All commands use Ljson format and are sent via TCP:
 }
 ```
 
-**Name Field**: `COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGN`
+**Name Field**: `COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGNLIST`
 
 ### Command Quick Reference
 
@@ -126,7 +126,7 @@ All commands use Ljson format and are sent via TCP:
 | DESIGN | `SETPARAMVALUE` | Set parameter value |
 | DESIGN | `CONNECTCOMPONENTS` | Connect components |
 | DESIGN | `DISCONNECTCOMPONENTS` | Disconnect components |
-| SCRIPT |  | Unrealized methods |
+| DESIGNLIST |  | Do Design Commands |
 
 > For detailed parameters, examples and response formats of each command, see the respective documentation: [Component Commands](Example/CMD_COMPONENT/commands_COMPONENT.md), [Design Commands](Example/CMD_DESIGN/design_test.md), [Document Commands](Example/CMD_DOCUMENT/gh_file_test_report.md), [Rhino Commands](Example/CMD_RHINO/commands_RHINO.md), [Script Commands](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md).
 >

@@ -68,7 +68,7 @@ namespace GrasshopperSever.Components
             // 查找参数值
             var jlist = jlistGoo.Value;
             // 辅助方法：将 JsonElement 转换为基本类型或字符串
-            object ElementToBasicType(JsonElement? element)
+            static object ElementToBasicType(JsonElement? element)
             {
                 if (!element.HasValue) return null;
                 var _value = element.Value;

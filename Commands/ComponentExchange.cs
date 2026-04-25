@@ -10,20 +10,12 @@ namespace GrasshopperSever.Commands
 {
     public class ComponentExchange
     {
-
-        /// <summary>
-        /// 添加组件到 Grasshopper 文档
-        /// </summary>
-        public static Ljson AddComponentByLjson(Ljson ljson, PointF point)
-        {
-            var componentGuid = ljson.GetParameterString("ComponentGuid");
-            return AddComponentByGuid(componentGuid, point);
-        }
+        private static Dictionary<Guid, Dictionary<string, IGH_DocumentObject>> UserObj = [];
 
         /// <summary>
         /// 通过组件 GUID 添加组件到 Grasshopper 文档
         /// </summary>
-        public static Ljson AddComponentByGuid(string guid, PointF point)
+        public static Ljson AddComponentByGuid(string guid, PointF point, string nick)
         {
             Exception caughtException = null;
             IGH_DocumentObject dobj = null;
@@ -42,7 +34,16 @@ namespace GrasshopperSever.Commands
                         {
                             dobj.CreateAttributes();
                         }
-
+                        if (!string.IsNullOrEmpty(nick))
+                        {
+                            dobj.NickName = nick;
+                            if (!UserObj.TryGetValue(doc.DocumentID, out Dictionary<string, IGH_DocumentObject> value))
+                            {
+                                value = [];
+                                UserObj[doc.DocumentID] = value;
+                            }
+                            value[nick] = dobj;
+                        }
                         // 设置位置
                         dobj.Attributes.Pivot = point;
                         doc.AddObject(dobj, false);
@@ -67,7 +68,7 @@ namespace GrasshopperSever.Commands
             return RecordAddComponent(dobj, point);
         }
 
-        public static Ljson AddComponent(IGH_DocumentObject dobj, PointF point, bool hasCustomValue)
+        public static Ljson AddComponent(IGH_DocumentObject dobj, PointF point, bool hasCustomValue, string nick)
         {
             if (dobj == null) throw new InvalidOperationException("Failed to create component");
             Exception caughtException = null;
@@ -83,6 +84,16 @@ namespace GrasshopperSever.Commands
                         if (dobj.Attributes == null)
                         {
                             dobj.CreateAttributes();
+                        }
+                        if (!string.IsNullOrEmpty(nick))
+                        {
+                            dobj.NickName = nick;
+                            if (!UserObj.TryGetValue(doc.DocumentID, out Dictionary<string, IGH_DocumentObject> value))
+                            {
+                                value = [];
+                                UserObj[doc.DocumentID] = value;
+                            }
+                            value[nick] = dobj;
                         }
                         // 设置位置
                         dobj.Attributes.Pivot = point;
@@ -132,18 +143,32 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 通过组件名称添加组件到 Grasshopper 文档
         /// </summary>
-        public static Ljson AddComponentByName(string name, PointF point)
+        public static Ljson AddComponentByName(string name, PointF point, string nick)
         {
             string guid = ComponentInfo.FindComponentsGuidByName(name);
-            if (guid != null) return AddComponentByGuid(guid, point);
+            if (guid != null) return AddComponentByGuid(guid, point, nick);
+            return null;
+        }
 
-            throw new InvalidOperationException($"Failed to find component with name: {name}");
+        public static IGH_DocumentObject FindObject(GH_Document doc, string guidOrNick)
+        {
+            doc ??= (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
+            if (UserObj != null && UserObj.TryGetValue(doc.DocumentID, out Dictionary<string, IGH_DocumentObject> ds)
+                && ds != null && ds.TryGetValue(guidOrNick, out IGH_DocumentObject value))
+            {
+                return value;
+            }
+            if (Guid.TryParse(guidOrNick, out Guid uid))
+            {
+                return doc.FindObject(uid, false);
+            }
+            return null;
         }
 
         /// <summary>
         /// 从 Grasshopper 文档中移除组件
         /// </summary>
-        public static bool RemoveComponent(string guid)
+        public static bool RemoveComponent(string guidOrNick)
         {
             bool success = false;
             Exception caughtException = null;
@@ -156,7 +181,7 @@ namespace GrasshopperSever.Commands
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
 
                     // 查找组件
-                    var component = doc.FindObject(new Guid(guid), false);
+                    var component = FindObject(doc, guidOrNick);
 
                     if (component != null)
                     {
@@ -169,7 +194,7 @@ namespace GrasshopperSever.Commands
                     }
                     else
                     {
-                        caughtException = new InvalidOperationException($"Failed to find component with instance GUID: {guid}");
+                        caughtException = new InvalidOperationException($"Failed to find component with instance: {guidOrNick}");
                     }
                 }
                 catch (Exception ex)
@@ -187,7 +212,7 @@ namespace GrasshopperSever.Commands
             if (success && !string.IsNullOrEmpty(componentName))
             {
                 ComponentExchangeDB.RecordRemoveComponent(
-                    instanceGuid: guid,
+                    instanceGuid: guidOrNick,
                     componentName: componentName,
                     description: $"删除组件 {componentName}"
                 );
@@ -196,44 +221,52 @@ namespace GrasshopperSever.Commands
             return success;
         }
 
-        public static IGH_Param FindParam(GH_Document doc, string guid, string name, bool isIn)
+        public static IGH_Param FindParam(GH_Document doc, string guidOrNick, string name, bool isIn)
         {
-            if (!Guid.TryParse(guid, out Guid uid))
+            var obj = FindObject(doc, guidOrNick);
+            if (obj is IGH_Param p)
             {
-                throw new ArgumentException("Invalid component ID format");
+                return p;
             }
-            var p = doc.FindParameter(uid);
-            if (p != null) return p;
+            //if (obj is BaseLanguageComponent Language)
+            //{
+            //    List<IGH_Param> ps = Language.Params.Output;
+            //    if (isIn) ps = Language.Params.Input;
 
-            var c = doc.FindComponent(uid) ?? throw new ArgumentException($"Source or target {uid} not found");
-            List<IGH_Param> ps = c.Params.Output;
-            if (isIn) ps = c.Params.Input;
-
-            foreach (var param in ps)
+            //    foreach (var param in ps)
+            //    {
+            //        if (param.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            //        {
+            //            return param;
+            //        }
+            //    }
+            //}
+            if (obj is IGH_Component component)
             {
-                if (param.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                List<IGH_Param> ps = component.Params.Output;
+                if (isIn) ps = component.Params.Input;
+
+                foreach (var param in ps)
                 {
-                    return param;
+                    if (param.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return param;
+                    }
                 }
             }
-            throw new ArgumentException($"Source or target {name} not found");
+            throw new ArgumentException($"Source or target {guidOrNick} not found");
         }
 
         /// <summary>
         /// 连接两个组件的参数
         /// </summary>
-        /// <param name="fromGuid">源组件的实例 GUID</param>
+        /// <param name="fromTag">源组件的实例 GUID</param>
         /// <param name="fromParameter">源组件的输出参数名称</param>
-        /// <param name="toGuid">目标组件的实例 GUID</param>
+        /// <param name="toTag">目标组件的实例 GUID</param>
         /// <param name="toParameter">目标组件的输入参数名称</param>
         /// <returns>连接是否成功</returns>
-        public static bool ConnectComponents(string fromGuid, string fromParameter, string toGuid, string toParameter)
+        public static bool ConnectComponents(string fromTag, string fromParameter, string toTag, string toParameter)
         {
-            if (string.IsNullOrEmpty(fromGuid) || string.IsNullOrEmpty(toGuid))
-            {
-                throw new ArgumentException("Source and target component information are required");
-            }
-
             bool result = false;
             Exception exception = null;
 
@@ -243,8 +276,8 @@ namespace GrasshopperSever.Commands
                 {
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
 
-                    var fromParam = FindParam(doc, fromGuid, fromParameter, false);
-                    var toParam = FindParam(doc, toGuid, toParameter, true);
+                    var fromParam = FindParam(doc, fromTag, fromParameter, false);
+                    var toParam = FindParam(doc, toTag, toParameter, true);
 
                     toParam.AddSource(fromParam);
                     doc.NewSolution(false);
@@ -266,11 +299,11 @@ namespace GrasshopperSever.Commands
             if (result)
             {
                 ComponentExchangeDB.RecordConnectComponents(
-                    fromInstanceGuid: fromGuid,
+                    fromInstanceGuid: fromTag,
                     fromParameter: fromParameter,
-                    toInstanceGuid: toGuid,
+                    toInstanceGuid: toTag,
                     toParameter: toParameter,
-                    description: $"连接组件 {fromGuid}.{fromParameter} 到 {toGuid}.{toParameter}"
+                    description: $"连接组件 {fromTag}.{fromParameter} 到 {toTag}.{toParameter}"
                 );
             }
 
@@ -280,19 +313,13 @@ namespace GrasshopperSever.Commands
         /// <summary>
         /// 断开两个组件参数之间的连接
         /// </summary>
-        /// <param name="fromGuid">源组件的实例 GUID</param>
+        /// <param name="fromTag">源组件的实例 GUID</param>
         /// <param name="fromParameter">源组件的输出参数名称</param>
-        /// <param name="toGuid">目标组件的实例 GUID</param>
+        /// <param name="toTag">目标组件的实例 GUID</param>
         /// <param name="toParameter">目标组件的输入参数名称</param>
         /// <returns>断开连接是否成功</returns>
-        public static bool DisconnectComponents(string fromGuid, string fromParameter, string toGuid, string toParameter)
+        public static bool DisconnectComponents(string fromTag, string fromParameter, string toTag, string toParameter)
         {
-            if (string.IsNullOrEmpty(fromGuid) || string.IsNullOrEmpty(fromParameter) ||
-                string.IsNullOrEmpty(toGuid) || string.IsNullOrEmpty(toParameter))
-            {
-                throw new ArgumentException("Source and target component information are required");
-            }
-
             bool result = false;
             Exception exception = null;
 
@@ -303,8 +330,8 @@ namespace GrasshopperSever.Commands
                     var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
 
 
-                    var fromParam = FindParam(doc, fromGuid, fromParameter, false);
-                    var toParam = FindParam(doc, toGuid, toParameter, true);
+                    var fromParam = FindParam(doc, fromTag, fromParameter, false);
+                    var toParam = FindParam(doc, toTag, toParameter, true);
 
                     // 检查是否存在连接
                     if (!toParam.Sources.Contains(fromParam))
@@ -333,11 +360,11 @@ namespace GrasshopperSever.Commands
             if (result)
             {
                 ComponentExchangeDB.RecordDisconnectComponents(
-                    fromInstanceGuid: fromGuid,
+                    fromInstanceGuid: fromTag,
                     fromParameter: fromParameter,
-                    toInstanceGuid: toGuid,
+                    toInstanceGuid: toTag,
                     toParameter: toParameter,
-                    description: $"断开组件 {fromGuid}.{fromParameter} 到 {toGuid}.{toParameter} 的连接"
+                    description: $"断开组件 {fromTag}.{fromParameter} 到 {toTag}.{toParameter} 的连接"
                 );
             }
 

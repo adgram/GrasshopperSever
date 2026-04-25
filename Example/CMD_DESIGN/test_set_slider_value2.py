@@ -7,12 +7,22 @@ import time
 
 PORT = 9653
 
-slider_guid = "8210e72c-09e5-4f7e-af9d-acefc4e03870"
-
 try:
     with GHClient(port = PORT) as client:
         time.sleep(0.5)
         
+        responses = client.send_command(
+            name="Design",
+            info="ADDCOMPONENTBYNAME 测试",
+            value={
+                "Command": "AddComponentByName",
+                "ComponentName": "Number Slider",
+                "X": 200,
+                "Y": 100,
+                "USERNICK": "Slider1"
+            }
+        )
+
         # 测试 1: 设置为 0.75
         print("设置 Number Slider 值为 0.75...")
         responses1 = client.send_command(
@@ -20,7 +30,7 @@ try:
             info="测试",
             value={
                 "Command": "SETPARAMVALUE",
-                "InstanceGuid": slider_guid,
+                "USERNICK": "Slider1",
                 "Value": "0.75"
             }
         )
@@ -39,7 +49,7 @@ try:
             info="测试",
             value={
                 "Command": "SETPARAMVALUE",
-                "InstanceGuid": slider_guid,
+                "USERNICK": "Slider1",
                 "Value": "0 < 50< 67"
             }
         )

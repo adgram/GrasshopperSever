@@ -25,7 +25,7 @@
 - `DOCUMENT` - 文档相关命令
 - `RHINO` - Rhino相关命令
 - `SCRIPT` - 脚本相关命令
-- `DESIGN` - 设计相关命令
+- `DESIGNLIST` - 设计列表相关命令
 
 ---
 

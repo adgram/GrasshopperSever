@@ -1,4 +1,4 @@
-﻿﻿﻿﻿# GrasshopperSever
+﻿﻿﻿﻿﻿# GrasshopperSever
 
 Rhino Grasshopper 插件，通过 TCP 协议提供与 Grasshopper/Rhino 的双向通信，支持 AI 客户端远程控制组件布局、执行脚本和查询数据。
 中文 | [English](README_EN.md)
@@ -98,7 +98,7 @@ GrasshopperSever/
 }
 ```
 
-**命令Name 字段**：`COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGN`
+**命令Name 字段**：`COMPONENT` | `DOCUMENT` | `RHINO` | `SCRIPT` | `DESIGNLIST`
 
 ### 命令速览
 
@@ -125,7 +125,7 @@ GrasshopperSever/
 | DESIGN | `SETPARAMVALUE` | 设置参数值 |
 | DESIGN | `CONNECTCOMPONENTS` | 连接组件 |
 | DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 |
-| SCRIPT |  | 未实现的命令，改为 RunScript 组件 |
+| DESIGNLIST |  | 批量序列化命令 | 
 
 > 各命令的详细参数、示例和响应格式见对应文档：[Component 命令](Example/CMD_COMPONENT/commands_COMPONENT.md)、[Design 命令](Example/CMD_DESIGN/design_test.md)、[Document 命令](Example/CMD_DOCUMENT/gh_file_test_report.md)、[Rhino 命令](Example/CMD_RHINO/commands_RHINO.md)、[Script 命令](Example/SCRIPT&CMD_SCRIPT/commands_SCRIPT.md)。
 
@@ -160,7 +160,8 @@ GrasshopperSever/
 
 ## 快速开始
 
-1. 安装 `.gha` 插件到 Grasshopper 组件目录
+1. 安装插件到 Grasshopper 组件目录
+1. 在 Grasshopper中，添加一个AllComponents组件，Refresh端口为True，这会创建数据库。
 2. 在 Grasshopper 中添加 `GHServer` 组件，设置 `Enabled = true`，端口默认 `6879`
 3. 使用 Python 客户端连接：
 
@@ -176,7 +177,9 @@ with GHClient(port = 6879) as client:
     print(responses)
 ```
 
-> 更完整的客户端类和高级用法见 [客户端教程](CLIENT_TUTORIAL.md) 和 [主要功能](MainSectors.md)。
+> 未创建数据库，多数命令不能使用。
+>
+> 详细快速开始见[主要功能](MainSectors.md)。
 
 ## 相关文档
 

@@ -1,4 +1,4 @@
-﻿﻿# GrasshopperSever 命令列表
+﻿﻿﻿﻿# GrasshopperSever 命令列表
 
 本文档列出了 GrasshopperSever 插件支持的所有可用命令。
 警告：不要轻易获取所有组件信息，优先使用分组或名称查询、检索，或者调用数据库。
@@ -25,7 +25,7 @@
 - `DOCUMENT` - 文档相关命令
 - `RHINO` - Rhino 相关命令
 - `SCRIPT` - 脚本相关命令
-- `DESIGN` - 设计相关命令
+- `DESIGNLIST` - 批量设计相关命令
 
 ---
 
@@ -194,7 +194,7 @@ SELECT Category, COUNT(*) as Count FROM ALLCOMPS GROUP BY Category;
   "Time": "2026-03-26T10:00:00",
   "Value": {
     "Command": "FINDCOMPONENTBYNAME",
-    "Name": "组件名称"
+    "Name": "组件名称" //或 组件Category@组件名称
   }
 }
 ```

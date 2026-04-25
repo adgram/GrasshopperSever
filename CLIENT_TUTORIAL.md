@@ -26,7 +26,7 @@
 }
 ```
 
-- `Name` 字段对应命令类型（`COMPONENT` / `DOCUMENT` / `RHINO` / `SCRIPT` / `DESIGN`）
+- `Name` 字段对应命令类型（`COMPONENT` / `DOCUMENT` / `RHINO` / `SCRIPT` / `DESIGNLIST`）
 - `Value` 中通过 `Command` 字段指定具体命令
 - `Value` 支持所有 JSON 数据类型（数字、字符串、布尔、数组、对象、嵌套）
 
@@ -91,7 +91,7 @@ AI ──TCP──> GHServer(接收+执行+响应) ──> AI
 | DESIGN | `SETPARAMVALUE` | 设置参数值 | 同上 |
 | DESIGN | `CONNECTCOMPONENTS` | 连接组件 | 同上 |
 | DESIGN | `DISCONNECTCOMPONENTS` | 断开组件连接 | 同上 |
-| SCRIPT |  | 未实现的命令，改为RunScript组件 |  |
+| DESIGNLIST |  | 批量序列化命令 | [链接](../CMD_DESIGN/design_test.md) |
 
 警告：如果你是ai，请不要轻易获取所有组件信息(`GETALLCOMPONENTS`)，优先使用分组或名称查询、检索，或者调用数据库。
 
@@ -218,7 +218,7 @@ conn.close()
 
 - 使用单个 Ljson 对象，不要使用 Items 数组
 - 确保包含 `Name`, `Info`, `Time`, `Value` 四个字段
-- 命令类型必须是 `COMPONENT` / `DOCUMENT` / `RHINO` / `SCRIPT` / `DESIGN` 之一
+- 命令类型必须是 `COMPONENT` / `DOCUMENT` / `RHINO` / `SCRIPT` / `DESIGNLIST` 之一
 
 ### 响应解析
 
