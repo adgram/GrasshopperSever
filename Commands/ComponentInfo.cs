@@ -391,8 +391,8 @@ namespace GrasshopperSever.Commands
                 FROM ALLCOMPS
                 WHERE 1=1";
 
-            var conditions = new List<string>();
-            var parameters = new Dictionary<string, object>();
+            List<string> conditions = [];
+            Dictionary<string, object> parameters = [];
 
             // 添加分类过滤条件
             if (!string.IsNullOrWhiteSpace(category))
@@ -458,12 +458,13 @@ namespace GrasshopperSever.Commands
         // 通过名称搜索组件，可以模糊匹配
         public static List<Ljson> SearchComponentsByName(string name)
         {
-            var result = new List<Ljson>();
+            List<Ljson> result = [];
 
             // 从数据库模糊查询组件信息
             using (var connection = DatabaseManager.GetConnection())
             {
-                string sql = @"                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
+                string sql = @"
+                    SELECT ComponentGuid, ComponentName, NickName, Description, Category, SubCategory, Prototype
                     FROM ALLCOMPS
                     WHERE ComponentName LIKE @name COLLATE NOCASE OR NickName LIKE @name COLLATE NOCASE OR Description LIKE @name COLLATE NOCASE
                     ORDER BY ComponentName";

@@ -117,15 +117,15 @@ namespace GrasshopperSever.Utils
                 while (reader.Read())
                 {
                     history.Add(new Dictionary<string, object>
-                                {
-                                    { "Id", reader["Id"].ToString() },
-                                    { "ComponentGuid", reader["ComponentGuid"].ToString() },
-                                    { "ComponentName", reader["ComponentName"].ToString() },
-                                    { "ModifyType", reader["ModifyType"].ToString() },
-                                    { "ModifyContent", reader["ModifyContent"].ToString() },
-                                    { "Description", reader["Description"].ToString() },
-                                    { "ModifyTime", reader["ModifyTime"].ToString() }
-                                });
+                        {
+                            { "Id", reader.IsDBNull(0) ? null : reader.GetInt64(0) },
+                            { "ComponentGuid", reader.IsDBNull(1) ? null : reader.GetString(1) },
+                            { "ComponentName", reader.IsDBNull(2) ? null : reader.GetString(2) },
+                            { "ModifyType", reader.IsDBNull(3) ? null : reader.GetString(3) },
+                            { "ModifyContent", reader.IsDBNull(4) ? null : reader.GetString(4) },
+                            { "Description", reader.IsDBNull(5) ? null : reader.GetString(5) },
+                            { "ModifyTime", reader.IsDBNull(6) ? null : reader.GetString(6) }
+                        });
                 }
             }
             catch (Exception ex)

@@ -266,22 +266,22 @@ namespace GrasshopperSever.Utils
                 while (reader.Read())
                 {
                     history.Add(new Dictionary<string, object>
-                                {
-                                    { "Id", reader["Id"].ToString() },
-                                    { "OperationType", reader["OperationType"].ToString() },
-                                    { "ComponentGuid", reader["ComponentGuid"].ToString() },
-                                    { "InstanceGuid", reader["InstanceGuid"].ToString() },
-                                    { "ComponentName", reader["ComponentName"].ToString() },
-                                    { "PositionX", reader["PositionX"].ToString() },
-                                    { "PositionY", reader["PositionY"].ToString() },
-                                    { "Value", reader["Value"].ToString() },
-                                    { "FromInstanceGuid", reader["FromInstanceGuid"].ToString() },
-                                    { "FromParameter", reader["FromParameter"].ToString() },
-                                    { "ToInstanceGuid", reader["ToInstanceGuid"].ToString() },
-                                    { "ToParameter", reader["ToParameter"].ToString() },
-                                    { "OperationTime", reader["OperationTime"].ToString() },
-                                    { "Description", reader["Description"].ToString() }
-                                });
+                        {
+                            { "Id", reader.IsDBNull(0) ? null : reader.GetInt64(0) },
+                            { "OperationType", reader.IsDBNull(1) ? null : reader.GetString(1) },
+                            { "ComponentGuid", reader.IsDBNull(2) ? null : reader.GetString(2) },
+                            { "InstanceGuid", reader.IsDBNull(3) ? null : reader.GetString(3) },
+                            { "ComponentName", reader.IsDBNull(4) ? null : reader.GetString(4) },
+                            { "PositionX", reader.IsDBNull(5) ? null : (object)reader.GetDouble(5) },
+                            { "PositionY", reader.IsDBNull(6) ? null : (object)reader.GetDouble(6) },
+                            { "Value", reader.IsDBNull(7) ? null : reader.GetString(7) },
+                            { "FromInstanceGuid", reader.IsDBNull(8) ? null : reader.GetString(8) },
+                            { "FromParameter", reader.IsDBNull(9) ? null : reader.GetString(9) },
+                            { "ToInstanceGuid", reader.IsDBNull(10) ? null : reader.GetString(10) },
+                            { "ToParameter", reader.IsDBNull(11) ? null : reader.GetString(11) },
+                            { "OperationTime", reader.IsDBNull(12) ? null : reader.GetString(12) },
+                            { "Description", reader.IsDBNull(13) ? null : reader.GetString(13) }
+                        });
                 }
             }
             catch (Exception ex)

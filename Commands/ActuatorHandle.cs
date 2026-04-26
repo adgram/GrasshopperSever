@@ -229,8 +229,8 @@ namespace GrasshopperSever.Commands
                 return Ljson.CreateErrorLjson("设计字符串为空");
             }
             // 按空格分割，得到命令与参数的原始片段（忽略空项）
-            List<string> designsegs = [];
-            designsegs.AddRange(Tokenize(design));    // 定义命令及其所需的参数个数
+            var designsegs = new List<string>(Tokenize(design));
+            // 定义命令及其所需的参数个数
             // 存储解析出的命令和参数
             Ljson lastResult = null;
             int idx = 0;
@@ -277,7 +277,7 @@ namespace GrasshopperSever.Commands
         /// <returns></returns>
         public static List<string> Tokenize(string input)
         {
-            var tokens = new List<string>();
+            List<string> tokens = [];
             var current = new StringBuilder();
             bool inQuotes = false;
 

@@ -83,12 +83,12 @@ namespace GrasshopperSever.Utils
                         if (reader.Read())
                         {
                             return (
-                                reader["ComponentName"].ToString(),
-                                reader["NickName"].ToString(),
-                                reader["Description"].ToString(),
-                                reader["Category"].ToString(),
-                                reader["SubCategory"].ToString(),
-                                reader["Prototype"].ToString()
+                                reader.IsDBNull(0) ? null : reader.GetString(0),
+                                reader.IsDBNull(1) ? null : reader.GetString(1),
+                                reader.IsDBNull(2) ? null : reader.GetString(2),
+                                reader.IsDBNull(3) ? null : reader.GetString(3),
+                                reader.IsDBNull(4) ? null : reader.GetString(4),
+                                reader.IsDBNull(5) ? null : reader.GetString(5)
                             );
                         }
                     }
@@ -119,9 +119,9 @@ namespace GrasshopperSever.Utils
                 while (reader.Read())
                 {
                     components.Add((
-                        reader["ComponentGuid"].ToString(),
-                        reader["ComponentName"].ToString(),
-                        reader["NickName"].ToString()
+                        reader.IsDBNull(0) ? null : reader.GetString(0),
+                        reader.IsDBNull(1) ? null : reader.GetString(1),
+                        reader.IsDBNull(2) ? null : reader.GetString(2)
                     ));
                 }
             }
@@ -170,9 +170,9 @@ namespace GrasshopperSever.Utils
                         while (reader.Read())
                         {
                             components.Add((
-                                reader["ComponentGuid"].ToString(),
-                                reader["ComponentName"].ToString(),
-                                reader["NickName"].ToString()
+                                reader.IsDBNull(0) ? null : reader.GetString(0),
+                                reader.IsDBNull(1) ? null : reader.GetString(1),
+                                reader.IsDBNull(2) ? null : reader.GetString(2)
                             ));
                         }
                     }
@@ -300,7 +300,7 @@ namespace GrasshopperSever.Utils
                 using (var command = new SQLiteCommand(sql, connection))
                 {
                     var result = command.ExecuteScalar();
-                    return Convert.ToInt32(result);
+                    return result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
                 }
             }
         }

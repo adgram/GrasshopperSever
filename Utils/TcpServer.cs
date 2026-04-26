@@ -25,7 +25,7 @@ namespace GrasshopperSever.Utils
         private static readonly object _lock = new object();
 
         private TcpListener _listener;
-        private bool _runing = false;
+        private bool _running = false;
 
         /// <summary>
         /// 接收到新Ljson时触发的事件
@@ -113,9 +113,9 @@ namespace GrasshopperSever.Utils
         /// </summary>
         public void Start()
         {
-            if (_runing) return;
+            if (_running) return;
 
-            _runing = true;
+            _running = true;
             _listener = new TcpListener(IPAddress.Loopback, Port);
             _listener.Start();
             Log($"Tcp开始从端口接收数据 {Port}.");
@@ -128,9 +128,9 @@ namespace GrasshopperSever.Utils
         /// </summary>
         public void Stop()
         {
-            if (!_runing) return;
+            if (!_running) return;
 
-            _runing = false;
+            _running = false;
             _listener.Stop();
 
             // 从活动接收器字典中移除自己
@@ -149,7 +149,7 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                while (_runing)
+                while (_running)
                 {
                     // 等待客户端连接
                     var client = await _listener.AcceptTcpClientAsync();
@@ -164,10 +164,10 @@ namespace GrasshopperSever.Utils
             }
             catch (Exception ex)
             {
-                if (_runing)
+                if (_running)
                 {
                     Log($"Tcp接收器出错: {ex.Message}");
-                    _runing = false;
+                    _running = false;
                 }
             }
         }
@@ -180,8 +180,8 @@ namespace GrasshopperSever.Utils
         {
             try
             {
-                var stream = client.GetStream();
-                var reader = new StreamReader(stream, Encoding.UTF8);
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream, Encoding.UTF8);
                 string json;
                 // 持续读取，直到客户端关闭连接
                 while ((json = await reader.ReadLineAsync()) != null)
@@ -369,8 +369,8 @@ namespace GrasshopperSever.Utils
                 {
                     throw new InvalidOperationException("TcpClient未连接");
                 }
-                var stream = _client.GetStream();
-                var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+                using var stream = _client.GetStream();
+                using var writer = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
                 string jsonJson = json.ToJsonString();
                 await writer.WriteLineAsync(jsonJson);
             }

@@ -8,6 +8,7 @@ using Rhino;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Text.Json;
 
 namespace GrasshopperSever.Commands
@@ -19,114 +20,56 @@ namespace GrasshopperSever.Commands
     {
         public static Ljson AddParamWithValue(string name, PointF point, string path, string value, string nick)
         {
-            IGH_Param component;
-            switch (name.ToLowerInvariant())
+            string key = name.ToLowerInvariant();
+
+            // 特殊处理：无需创建 IGH_Param，直接返回
+            if (key == "true") return MakeToggle("True");
+            if (key == "false") return MakeToggle("False");
+            if (key == "button") return ComponentExchange.AddComponent(new GH_ButtonObject(), point, true, nick);
+
+            // 根据 key 创建组件
+            IGH_Param component = key switch
             {
-                case "number":
-                case "num":
-                case "param_number":
-                    component = new Param_Number();
-                    break;
-                case "int":
-                case "integer":
-                case "param_int":
-                case "param_integer":
-                    component = new Param_Integer();
-                    break;
-                case "bool":
-                case "boolean":
-                case "param_bool":
-                case "param_boolean":
-                    component = new Param_Boolean();
-                    break;
-                case "true":
-                    var truep = new GH_BooleanToggle();
-                    truep.LoadState("True");
-                    return ComponentExchange.AddComponent(truep, point, true, nick);
-                case "false":
-                    var falsep = new GH_BooleanToggle();
-                    falsep.LoadState("False");
-                    return ComponentExchange.AddComponent(falsep, point, true, nick);
-                case "toggle":
-                    component = new GH_BooleanToggle();
-                    break;
-                case "button":
-                    var buttonp = new GH_ButtonObject();
-                    // 无需传入值
-                    return ComponentExchange.AddComponent(buttonp, point, true, nick);
-                case "slider":
-                case "numberslider":
-                    component = new GH_NumberSlider();
-                    break;
-                case "panel":
-                case "param_panel":
-                    component = new GH_Panel();
-                    break;
-                case "text":
-                case "string":
-                case "param_text":
-                case "param_string":
-                    component = new Param_String();
-                    break;
-                case "point":
-                case "pt":
-                case "param_pt":
-                case "param_point":
-                    component = new Param_Point();
-                    break;
-                case "vector":
-                case "vect":
-                case "param_vect":
-                    component = new Param_Vector();
-                    break;
-                case "color":
-                case "colour":
-                case "param_color":
-                case "param_colour":
-                    component = new Param_Colour();
-                    break;
-                case "swatch":
-                    component = new GH_ColourSwatch();
-                    break;
-                // 下面几个无法设置参数，但为常见组件，这里提供便捷添加
-                case "plane":
-                case "param_plane":
-                    component = new Param_Plane();
-                    break;
-                case "param_line":
-                    component = new Param_Line();
-                    break;
-                case "curve":
-                case "crv":
-                case "param_crv":
-                case "param_curve":
-                    component = new Param_Curve();
-                    break;
-                case "param_circle":
-                    component = new Param_Circle();
-                    break;
-                case "brep":
-                case "param_brep":
-                    component = new Param_Brep();
-                    break;
-                case "surface":
-                case "param_surface":
-                    component = new Param_Surface();
-                    break;
-                case "mesh":
-                case "param_mesh":
-                    component = new Param_Mesh();
-                    break;
-                case "guid":
-                case "param_guid":
-                    component = new Param_Guid();
-                    break;
-                default:
-                    return ComponentExchange.AddComponentByName(name, point, nick);
+                "number" or "num" or "param_number" => new Param_Number(),
+                "int" or "integer" or "param_int" or "param_integer" => new Param_Integer(),
+                "bool" or "boolean" or "param_bool" or "param_boolean" => new Param_Boolean(),
+                "toggle" => new GH_BooleanToggle(),
+                "slider" or "numberslider" => new GH_NumberSlider(),
+                "panel" or "param_panel" => new GH_Panel(),
+                "text" or "string" or "param_text" or "param_string" => new Param_String(),
+                "point" or "pt" or "param_pt" or "param_point" => new Param_Point(),
+                "vector" or "vect" or "param_vect" => new Param_Vector(),
+                "color" or "colour" or "param_color" or "param_colour" => new Param_Colour(),
+                "swatch" => new GH_ColourSwatch(),
+                "plane" or "param_plane" => new Param_Plane(),
+                "param_line" => new Param_Line(),
+                "curve" or "crv" or "param_crv" or "param_curve" => new Param_Curve(),
+                "param_circle" => new Param_Circle(),
+                "brep" or "param_brep" => new Param_Brep(),
+                "surface" or "param_surface" => new Param_Surface(),
+                "mesh" or "param_mesh" => new Param_Mesh(),
+                "guid" or "param_guid" => new Param_Guid(),
+                "image" or "param_image" => new GH_ImageSampler(),
+                _ => null
+            };
+
+            // 如果成功创建了组件，设置参数并添加
+            if (component != null)
+            {
+                var tag = SetParamValue(component, path, value);
+                return ComponentExchange.AddComponent(component, point, tag, nick);
             }
-            var tag = SetParamValue(component, path, value);
-            var lj = ComponentExchange.AddComponent(component, point, tag, nick);
-            return lj;
+
+            // 默认：按名称添加
+            return ComponentExchange.AddComponentByName(name, point, nick);
+
+            // 局部函数：创建带状态的 Toggle
+            Ljson MakeToggle(string state)
+            {
+                var toggle = new GH_BooleanToggle();
+                toggle.LoadState(state);
+                return ComponentExchange.AddComponent(toggle, point, true, nick);
+            }
         }
 
 
@@ -208,6 +151,11 @@ namespace GrasshopperSever.Commands
                 swatch.LoadState(value);
                 return true;
             }
+            if (item is GH_ImageSampler image)
+            {
+                image.ImageFilePath = value;
+                return true;
+            }
             /*
             // 示例数据结构
             string jsonData = @"{
@@ -231,126 +179,60 @@ namespace GrasshopperSever.Commands
                 catch
                 {
                     // 如果反序列化失败，封装为单元素列表
-                    dataList = new List<string> { value };
+                    dataList = [value];
                 }
             }
             else
             {
                 // 如果不是列表格式，封装为单元素列表
-                dataList = new List<string> { value };
+                dataList = [value];
             }
 
             // 设置参数值
             return SetParamList(item, pathp, dataList);
         }
 
-        public static bool SetParamList(IGH_Param item, GH_Path path, IEnumerable<string> datalist)
+        public static bool SetParamList(IGH_Param item, GH_Path path, List<string> datalist)
         {
-            if (path.Length == 0)
-            {
-                path = new GH_Path(0);
-            }
-            if (item is Param_Number nump)
-            {
-                nump.AddVolatileDataList(path, datalist);
-                return true;
-            }
-            if (item is Param_Integer intp)
-            {
-                intp.AddVolatileDataList(path, datalist);
-                return true;
-            }
-            if (item is Param_Boolean boolp)
-            {
-                boolp.AddVolatileDataList(path, datalist);
-                return true;
-            }
-            if (item is Param_String textp)
-            {
-                textp.AddVolatileDataList(path, datalist);
-                return true;
-            }
-            if (item is Param_Point pointp)
-            {
-                pointp.AddVolatileDataList(path, datalist);
-                return true;
-            }
-            if (item is Param_Vector vectp)
-            {
-                vectp.AddVolatileDataList(path, datalist);
-                return true;
-            }
-            if (item is Param_Colour colorp)
-            {
-                colorp.AddVolatileDataList(path, datalist);
-                return true;
-            }
-            if (item is Param_Surface surfp)
-            {
-                List<GH_Surface> gHs = new();
-                foreach (string str in datalist)
-                {
+            if (path.Length == 0) path = new GH_Path(0);
 
-                    gHs.Add(new GH_Surface(Guid.Parse(str)));
-                }
-                surfp.AddVolatileDataList(path, gHs);
-                return true;
-            }
-            if (item is Param_Curve cuvp)
+            // switch 表达式
+            return item switch
             {
-                List<GH_Curve> gHs = new();
-                foreach (string str in datalist)
-                {
-
-                    gHs.Add(new GH_Curve(Guid.Parse(str)));
-                }
-                cuvp.AddVolatileDataList(path, gHs);
-                return true;
-            }
-            if (item is Param_Brep brep)
-            {
-                List<GH_Brep> gHs = new();
-                foreach (string str in datalist)
-                {
-
-                    gHs.Add(new GH_Brep(Guid.Parse(str)));
-                }
-                brep.AddVolatileDataList(path, gHs);
-                return true;
-            }
-            if (item is Param_Mesh msp)
-            {
-                List<GH_Mesh> gHs = new();
-                foreach (string str in datalist)
-                {
-
-                    gHs.Add(new GH_Mesh(Guid.Parse(str)));
-                }
-                msp.AddVolatileDataList(path, gHs);
-                return true;
-            }
-            if (item is Param_Guid idp)
-            {
-                List<Guid> gHs = new();
-                foreach (string str in datalist)
-                {
-
-                    gHs.Add(Guid.Parse(str));
-                }
-                idp.AddVolatileDataList(path, gHs);
-                return true;
-            }
-            return false;
+                Param_Number p => AddList(p, path, datalist),
+                Param_Integer p => AddList(p, path, datalist),
+                Param_Boolean p => AddList(p, path, datalist),
+                Param_String p => AddList(p, path, datalist),
+                Param_Point p => AddList(p, path, datalist),
+                Param_Vector p => AddList(p, path, datalist),
+                Param_Colour p => AddList(p, path, datalist),
+                Param_Surface p => AddConvertedList(p, path, datalist, s => new GH_Surface(Guid.Parse(s))),
+                Param_Curve p => AddConvertedList(p, path, datalist, s => new GH_Curve(Guid.Parse(s))),
+                Param_Brep p => AddConvertedList(p, path, datalist, s => new GH_Brep(Guid.Parse(s))),
+                Param_Mesh p => AddConvertedList(p, path, datalist, s => new GH_Mesh(Guid.Parse(s))),
+                Param_Guid p => AddConvertedList(p, path, datalist, Guid.Parse),
+                _ => false
+            };
         }
 
-        public static List<Guid> GuidFromString(IEnumerable<string> datalist)
+        // 辅助方法：直接传递 datalist
+        private static bool AddList(IGH_Param param, GH_Path path, List<string> datalist)
         {
-            List<Guid> guids = new();
-            foreach (string str in datalist)
-            {
-                guids.Add(Guid.Parse(str));  // 无效时会抛出 FormatException
-            }
-            return guids;
+            param.AddVolatileDataList(path, datalist);
+            return true;
+        }
+
+        // 辅助方法：需要转换 datalist 元素
+        private static bool AddConvertedList<T>(IGH_Param param, GH_Path path, List<string> datalist, Func<string, T> converter)
+        {
+            var converted = datalist.Select(converter).ToList();
+            param.AddVolatileDataList(path, converted);
+            return true;
+        }
+
+        private static List<Guid> GuidFromString(IEnumerable<string> datalist)
+        {
+            return datalist.Select(str => Guid.Parse(str)).ToList();
         }
     }
 }

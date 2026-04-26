@@ -12,6 +12,30 @@ namespace GrasshopperSever.Commands
     {
         private static Dictionary<Guid, Dictionary<string, IGH_DocumentObject>> UserObj = [];
 
+        private static void AddComponentToDocument(IGH_DocumentObject dobj, PointF point, string nick)
+        {
+            var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
+            // 确保有属性
+            if (dobj.Attributes == null)
+            {
+                dobj.CreateAttributes();
+            }
+            if (!string.IsNullOrEmpty(nick))
+            {
+                dobj.NickName = nick;
+                if (!UserObj.TryGetValue(doc.DocumentID, out Dictionary<string, IGH_DocumentObject> value))
+                {
+                    value = [];
+                    UserObj[doc.DocumentID] = value;
+                }
+                value[nick] = dobj;
+            }
+            // 设置位置
+            dobj.Attributes.Pivot = point;
+            doc.AddObject(dobj, false);
+            doc.NewSolution(false);
+        }
+
         /// <summary>
         /// 通过组件 GUID 添加组件到 Grasshopper 文档
         /// </summary>
@@ -24,30 +48,10 @@ namespace GrasshopperSever.Commands
             {
                 try
                 {
-                    var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
                     dobj = Instances.ComponentServer.EmitObject(new Guid(guid));
-
                     if (dobj != null)
                     {
-                        // 确保有属性
-                        if (dobj.Attributes == null)
-                        {
-                            dobj.CreateAttributes();
-                        }
-                        if (!string.IsNullOrEmpty(nick))
-                        {
-                            dobj.NickName = nick;
-                            if (!UserObj.TryGetValue(doc.DocumentID, out Dictionary<string, IGH_DocumentObject> value))
-                            {
-                                value = [];
-                                UserObj[doc.DocumentID] = value;
-                            }
-                            value[nick] = dobj;
-                        }
-                        // 设置位置
-                        dobj.Attributes.Pivot = point;
-                        doc.AddObject(dobj, false);
-                        doc.NewSolution(false);
+                        AddComponentToDocument(dobj, point, nick);
                     }
                     else
                     {
@@ -77,33 +81,7 @@ namespace GrasshopperSever.Commands
             {
                 try
                 {
-                    var doc = (Instances.ActiveCanvas?.Document) ?? throw new InvalidOperationException("No active Grasshopper document");
-                    if (dobj != null)
-                    {
-                        // 确保有属性
-                        if (dobj.Attributes == null)
-                        {
-                            dobj.CreateAttributes();
-                        }
-                        if (!string.IsNullOrEmpty(nick))
-                        {
-                            dobj.NickName = nick;
-                            if (!UserObj.TryGetValue(doc.DocumentID, out Dictionary<string, IGH_DocumentObject> value))
-                            {
-                                value = [];
-                                UserObj[doc.DocumentID] = value;
-                            }
-                            value[nick] = dobj;
-                        }
-                        // 设置位置
-                        dobj.Attributes.Pivot = point;
-                        doc.AddObject(dobj, false);
-                        doc.NewSolution(false);
-                    }
-                    else
-                    {
-                        caughtException = new InvalidOperationException("Failed to create component with DocumentObjec");
-                    }
+                    AddComponentToDocument(dobj, point, nick);
                 }
                 catch (Exception ex)
                 {
@@ -228,19 +206,6 @@ namespace GrasshopperSever.Commands
             {
                 return p;
             }
-            //if (obj is BaseLanguageComponent Language)
-            //{
-            //    List<IGH_Param> ps = Language.Params.Output;
-            //    if (isIn) ps = Language.Params.Input;
-
-            //    foreach (var param in ps)
-            //    {
-            //        if (param.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
-            //        {
-            //            return param;
-            //        }
-            //    }
-            //}
             if (obj is IGH_Component component)
             {
                 List<IGH_Param> ps = component.Params.Output;

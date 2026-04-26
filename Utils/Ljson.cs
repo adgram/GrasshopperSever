@@ -147,7 +147,16 @@ namespace GrasshopperSever.Utils
                         // 情况1: 完整Ljson格式
                         Name = nameElement.GetString();
                         Info = root.TryGetProperty(nameof(Info), out var infoElement) ? infoElement.GetString() : null;
-                        Time = root.TryGetProperty(nameof(Time), out var timeElement) ? timeElement.GetDateTime() : DateTime.Now;
+                        if (root.TryGetProperty(nameof(Time), out var timeElement)
+                            && timeElement.ValueKind == JsonValueKind.String
+                            && timeElement.TryGetDateTime(out var parsedTime))
+                        {
+                            Time = parsedTime;
+                        }
+                        else
+                        {
+                            Time = DateTime.Now;
+                        }
                         Value = valueElement.Clone();
                     }
                     else if (!hasName && !hasValue)
@@ -261,10 +270,11 @@ namespace GrasshopperSever.Utils
             {
                 foreach (var item in Value.EnumerateArray())
                 {
-                    if (item.TryGetProperty(nameof(Name), out var nameElement) &&
-                        nameElement.GetString().Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                    if (item.TryGetProperty(nameof(Name), out var nameElement)
+                        && string.Equals(nameElement.GetString(), paramName, StringComparison.OrdinalIgnoreCase)
+                        && item.TryGetProperty(nameof(Value), out var valueElement))
                     {
-                        return item.GetProperty(nameof(Value)).Clone();
+                        return valueElement.Clone();
                     }
                 }
             }
@@ -307,7 +317,7 @@ namespace GrasshopperSever.Utils
                 // 遍历对象的所有属性，进行大小写不敏感的比较
                 foreach (var property in Value.EnumerateObject())
                 {
-                    if (property.Name.Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(property.Name, paramName, StringComparison.OrdinalIgnoreCase))
                     {
                         result.Add(property.Value.Clone());
                     }
@@ -320,10 +330,11 @@ namespace GrasshopperSever.Utils
             {
                 foreach (var item in Value.EnumerateArray())
                 {
-                    if (item.TryGetProperty("Name", out var nameElement) &&
-                        nameElement.GetString().Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                    if (item.TryGetProperty(nameof(Name), out var nameElement)
+                        && string.Equals(nameElement.GetString(), paramName, StringComparison.OrdinalIgnoreCase)
+                        && item.TryGetProperty(nameof(Value), out var valueElement))
                     {
-                        result.Add(item.GetProperty("Value").Clone());
+                        result.Add(valueElement.Clone());
                     }
                 }
             }
@@ -367,8 +378,8 @@ namespace GrasshopperSever.Utils
 
                 for (int i = 0; i < items.Count; i++)
                 {
-                    if (items[i].TryGetProperty("Name", out var nameElement) &&
-                        nameElement.GetString().Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                    if (items[i].TryGetProperty(nameof(Name), out var nameElement)
+                        && string.Equals(nameElement.GetString(), paramName, StringComparison.OrdinalIgnoreCase))
                     {
                         // 更新现有项
                         var newItem = new Dictionary<string, JsonElement>();
@@ -526,12 +537,19 @@ namespace GrasshopperSever.Utils
             {
                 using (var doc = JsonDocument.Parse(json))
                 {
-                    var itemsElement = doc.RootElement.GetProperty("Items");
-                    if (itemsElement.ValueKind == JsonValueKind.Array)
+                    if (doc.RootElement.TryGetProperty("Items", out var itemsElement)
+                        && itemsElement.ValueKind == JsonValueKind.Array)
                     {
-                        foreach (var jsonStr in itemsElement.EnumerateArray())
+                        foreach (var item in itemsElement.EnumerateArray())
                         {
-                            result.Add(new Ljson(jsonStr.GetString()));
+                            if (item.ValueKind == JsonValueKind.Object)
+                            {
+                                result.Add(new Ljson(item.GetRawText()));
+                            }
+                            else if (item.ValueKind == JsonValueKind.String)
+                            {
+                                result.Add(new Ljson(item.GetString()));
+                            }
                         }
                     }
                 }

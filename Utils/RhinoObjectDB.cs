@@ -84,7 +84,8 @@ namespace GrasshopperSever.Utils
 
                 // 获取插入的记录ID
                 command.CommandText = "SELECT last_insert_rowid()";
-                long insertedId = (long)command.ExecuteScalar();
+                var result = command.ExecuteScalar();
+                long insertedId = (result != null && result != DBNull.Value) ? Convert.ToInt64(result) : -1;
 
                 return insertedId;
             }
